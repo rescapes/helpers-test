@@ -1,6 +1,6 @@
 {
   "name": "rescape-helpers-test",
-  "version": "1.5.24",
+  "version": "0.0.1",
   "description": "Helpers for testing components",
   "main": "lib/index.js",
   "module": "es/index.js",
