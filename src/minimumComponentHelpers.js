@@ -15,10 +15,16 @@ import {v} from 'rescape-validate';
 import PropTypes from 'prop-types';
 import {mergeDeep, reqPathThrowing, reqStrPathThrowing, mergeDeepWith} from 'rescape-ramda';
 import * as Result from 'folktale/result';
-import {getClassAndStyle, getStyleObj} from './styleHelpers';
+import {getClassAndStyle, getStyleObj} from './minimumStyleHelpers';
 import {graphql} from 'graphql';
+import {makeTestPropsFunction} from './componentTestHelpers';
 
 const {of, fromPromised} = require('folktale/concurrency/task');
+
+/***
+ * This file is a minimum version of rescape-helpers-component/componentHelpers.js
+ * Since that package requires this one, I copied the minimum functions to here
+ */
 
 /**
  * Default statuses for Components that don't have any Apollo queries

@@ -13,13 +13,14 @@
 import {
   mockApolloClientWithSamples, waitForChildComponentRender, wrapWithMockGraphqlAndStore
 } from './componentTestHelpers';
-import {getClass} from './styleHelpers';
+import {getClass} from './minimumStyleHelpers';
 import PropTypes from 'prop-types';
 import {v} from 'rescape-validate';
 import {of, fromPromised} from 'folktale/concurrency/task';
 import {defaultRunConfig, promiseToTask, reqStrPathThrowing} from 'rescape-ramda';
 import {gql} from 'apollo-client-preset';
 import * as R from 'ramda'
+import {loadingCompleteStatus} from './minimumComponentHelpers';
 
 /**
  * Runs tests on an apollo React container with the * given config.
@@ -263,3 +264,71 @@ export const apolloContainerTests = v((config) => {
     )]
   ], 'apolloContainerTests');
 
+
+/**
+ * Like makeTestPropsFunction, but additionally resolves an Apollo query to supply complete data for a test
+ * @param {Object} resolvedSchema Apollo schema with resolvers
+ * @param {Object} sampleConfig This is used as a datasource for the resolvers
+ * @param {Function} mapStateToProps Redux container function
+ * @param {Function} mapDispatchToProps Redux container function
+ * @param {Function} mergeProps Redux container function
+ * @query {String} query Contains an apollo query string (not gql string)
+ * @args {Function} args Contains an apollo query args in the format:
+ * {
+ *  options: { variables: { query args } }
+ * }
+ *
+ * @returns {Function} A function with two arguments, initialState and ownProps
+ *  The function returns a Task that resolves to Result.Error or Right. If Left there are errors in the Result.value. If
+ *  Right then the value is the Apollo 'store' key
+ */
+export const makeApolloTestPropsTaskFunction = R.curry((resolvedSchema, sampleConfig, mapStateToProps, mapDispatchToProps, {query, args}) => {
+
+  // composeK executes from right to left (bottom to top)
+  return (state, props) => R.composeK(
+    // Any Left will remain Left.
+    // If the Right contains an error, make a Left with the error
+    // Otherwise merge the results to simulate an Apollo Client return, with the results under the 'data' key
+    // The results will have a store key with the loaded data
+    result => of(result.chain(({props, value: {data, errors}}) => {
+      if (errors)
+        return Result.Error({
+          error: errors
+        });
+      return Result.Ok(
+        mergeDeep(
+          props,
+          {
+            data: R.merge(
+              // Simulate loading complete
+              loadingCompleteStatus,
+              data
+            )
+          }
+        )
+      );
+    })),
+    // Next take the merged props and call the graphql query.
+    // Convert the function returning a promise to a Task
+    // If if anything goes wrong wrap it in a Left. Otherwise put it in a Right
+    props => {
+      return fromPromised(() => graphql(
+        resolvedSchema,
+        query, {},
+        // Resolve graphql queries with the sampleConfig
+        {options: {dataSource: sampleConfig}},
+        // Add data and ownProps since that is what Apollo query arguments props functions expect
+        reqPathThrowing(['variables'], args.options(props))
+        ).then(value => Result.Ok({value, props})
+        ).catch(e => {
+          return Result.Error({
+            errors: [e]
+          });
+        })
+      )();
+    },
+    // First create a function that expects state and props and uses them to call mapStateToProps and mapDispatchToProps
+    // and merges the result. We wrap it in a task to give asynchronous function above
+    (state, props) => of(makeTestPropsFunction(mapStateToProps, mapDispatchToProps)(state, props))
+  )(state, props);
+});

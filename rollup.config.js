@@ -12,10 +12,7 @@ const config = {
   input: [
     'src/index.js',
     'src/apolloContainerTestHelpers.js',
-    'src/componentHelpers.js',
     'src/componentTestHelpers.js',
-    'src/styleHelpers',
-    'src/svgComponentHelpers'
   ],
   plugins: [
     // Automatically exclude dependencies and peerDependencies from cjs and es builds, (and excludes

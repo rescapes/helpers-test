@@ -6,13 +6,14 @@ import {graphql} from 'react-apollo';
 import {
   eMap, makeApolloTestPropsTaskFunction, renderChoicepoint, renderErrorDefault,
   renderLoadingDefault
-} from 'componentHelpers';
+} from './minimumComponentHelpers';
 import {Component} from 'react';
 import {resolvedSchema, sampleConfig} from 'sampleData';
 import {reqStrPathThrowing, promiseToTask, mergeDeep} from 'rescape-ramda';
 import {parentPropsForContainerTask} from 'componentTestHelpers';
 import {of} from 'folktale/concurrency/task';
 import * as Result from 'folktale/result';
+import {loadingCompleteStatus} from './minimumComponentHelpers';
 
 describe('ApolloContainer', () => {
   const schema = resolvedSchema;
@@ -131,4 +132,77 @@ describe('ApolloContainer', () => {
   test('testQuery', testQuery);
   test('testRender', testRender);
   test('testRenderError', testRenderError);
+
+
+  test('makeApolloTestPropsTaskFunction', done => {
+    const sampleState = ({data: {regionId: 'oakland'}, views: {aComponent: {stuff: 1}, bComponent: {moreStuff: 2}}});
+    const sampleOwnProps = {style: {width: 100}};
+    const mapStateToProps = (state, ownProps) => R.merge(state, ownProps);
+    const dispatchResults = {
+      action1: R.identity,
+      action2: R.identity,
+      action3: R.identity
+    };
+    const mapDispatchToProps = (dispatch, ownProps) => dispatchResults;
+    // given mapStateToProps, mapDispatchToProps, and mergeProps we get a function back
+    // that then takes sample state and ownProps. The result is a merged object based on container methods
+    // and sample data. Next apply the apollo query
+    const queryObj = {
+      query: `
+          query region($regionId: String!) {
+              store {
+                  region(id: $regionId) {
+                      id
+                      name
+                  },
+              }
+          }
+      `,
+      args: {
+        options: ({data: {regionId}}) => ({
+          variables: {
+            regionId
+          }
+        })
+      }
+    };
+    // Make the function with the configuration
+    const func = makeApolloTestPropsTaskFunction(resolvedSchema, sampleConfig, mapStateToProps, mapDispatchToProps, queryObj);
+    // Now pretend we're calling it with state and props
+    func(sampleState, sampleOwnProps).run().listen({
+      // Map the Result, handling Result.Ok success and Result.Error failure
+      onResolved: result => result.map(value => {
+        expect(value).toEqual(
+          R.merge({
+            // Expect this data came from Apollo along with the other props that were passed through: style adn views
+            data: R.merge(
+              loadingCompleteStatus, {
+                store: {region: {id: "oakland", name: "Oakland"}},
+                regionId: 'oakland'
+              }),
+            style: {width: 100},
+            views: {
+              aComponent: {stuff: 1},
+              bComponent: {moreStuff: 2}
+            }
+          }, dispatchResults)
+        );
+        done();
+      }).mapError(value => {
+        // If any Error values turn up, just throw the errors
+        const errors = R.flatten(value.error);
+        R.forEach(
+          error => {
+            console.error(error);
+          }
+        );
+        throw errors[0];
+      }),
+      onRejected: reject => {
+        // If the Task rejects, throw
+        throw(reject);
+      }
+    });
+  });
+
 });

@@ -15,6 +15,11 @@ import {v} from 'rescape-validate';
 import {compact} from 'rescape-ramda';
 import decamelize from 'decamelize';
 
+/***
+ * This file is a minimum version of rescape-helpers-component/styleHelpers.js
+ * Since that package requires this one, I copied the minimum functions to here
+ */
+
 /**
  * Creates a class name from a root name and a suffix. The given root and suffix will be decamelized
  * with -'s and joined with a -

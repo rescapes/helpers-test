@@ -25,6 +25,7 @@ import {onError} from "apollo-link-error";
 import {of} from 'folktale/concurrency/task';
 import * as Result from 'folktale/result';
 import {v} from 'rescape-validate';
+import * as R from 'ramda'
 
 const middlewares = [thunk];
 // Importing this way because rollup can't find it

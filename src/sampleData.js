@@ -59,6 +59,12 @@ const QueryType = new GraphQLObjectType({
 });
 
 export const sampleConfig = {
+  settings: {
+    api: {
+      // Used to test a server connection
+      url: 'http://localhost:7000/api/graphql'
+    }
+  },
   regions: [
     {
       id: 'oakland',
