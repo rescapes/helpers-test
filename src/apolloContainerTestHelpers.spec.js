@@ -1,4 +1,4 @@
-import {apolloContainerTests} from './apolloContainerTestHelpers';
+import {apolloContainerTests, propsFromParentPropsTask} from './apolloContainerTestHelpers';
 import {gql} from 'apollo-client-preset';
 import * as R from 'ramda';
 import {connect} from 'react-redux';
@@ -8,7 +8,7 @@ import {
   renderLoadingDefault
 } from './minimumComponentHelpers';
 import {Component} from 'react';
-import {resolvedSchema, sampleConfig} from 'sampleData';
+import {resolvedSchema as schema, sampleConfig} from 'schema.sample';
 import {reqStrPathThrowing, promiseToTask, mergeDeep} from 'rescape-ramda';
 import {parentPropsForContainerTask} from 'componentTestHelpers';
 import {of} from 'folktale/concurrency/task';
@@ -16,7 +16,6 @@ import * as Result from 'folktale/result';
 import {loadingCompleteStatus} from './minimumComponentHelpers';
 
 describe('ApolloContainer', () => {
-  const schema = resolvedSchema;
   const [div] = eMap(['div']);
 
   class App extends Component {
@@ -167,7 +166,7 @@ describe('ApolloContainer', () => {
       }
     };
     // Make the function with the configuration
-    const func = makeApolloTestPropsTaskFunction(resolvedSchema, sampleConfig, mapStateToProps, mapDispatchToProps, queryObj);
+    const func = makeApolloTestPropsTaskFunction(schema, sampleConfig, mapStateToProps, mapDispatchToProps, queryObj);
     // Now pretend we're calling it with state and props
     func(sampleState, sampleOwnProps).run().listen({
       // Map the Result, handling Result.Ok success and Result.Error failure
@@ -205,4 +204,19 @@ describe('ApolloContainer', () => {
     });
   });
 
+  test('propsFromParentPropsTask', done => {
+    propsFromParentPropsTask(
+      {foo: 1},
+      of(Result.Ok({bar: 1})),
+      (initialState, parentContainerSampleProps) => of(R.merge(initialState, parentContainerSampleProps))
+    ).run().listen({
+      onResolved: value => {
+        expect(value).toEqual({
+          foo: 1,
+          bar: 1
+        })
+        done();
+      }
+    })
+  })
 });

@@ -11,16 +11,18 @@
 
 
 import {
+  makeTestPropsFunction,
   mockApolloClientWithSamples, waitForChildComponentRender, wrapWithMockGraphqlAndStore
 } from './componentTestHelpers';
 import {getClass} from './minimumStyleHelpers';
 import PropTypes from 'prop-types';
 import {v} from 'rescape-validate';
 import {of, fromPromised} from 'folktale/concurrency/task';
-import {defaultRunConfig, promiseToTask, reqStrPathThrowing} from 'rescape-ramda';
+import {defaultRunConfig, promiseToTask, reqPathThrowing, reqStrPathThrowing, chainMDeep} from 'rescape-ramda';
 import {gql} from 'apollo-client-preset';
-import * as R from 'ramda'
+import * as R from 'ramda';
 import {loadingCompleteStatus} from './minimumComponentHelpers';
+import {authClientOrLoginTask} from 'rescape-apollo';
 
 /**
  * Runs tests on an apollo React container with the * given config.
@@ -109,13 +111,13 @@ export const apolloContainerTests = v((config) => {
         // Unacceptable!
         if (R.is(Object, error)) {
           // GraphQL error(s)
-          const errors = R.propOr([], 'error', error)
+          const errors = R.propOr([], 'error', error);
           R.forEach(error => {
             console.error(error);
             if (R.equals(error, R.last(errors)))
-              // throw the last error to quit, at least we logged all of them first
-              throw error
-          }, errors)
+            // throw the last error to quit, at least we logged all of them first
+              throw error;
+          }, errors);
 
         }
         throw error;
@@ -232,7 +234,7 @@ export const apolloContainerTests = v((config) => {
         defaultRunConfig({
           // The error component should have an error message as props.children
           onResolved: childComponent => {
-            expect(childComponent.props()).toMatchSnapshot();
+            expect(R.prop('children', childComponent.props())).toBeTruthy();
             done();
           }
         })
@@ -332,3 +334,50 @@ export const makeApolloTestPropsTaskFunction = R.curry((resolvedSchema, sampleCo
     (state, props) => of(makeTestPropsFunction(mapStateToProps, mapDispatchToProps)(state, props))
   )(state, props);
 });
+
+export const apolloAuthClientGraphqlTask = (uri, loginData) => ({query, args}) =>
+  R.composeK(
+    authClientOrLoginTask(uri, {}, data)
+  )(loginData);
+
+export const localGraphqlTask = (resolvedSchema, dataSource) => ({query, args}) => fromPromised(
+  () => graphql(
+    resolvedSchema,
+    // Resolve graphql queries with the sampleConfig
+    query,
+    {},
+    {options: {dataSource: sampleConfig}}),
+  // Add data and ownProps since that is what Apollo query arguments props functions expect
+  reqPathThrowing(['variables'], args.options(props))
+);
+
+
+/**
+ * Given a Task to fetch parent container props and a task to fetch the current container props,
+ * Fetches the parent props and then samplePropsTaskMaker with the initial state and parent props
+ * @param {Object} initialState The initial state is used by samplePropsTaskMaker to create sample props
+ *
+ * @param {Task} chainedParentPropsTask Task that resolves to the parent container props in a Result.Ok
+ * @param {Function} samplePropsTaskMaker 2 arity function expecting state and parent props.
+ * Returns a Task from a container that expects a sample state and sampleOwnProps
+ * and then applies the container's mapStateToProps, mapDispatchToProps, and optional mergeProps. Note
+ * that this should return a Result.Ok, just an unwrapped object
+ * @returns {Task} A Task to asynchronously return the parentContainer props merged with sampleOwnProps
+ * in an Result.Ok. If anything goes wrong an Result.Error is returned
+ */
+export const propsFromParentPropsTask = v((initialState, chainedParentPropsTask, samplePropsTaskMaker) =>
+    chainMDeep(2,
+      // Chain the Result.Ok value to a Task combine the parent props with the props maker
+      // Task Result.Ok -> Task Object
+      parentContainerSampleProps => samplePropsTaskMaker(initialState, parentContainerSampleProps),
+      chainedParentPropsTask
+  ),
+  [
+    ['initialState', PropTypes.shape().isRequired],
+    ['chainedParentPropsTask', PropTypes.shape().isRequired],
+    ['samplePropsTaskMaker', PropTypes.func.isRequired]
+  ],
+  'propsFromParentPropsTask'
+);
+
+

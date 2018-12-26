@@ -89,8 +89,9 @@ if (env === 'es' || env === 'cjs') {
   };
   // folktale needs to be explicitly external because rollup can't
   // match folktale to folktale/concurrency/task
-  // enzyme and enzyme-wait are dev-dependencies that are used by componentTestHelpers, so mark external here
-  config.external = ['symbol-observable', 'folktale/concurrency/task', 'folktale/result', 'enzyme', 'enzyme-wait']
+  // enzyme and enzyme-wait are dev-dependencies that are used by componentTestHelpers, so mark external here,
+  // meaning they are like peer dev dependencies that need to be imported explicitly by users of this library
+  config.external = ['symbol-observable', 'folktale/concurrency/task', 'folktale/result', 'enzyme', 'enzyme-wait'];
   config.plugins.push(
     babel({
       exclude: ['node_modules/**'],

@@ -20,7 +20,7 @@ import {
   makeMockStore, makeSampleInitialState, propsFromSampleStateAndContainer, testState,
   wrapWithMockGraphqlAndStore
 } from 'componentTestHelpers';
-import {resolvedSchema} from 'sampleData';
+import {resolvedSchema} from 'schema.sample';
 const [div] = eMap(['div']);
 const createInitialState = config => R.merge({
   foo: 'boo'
