@@ -18,7 +18,7 @@ import {getClass} from './minimumStyleHelpers';
 import PropTypes from 'prop-types';
 import {v} from 'rescape-validate';
 import {of, fromPromised} from 'folktale/concurrency/task';
-import {defaultRunConfig, promiseToTask, reqPathThrowing, reqStrPathThrowing, chainMDeep} from 'rescape-ramda';
+import {defaultRunConfig, promiseToTask, reqPathThrowing, reqStrPathThrowing, chainMDeep, mergeDeep} from 'rescape-ramda';
 import {gql} from 'apollo-client-preset';
 import * as R from 'ramda';
 import Result from 'folktale/result';
@@ -207,7 +207,6 @@ export const apolloContainerTests = v((config) => {
           // Wrap the component in mock Apollo and Redux providers.
           // If the component doesn't use Apollo it just means that it will render its children synchronously,
           // rather than asynchronously
-
           const wrapper = wrapWithMockGraphqlAndStore(initialState, schema, Container(props));
           // Find the top-level component. This is always rendered in any Apollo status (loading, error, store data)
           const component = wrapper.find(componentName);
@@ -251,14 +250,19 @@ export const apolloContainerTests = v((config) => {
         return;
       }
       R.composeK(
-        props => {
+        ({props, schema}) => {
           const wrapper = wrapWithMockGraphqlAndStore(initialState, schema, Container(props));
           const component = wrapper.find(componentName);
           expect(component.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
           expect(component.props()).toMatchSnapshot();
           return promiseToTask(waitForChildComponentRender(wrapper, componentName, childClassErrorName));
         },
-        props => of(errorMaker(props)),
+        ({props, schema}) => of({props: errorMaker(props), schema}),
+        // Resolve the schema
+        props => R.map(
+          schema => ({props, schema}),
+          schemaTask
+        ),
         () => parentPropsTask
       )().run().listen(
         defaultRunConfig({

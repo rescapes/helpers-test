@@ -15,6 +15,7 @@
  * but that library depends indirectly on this one
  */
 
+import * as R from 'ramda';
 import {addResolveFunctionsToSchema} from 'graphql-tools';
 import {
   GraphQLSchema,
@@ -24,39 +25,32 @@ import {
   GraphQLList
 } from 'graphql';
 import {reqPathThrowing, findOneValueByParamsThrowing} from 'rescape-ramda';
-require('rescape-ramda')
+import {remoteSchemaTask} from 'rescape-apollo';
 
 const RegionType = new GraphQLObjectType({
   name: 'Region',
   fields: {
-    id: { type: new GraphQLNonNull(GraphQLString) },
+    id: {type: new GraphQLNonNull(GraphQLString)},
     name: {type: GraphQLString}
   }
 });
-
-// Store corresponding to what we store on the client
-const StoreType = new GraphQLObjectType({
-  name: 'Store',
+;
+// Fake Apollo Schema
+const QueryType = new GraphQLObjectType({
+  name: 'Query',
   fields: {
     regions: {
       type: new GraphQLList(RegionType),
       args: {
-        id: { type: new GraphQLNonNull(GraphQLString) }
+        id: {type: new GraphQLNonNull(GraphQLString)}
       }
     },
     region: {
       type: RegionType,
       args: {
-        id: { type: new GraphQLNonNull(GraphQLString) }
+        id: {type: new GraphQLNonNull(GraphQLString)}
       }
     }
-  }
-})
-// Fake Apollo Schema
-const QueryType = new GraphQLObjectType({
-  name: 'Query',
-  fields: {
-    store: {type: StoreType}
   }
 });
 
@@ -73,28 +67,41 @@ export const sampleConfig = {
       name: 'Oakland'
     }
   ]
-}
+};
 
 /**
  * Minimum schema for testing
  * @type {GraphQLSchema}
  */
-export const resolvedSchema = new GraphQLSchema({
-  query: QueryType,
+export const unresolvedSchema = new GraphQLSchema({
+  query: QueryType
 });
 // Mutates resolvedSchema
-addResolveFunctionsToSchema({schema: resolvedSchema, resolvers: {
-  Store: {
-    regions: (parent, params, {options: {dataSource}}) => {
-      return findOneValueByParamsThrowing(params, reqPathThrowing(['regions'], dataSource))
-    },
-    region: (parent, params, {options: {dataSource}}) => {
-      return findOneValueByParamsThrowing(params, reqPathThrowing(['regions'], dataSource))
+const addResolvers = schema => {
+  // This function changes schema and doesn't return anything. Lame!
+  addResolveFunctionsToSchema({
+    schema: schema, resolvers: {
+      Query: {
+        regions: (parent, params, {options: {dataSource}}) => {
+          return findOneValueByParamsThrowing(params, reqPathThrowing(['regions'], dataSource));
+        },
+        region: (parent, params, {options: {dataSource}}) => {
+          return findOneValueByParamsThrowing(params, reqPathThrowing(['regions'], dataSource));
+        }
+      }
     }
-  },
-  Query: {
-    store(obj, args) {
-      return sampleConfig
-    }
-  }
-}});
+  });
+  return schema;
+};
+
+export const resolvedSchema = addResolvers(unresolvedSchema);
+/***
+ * Creates a resolved schema based on a remote schema, and not on the schema definitiion above
+ * @param {Object} config Values that matter are settings.api.uri, the graphql uri
+ * and settings.apiAuthorization = {username=..., password=...} to authenticate with graphql to fetch the schema
+ * @return {Task} The resolved remote schema, which uses our resolvers defined above
+ */
+export const resolvedRemoteSchemaTask = config => R.map(
+  ({schema}) => addResolvers(schema),
+  remoteSchemaTask(config)
+);

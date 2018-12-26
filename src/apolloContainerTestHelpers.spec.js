@@ -14,7 +14,7 @@ import {parentPropsForContainerTask} from 'componentTestHelpers';
 import {of} from 'folktale/concurrency/task';
 import * as Result from 'folktale/result';
 import {loadingCompleteStatus} from './minimumComponentHelpers';
-import {remoteSchemaTask} from 'rescape-apollo';
+import {resolvedRemoteSchemaTask} from './schema.sample';
 
 const [div] = eMap(['div']);
 
@@ -44,17 +44,15 @@ App.views = props => ({
   // We'll pretend in the second set of tests that we have a child component,
   // which for convenience is also an App that has a property
   subApp: {
-    id: reqStrPathThrowing('data.store.region.id', props)
+    id: reqStrPathThrowing('data.region.id', props)
   }
 });
 
 // Run this apollo query
 const query = `query region($regionId: String!) {
-    store {
-        region(id: $regionId) {
+      region(id: $regionId) {
             id
-        }
-    }
+      }
 }`;
 const queries = {
   region: {
@@ -149,12 +147,10 @@ describe('ApolloContainer', () => {
     const queryObj = {
       query: `
           query region($regionId: String!) {
-              store {
-                  region(id: $regionId) {
-                      id
-                      name
-                  },
-              }
+                region(id: $regionId) {
+                    id
+                    name
+                }
           }
       `,
       args: {
@@ -176,7 +172,7 @@ describe('ApolloContainer', () => {
             // Expect this data came from Apollo along with the other props that were passed through: style adn views
             data: R.merge(
               loadingCompleteStatus, {
-                store: {region: {id: "oakland", name: "Oakland"}},
+                region: {id: "oakland", name: "Oakland"},
                 regionId: 'oakland'
               }),
             style: {width: 100},
@@ -237,8 +233,9 @@ describe('ApolloContainer Remote Integration Test', () => {
       }
     }
   };
-  const schemaTask = remoteSchemaTask(config);
-  const {testQuery: testQueryWithRemoteSchema} = apolloContainerTests({
+
+  const schemaTask = resolvedRemoteSchemaTask(config);
+  const {testQuery: testQueryWithRemoteSchema, testRender: testRenderWithRemoteSchema, testRenderError: testRenderErrorWithRemoteSchema} = apolloContainerTests({
     initialState: sampleConfig,
     schema: schemaTask,
     Container,
@@ -252,4 +249,6 @@ describe('ApolloContainer Remote Integration Test', () => {
     errorMaker
   });
   test('testQueryWithRemoteSchema', testQueryWithRemoteSchema);
+  test('testRenderWithRemoteSchema', testRenderErrorWithRemoteSchema);
+  test('testRenderErrorWithRemoteSchema', testRenderWithRemoteSchema);
 });

@@ -16,6 +16,8 @@ import enzyme from 'enzyme';
 import Adapter from 'enzyme-adapter-react-16';
 import * as R from 'ramda'
 import {JSDOM} from 'jsdom';
+// Makes localStorage available in node to Apollo
+import 'localstorage-polyfill'
 
 enzyme.configure({adapter: new Adapter()});
 
@@ -57,30 +59,6 @@ Error.stackTraceLimit = Infinity;
 if (process.env.NODE_ENV !== 'production') {
   require('longjohn');
 }
-
-class LocalStorageMock {
-  constructor() {
-    this.store = {};
-  }
-
-  clear() {
-    this.store = {};
-  }
-
-  getItem(key) {
-    return this.store[key] || null;
-  }
-
-  setItem(key, value) {
-    this.store[key] = value.toString();
-  }
-
-  removeItem(key) {
-    delete this.store[key];
-  }
-};
-
-global.localStorage = new LocalStorageMock;
 
 
 // In Node v7 unhandled promise rejections will terminate the process

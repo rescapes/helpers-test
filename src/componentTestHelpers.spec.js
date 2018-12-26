@@ -73,12 +73,10 @@ describe('componentTestHelpers', () => {
     const parentProps = {};
     const query = gql`
         query region {
-            store {
-                regions {
-                    id
-                    name
-                }
-            }
+              regions {
+                  id
+                  name
+              }
         }
     `;
 

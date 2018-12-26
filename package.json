@@ -43,7 +43,7 @@
     "publish-minor": "yarn --new-version version minor && yarn publish"
   },
   "dependencies": {
-    "apollo-client": "^2.3.5",
+    "apollo-client": "^2.4.8",
     "apollo-client-preset": "^1.0.8",
     "apollo-link-error": "^1.1.0",
     "apollo-link-schema": "^1.1.0",
@@ -54,7 +54,7 @@
     "longjohn": "^0.2.12",
     "prop-types": "^15.6.2",
     "ramda": "^0.25.0",
-    "react-apollo": "^2.1.9",
+    "react-apollo": "^2.3.3",
     "react-redux": "^5.0.7",
     "rebass": "^2.0.1",
     "redux": "^4.0.0",
@@ -93,6 +93,7 @@
     "jest-cli": "^23.4.1",
     "jsdoc-babel": "^0.4.0",
     "jsdom": "^11.11.0",
+    "localstorage-polyfill": "^1.0.1",
     "react": "^16.4.1",
     "react-dev-utils": "^5.0.1",
     "react-dom": "^16.4.1",

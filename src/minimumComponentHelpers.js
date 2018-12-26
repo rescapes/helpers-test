@@ -77,9 +77,9 @@ export const renderChoicepoint = R.curry((onError, onLoading, onData, props) =>
   R.cond([
     [R.view(R.lensPath(['data', 'error'])), onError],
     [R.view(R.lensPath(['data', 'loading'])), onLoading],
-    [R.view(R.lensPath(['data', 'store'])), onData],
+    [R.compose(R.equals(7), R.view(R.lensPath(['data', 'networkStatus']))), onData],
     [R.T, props => {
-      throw new Error(`No error, loading, nor store prop: ${JSON.stringify(props)}`);
+      throw new Error(`No error, loading, nor data ready status: ${JSON.stringify(props)}`);
     }]
   ])(props)
 );
