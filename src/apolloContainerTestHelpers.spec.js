@@ -249,6 +249,6 @@ describe('ApolloContainer Remote Integration Test', () => {
     errorMaker
   });
   test('testQueryWithRemoteSchema', testQueryWithRemoteSchema);
-  test('testRenderWithRemoteSchema', testRenderErrorWithRemoteSchema);
-  test('testRenderErrorWithRemoteSchema', testRenderWithRemoteSchema);
+  test('testRenderWithRemoteSchema', testRenderWithRemoteSchema);
+  test('testRenderErrorWithRemoteSchema', testRenderErrorWithRemoteSchema);
 });
