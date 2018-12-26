@@ -21,8 +21,10 @@ import {of, fromPromised} from 'folktale/concurrency/task';
 import {defaultRunConfig, promiseToTask, reqPathThrowing, reqStrPathThrowing, chainMDeep} from 'rescape-ramda';
 import {gql} from 'apollo-client-preset';
 import * as R from 'ramda';
+import Result from 'folktale/result';
 import {loadingCompleteStatus} from './minimumComponentHelpers';
 import {authClientOrLoginTask} from 'rescape-apollo';
+import {graphql} from 'graphql';
 
 /**
  * Runs tests on an apollo React container with the * given config.
@@ -32,8 +34,8 @@ import {authClientOrLoginTask} from 'rescape-apollo';
  * @param {String} config.componentName The name of the React component that the container wraps
  * @param {String} config.childClassDataName A class used in a React component in the named
  * component's renderData method--or any render code when apollo data is loaded
- * @param {Object} config.schema An graphql schema that resolves queries to sample values. These values should be
- * based on the Redux initial state or something similar
+ * @param {Object|Task} config.schema A graphql schema or Task resolving to a schema that resolves queries to sample
+ * values. For local schemas the resolved values should be based on the Redux initial state or something similar
  * @param {Object} config.initialState The initial Redux state.
  * @param {Function} mapStateToProps Container function that expects state and props
  * @param {String} [config.childClassLoadingName] Optional. A class used in a React component in the named
@@ -79,6 +81,7 @@ export const apolloContainerTests = v((config) => {
       componentName,
       childClassDataName,
       // Required. The resolved schema used by Apollo to resolve data. This should be based on the Redux initial state or something similar
+      // This can also be a Task that resolves to a resolved schema, which is useful for remote schemas
       schema,
       mapStateToProps,
       // Optional, the class name if the component has an Apollo-based loading state
@@ -100,6 +103,9 @@ export const apolloContainerTests = v((config) => {
     // Use these query variables to call the function at queryConfig.arg.options, and then get the .variables of
     // the returned value
     const queryVariables = props => reqStrPathThrowing('variables', reqStrPathThrowing('args.options', queryConfig)(props));
+    // Wrap schema in a task if it isn't one
+    // TODO how do you check is Task?
+    const schemaTask = R.unless(R.prop('run'), of)(schema);
 
     // Resolve the Result to the Result.ok value or throw if Result.Error
     // chainedParentPropsTask returns and Result so that the an error
@@ -150,20 +156,32 @@ export const apolloContainerTests = v((config) => {
         return;
       }
 
-      const task = parentPropsTask.chain(props => {
-        const mappedProps = mapStateToProps(initialState, props);
-        return fromPromised(() => mockApolloClientWithSamples(initialState, schema).query({
-          query,
-          // queryVariables are called with props to give us the variables for our query. This is just like Apollo
-          // does, accepting props to allow the Container to form the variables for the query
-          variables: queryVariables(mappedProps),
-          // Our context is initialState as our dataSource. In real environments Apollo would go to a remote server
-          // to fetch the data, but here our database is simply the initialState for testing purposes
-          context: {
-            dataSource: initialState
-          }
-        }))();
-      });
+      // Task Object -> Task
+      const task = R.composeK(
+        ({query, initialState, mappedProps, schema}) => fromPromised(
+          () => mockApolloClientWithSamples(initialState, schema).query({
+            query,
+            // queryVariables are called with props to give us the variables for our query. This is just like Apollo
+            // does, accepting props to allow the Container to form the variables for the query
+            variables: queryVariables(mappedProps),
+            // Our context is initialState as our dataSource. In real environments Apollo would go to a remote server
+            // to fetch the data, but here our database is simply the initialState for testing purposes
+            context: {
+              dataSource: initialState
+            }
+          })
+        )(),
+        // Resolve the schema
+        ({query, initialState, mappedProps}) => R.map(
+          schema => ({query, initialState, mappedProps, schema}),
+          schemaTask
+        ),
+        // Resolve the parent props and map using initialState
+        ({query, initialState}) => R.map(
+          props => ({query, initialState, mappedProps: mapStateToProps(initialState, props)}),
+          parentPropsTask
+        )
+      )({query, initialState});
 
       task.run().listen(
         defaultRunConfig({
@@ -184,27 +202,35 @@ export const apolloContainerTests = v((config) => {
      * @return {Promise<void>}
      */
     const testRender = done => {
-      parentPropsTask.chain(props => {
-        // Wrap the component in mock Apollo and Redux providers.
-        // If the component doesn't use Apollo it just means that it will render its children synchronously,
-        // rather than asynchronously
+      R.composeK(
+        ({props, schema}) => {
+          // Wrap the component in mock Apollo and Redux providers.
+          // If the component doesn't use Apollo it just means that it will render its children synchronously,
+          // rather than asynchronously
 
-        const wrapper = wrapWithMockGraphqlAndStore(initialState, schema, Container(props));
-        // Find the top-level component. This is always rendered in any Apollo status (loading, error, store data)
-        const component = wrapper.find(componentName);
-        // Make sure the component props are consistent since the last test run
-        expect(component.props()).toMatchSnapshot();
+          const wrapper = wrapWithMockGraphqlAndStore(initialState, schema, Container(props));
+          // Find the top-level component. This is always rendered in any Apollo status (loading, error, store data)
+          const component = wrapper.find(componentName);
+          // Make sure the component props are consistent since the last test run
+          expect(component.props()).toMatchSnapshot();
 
-        // If we have an Apollo component, our immediate status after mounting the component is loading. Confirm
-        if (childClassLoadingName) {
-          expect(component.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
-        }
+          // If we have an Apollo component, our immediate status after mounting the component is loading. Confirm
+          if (childClassLoadingName) {
+            expect(component.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
+          }
 
-        // If we have an Apollo component, we use enzyme-wait to await the query to run and the the child
-        // component that is dependent on the query result to render. If we don't have an Apollo component,
-        // this child will be rendered immediately without delay
-        return promiseToTask(waitForChildComponentRender(wrapper, componentName, childClassDataName));
-      }).run().listen(
+          // If we have an Apollo component, we use enzyme-wait to await the query to run and the the child
+          // component that is dependent on the query result to render. If we don't have an Apollo component,
+          // this child will be rendered immediately without delay
+          return promiseToTask(waitForChildComponentRender(wrapper, componentName, childClassDataName));
+        },
+        // Resolve the schema
+        props => R.map(
+          schema => ({props, schema}),
+          schemaTask
+        ),
+        () => parentPropsTask
+      )().run().listen(
         defaultRunConfig({
           onResolved: childComponent => {
             expect(childComponent.props()).toMatchSnapshot();
@@ -224,13 +250,17 @@ export const apolloContainerTests = v((config) => {
         console.warn("One or both of errorMaker and childClassErrorName not specified, does your component actually need to test render errors?");
         return;
       }
-      parentPropsTask.map(errorMaker).chain(props => {
-        const wrapper = wrapWithMockGraphqlAndStore(initialState, schema, Container(props));
-        const component = wrapper.find(componentName);
-        expect(component.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
-        expect(component.props()).toMatchSnapshot();
-        return promiseToTask(waitForChildComponentRender(wrapper, componentName, childClassErrorName));
-      }).run().listen(
+      R.composeK(
+        props => {
+          const wrapper = wrapWithMockGraphqlAndStore(initialState, schema, Container(props));
+          const component = wrapper.find(componentName);
+          expect(component.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
+          expect(component.props()).toMatchSnapshot();
+          return promiseToTask(waitForChildComponentRender(wrapper, componentName, childClassErrorName));
+        },
+        props => of(errorMaker(props)),
+        () => parentPropsTask
+      )().run().listen(
         defaultRunConfig({
           // The error component should have an error message as props.children
           onResolved: childComponent => {
@@ -371,7 +401,7 @@ export const propsFromParentPropsTask = v((initialState, chainedParentPropsTask,
       // Task Result.Ok -> Task Object
       parentContainerSampleProps => samplePropsTaskMaker(initialState, parentContainerSampleProps),
       chainedParentPropsTask
-  ),
+    ),
   [
     ['initialState', PropTypes.shape().isRequired],
     ['chainedParentPropsTask', PropTypes.shape().isRequired],
