@@ -1,20 +1,19 @@
-import {apolloContainerTests, propsFromParentPropsTask} from './apolloContainerTestHelpers';
+import {
+  apolloContainerTests, makeApolloTestPropsTaskFunction,
+  propsFromParentPropsTask
+} from './apolloContainerTestHelpers';
 import {gql} from 'apollo-client-preset';
 import * as R from 'ramda';
 import {connect} from 'react-redux';
 import {graphql} from 'react-apollo';
-import {
-  eMap, makeApolloTestPropsTaskFunction, renderChoicepoint, renderErrorDefault,
-  renderLoadingDefault
-} from './minimumComponentHelpers';
 import {Component} from 'react';
 import {resolvedSchema as schema, sampleConfig} from 'schema.sample';
 import {reqStrPathThrowing, promiseToTask, mergeDeep} from 'rescape-ramda';
 import {parentPropsForContainerTask} from 'componentTestHelpers';
 import {of} from 'folktale/concurrency/task';
 import * as Result from 'folktale/result';
-import {loadingCompleteStatus} from './minimumComponentHelpers';
 import {resolvedRemoteSchemaTask} from './schema.sample';
+import {loadingCompleteStatus, renderChoicepoint, eMap, renderErrorDefault, renderLoadingDefault} from 'rescape-helpers-component';
 
 const [div] = eMap(['div']);
 
@@ -94,14 +93,6 @@ const childClassLoadingName = 'loading';
 const childClassErrorName = 'error';
 
 const errorMaker = parentProps => R.set(R.lensPath(['data', 'region', 'id']), 'foo', parentProps);
-
-/**
- * Returns a function that expects state and parentProps for testing and returns a Task that resolves the
- * properties the properties in an Result.Ok or if there's an error gives an Result.Error
- */
-const samplePropsTaskMaker = makeApolloTestPropsTaskFunction(
-  schema, sampleConfig, mapStateToProps, mapDispatchToProps, queries.region
-);
 
 // Pretend that there's some parent container that passes the regionId to a view called myContainer, which
 // is the container we are testing

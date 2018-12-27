@@ -14,15 +14,22 @@ import {
   makeTestPropsFunction,
   mockApolloClientWithSamples, waitForChildComponentRender, wrapWithMockGraphqlAndStore
 } from './componentTestHelpers';
-import {getClass} from './minimumStyleHelpers';
+import {getClass} from 'rescape-helpers-component'
 import PropTypes from 'prop-types';
 import {v} from 'rescape-validate';
 import {of, fromPromised} from 'folktale/concurrency/task';
-import {defaultRunConfig, promiseToTask, reqPathThrowing, reqStrPathThrowing, chainMDeep, mergeDeep} from 'rescape-ramda';
+import {
+  defaultRunConfig,
+  promiseToTask,
+  reqPathThrowing,
+  reqStrPathThrowing,
+  chainMDeep,
+  mergeDeep
+} from 'rescape-ramda';
 import {gql} from 'apollo-client-preset';
 import * as R from 'ramda';
 import Result from 'folktale/result';
-import {loadingCompleteStatus} from './minimumComponentHelpers';
+import {loadingCompleteStatus} from 'rescape-helpers-component';
 import {authClientOrLoginTask} from 'rescape-apollo';
 import {graphql} from 'graphql';
 
@@ -166,6 +173,8 @@ export const apolloContainerTests = v((config) => {
             variables: queryVariables(mappedProps),
             // Our context is initialState as our dataSource. In real environments Apollo would go to a remote server
             // to fetch the data, but here our database is simply the initialState for testing purposes
+            // This works in conjunction with the local resolvers on the schema see schema.sample.js for an example
+            // If testing with a remote linked schema this will be ignored
             context: {
               dataSource: initialState
             }
@@ -351,7 +360,8 @@ export const makeApolloTestPropsTaskFunction = R.curry((resolvedSchema, sampleCo
       return fromPromised(() => graphql(
         resolvedSchema,
         query, {},
-        // Resolve graphql queries with the sampleConfig
+        // Resolve graphql queries with the sampleConfig. Local resolvers rely on this value. See schema.sample.js
+        // for an example. For a remote linked schema this is ignored
         {options: {dataSource: sampleConfig}},
         // Add data and ownProps since that is what Apollo query arguments props functions expect
         reqPathThrowing(['variables'], args.options(props))
@@ -368,23 +378,6 @@ export const makeApolloTestPropsTaskFunction = R.curry((resolvedSchema, sampleCo
     (state, props) => of(makeTestPropsFunction(mapStateToProps, mapDispatchToProps)(state, props))
   )(state, props);
 });
-
-export const apolloAuthClientGraphqlTask = (uri, loginData) => ({query, args}) =>
-  R.composeK(
-    authClientOrLoginTask(uri, {}, data)
-  )(loginData);
-
-export const localGraphqlTask = (resolvedSchema, dataSource) => ({query, args}) => fromPromised(
-  () => graphql(
-    resolvedSchema,
-    // Resolve graphql queries with the sampleConfig
-    query,
-    {},
-    {options: {dataSource: sampleConfig}}),
-  // Add data and ownProps since that is what Apollo query arguments props functions expect
-  reqPathThrowing(['variables'], args.options(props))
-);
-
 
 /**
  * Given a Task to fetch parent container props and a task to fetch the current container props,

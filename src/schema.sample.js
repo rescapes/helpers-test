@@ -94,7 +94,11 @@ const addResolvers = schema => {
   return schema;
 };
 
+/**
+ * This is our resolved schema created from the local schema above
+ */
 export const resolvedSchema = addResolvers(unresolvedSchema);
+
 /***
  * Creates a resolved schema based on a remote schema, and not on the schema definitiion above
  * @param {Object} config Values that matter are settings.api.uri, the graphql uri

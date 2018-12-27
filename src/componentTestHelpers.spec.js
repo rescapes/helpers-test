@@ -13,7 +13,7 @@ import {gql} from 'apollo-client-preset';
 import {graphql} from 'react-apollo';
 import {connect} from 'react-redux';
 import * as R from 'ramda';
-import {eMap} from './minimumComponentHelpers';
+import {eMap} from 'rescape-helpers-component';
 import React from 'react';
 import {addResolveFunctionsToSchema} from 'graphql-tools';
 import {

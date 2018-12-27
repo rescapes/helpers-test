@@ -15,17 +15,17 @@ import PropTypes from 'prop-types';
 import {shallow, mount} from 'enzyme';
 import configureStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
-import {mergeDeep, reqPathThrowing, reqStrPathThrowing} from 'rescape-ramda';
+import {mergeDeep, reqPathThrowing, reqStrPathThrowing, mapMDeep} from 'rescape-ramda';
 import * as apolloTestUtils from 'apollo-test-utils';
 import ApolloClient from 'apollo-client';
 import {InMemoryCache} from 'apollo-client-preset';
 import {SchemaLink} from 'apollo-link-schema';
-import {getClass} from './minimumStyleHelpers';
+import {getClass} from 'rescape-helpers-component';
 import {onError} from "apollo-link-error";
 import {of} from 'folktale/concurrency/task';
 import * as Result from 'folktale/result';
 import {v} from 'rescape-validate';
-import * as R from 'ramda'
+import * as R from 'ramda';
 
 const middlewares = [thunk];
 // Importing this way because rollup can't find it
@@ -258,9 +258,9 @@ export const testPropsTaskMaker = (mapStateToProps, mapDispatchToProps) =>
  * in an Result.Ok. If anything goes wrong an Result.Error is returned
  */
 export const parentPropsForContainerTask = v((parentContainerSamplePropsTask, parentComponentViews, viewName) => {
-    return parentContainerSamplePropsTask.map(
-      // the parent props to the props of the desired view in an Result.Ok
-      propsResult => propsResult.map(props => reqPathThrowing(['views', viewName], parentComponentViews(props)))
+    return mapMDeep(2,
+      props => reqPathThrowing(['views', viewName], parentComponentViews(props)),
+      parentContainerSamplePropsTask
     );
   },
   [
