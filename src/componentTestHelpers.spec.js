@@ -10,6 +10,7 @@
  */
 
 import {gql} from 'apollo-client-preset';
+import {of} from 'folktale/concurrency/task';
 import {graphql} from 'react-apollo';
 import {connect} from 'react-redux';
 import * as R from 'ramda';
@@ -21,14 +22,15 @@ import {
   wrapWithMockGraphqlAndStore
 } from 'componentTestHelpers';
 import {resolvedSchema} from 'schema.sample';
+
 const [div] = eMap(['div']);
 const createInitialState = config => R.merge({
   foo: 'boo'
-}, config)
+}, config);
 const sampleConfig = {
   bar: 'roo'
-}
-addResolveFunctionsToSchema({schema: resolvedSchema, resolvers: {}})
+};
+addResolveFunctionsToSchema({schema: resolvedSchema, resolvers: {}});
 
 
 describe('componentTestHelpers', () => {
@@ -97,7 +99,7 @@ describe('componentTestHelpers', () => {
     // Instantiate
     const wrapper = wrapWithMockGraphqlAndStore(createInitialState(sampleConfig), resolvedSchema, container(parentProps));
     // Expect the apollo data prop, the redux dispatch, and the someProp we added
-    expect(R.keys(wrapper.find(Component).props()).sort()).toEqual(['data', 'dispatch', 'someProp'])
+    expect(R.keys(wrapper.find(Component).props()).sort()).toEqual(['data', 'dispatch', 'someProp']);
   });
 });
 

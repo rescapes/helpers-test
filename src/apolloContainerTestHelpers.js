@@ -90,7 +90,6 @@ export const apolloContainerTests = v((config) => {
       // Required. The resolved schema used by Apollo to resolve data. This should be based on the Redux initial state or something similar
       // This can also be a Task that resolves to a resolved schema, which is useful for remote schemas
       schema,
-      mapStateToProps,
       // Optional, the class name if the component has an Apollo-based loading state
       childClassLoadingName,
       // Optional, the class name if the component has an Apollo-based error state
@@ -100,16 +99,16 @@ export const apolloContainerTests = v((config) => {
       chainedParentPropsTask = of({}),
       // Optional, required if there are chainedParentPropsTask
       initialState,
-      // Optional. Oly for components with queries
-      queryConfig,
+      // Optional. Only for components with queries and/or mutations
+      //graphqlTasks,
       errorMaker
     } = config;
 
     // Run this apollo query
-    const query = queryConfig && gql`${queryConfig.query}`;
+    //const queryTasks = queryConfig && gql`${queryConfig.query}`;
     // Use these query variables to call the function at queryConfig.arg.options, and then get the .variables of
     // the returned value
-    const queryVariables = props => reqStrPathThrowing('variables', reqStrPathThrowing('args.options', queryConfig)(props));
+    //const queryVariables = props => reqStrPathThrowing('variables', reqStrPathThrowing('args.options', queryConfig)(props));
     // Wrap schema in a task if it isn't one
     // TODO how do you check is Task?
     const schemaTask = R.unless(R.prop('run'), of)(schema);
@@ -136,22 +135,6 @@ export const apolloContainerTests = v((config) => {
         throw error;
       }).unsafeGet()
     );
-
-    /***
-     * Tests that mapStateToProps matches snapshot
-     * @return {Promise<void>}
-     */
-    const testMapStateToProps = done => {
-      // Get the test props for RegionContainer
-      parentPropsTask.run().listen(
-        defaultRunConfig({
-          onResolved: parentProps => {
-            expect(mapStateToProps(initialState, parentProps)).toMatchSnapshot();
-            done();
-          }
-        })
-      );
-    };
 
     /**
      * For Apollo Containers with queries, tests that the query results match the snapshot
@@ -285,7 +268,6 @@ export const apolloContainerTests = v((config) => {
     };
 
     return {
-      testMapStateToProps,
       testQuery,
       testRenderError,
       testRender

@@ -64,9 +64,9 @@ export const makeSampleInitialState = (createInitialState, sampleConfig, sampleU
 /**
  * Simulates complete props from a container component by combining mapStateToProps, mapDispatchToProps, and props
  * that would normally passed from the container to a component
+ * @param {Object} initialState The initialState
  * @param {Function} containerPropMaker 2 arity function from a container that expects a sample state and sampleOwnProps
  * and then applies the container's mapStateToProps, mapDispatchToProps, and optional mergeProps
- * @param {Object} initialState The initialState
  * @param sampleParentProps Sample props that would normally come from the parent container
  * @returns {Object|Promise} complete test props or Promise of the props if the containerPropMaker is async
  */
