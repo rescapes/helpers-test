@@ -10,7 +10,6 @@
  */
 
 import {gql} from 'apollo-client-preset';
-import {of} from 'folktale/concurrency/task';
 import {graphql} from 'react-apollo';
 import {connect} from 'react-redux';
 import * as R from 'ramda';

@@ -11,8 +11,6 @@
 
 /**
  * This is a minimized amount of graphql schema configuration for testing
- * Normally I would use the sample schema from the rescape-sample-data,
- * but that library depends indirectly on this one
  */
 
 import * as R from 'ramda';
