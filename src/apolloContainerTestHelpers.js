@@ -100,12 +100,13 @@ export const apolloContainerTests = v((config) => {
       // Optional, required if there are chainedParentPropsTask
       initialState,
       // Optional. Only for components with queries and/or mutations
-      //graphqlTasks,
+      graphqlTasks,
       errorMaker
     } = config;
 
     // Run this apollo query
-    //const queryTasks = queryConfig && gql`${queryConfig.query}`;
+    const queryTasks = queryConfig && gql`${queryConfig.query}`;
+
     // Use these query variables to call the function at queryConfig.arg.options, and then get the .variables of
     // the returned value
     //const queryVariables = props => reqStrPathThrowing('variables', reqStrPathThrowing('args.options', queryConfig)(props));

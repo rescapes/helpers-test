@@ -9,6 +9,7 @@
  * THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+import 'jsdom-global/register';
 import {gql} from 'apollo-client-preset';
 import {graphql} from 'react-apollo';
 import {connect} from 'react-redux';
@@ -21,6 +22,8 @@ import {
   wrapWithMockGraphqlAndStore
 } from 'componentTestHelpers';
 import {resolvedSchema} from 'schema.sample';
+import {wrapWithMockStore} from '../esm';
+
 
 const [div] = eMap(['div']);
 const createInitialState = config => R.merge({
@@ -87,12 +90,13 @@ describe('componentTestHelpers', () => {
       }
     }
 
+    const initialState = makeSampleInitialState(createInitialState, sampleConfig);
     // Wrap the component in apollo
     const ContainerWithData = graphql(query)(Component);
     // Wrap the component in redux
     const Container = connect(
       (state, props) => ({someProp: 1})
-    )(ContainerWithData);
+    )(wrapWithMockStore(initialState, ContainerWithData));
     // Create a factory for container
     const [container] = eMap([Container]);
     // Instantiate

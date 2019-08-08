@@ -42,6 +42,7 @@
     "apollo-link-error": "^1.1.11",
     "apollo-link-schema": "^1.2.3",
     "apollo-test-utils": "^0.3.2",
+    "core-js": "^3.1.4",
     "decamelize": "^3.2.0",
     "folktale": "^2.3.2",
     "graphql-tools": "^4.0.5",
@@ -54,6 +55,7 @@
     "redux": "^4.0.4",
     "redux-mock-store": "^1.5.3",
     "redux-thunk": "^2.3.0",
+    "regenerator-runtime": "^0.13.3",
     "rescape-apollo": "^0.0.71",
     "rescape-helpers-component": "^1.5.35",
     "rescape-ramda": "^1.5.70",
@@ -85,8 +87,10 @@
     "install": "^0.13.0",
     "jest": "24.8.0",
     "jest-cli": "^24.8.0",
+    "jest-enzyme": "^7.1.0",
     "jsdoc-babel": "^0.5.0",
     "jsdom": "^15.1.1",
+    "jsdom-global": "^3.0.2",
     "localstorage-polyfill": "^1.0.1",
     "react": "^16.8.6",
     "react-dev-utils": "^9.0.1",
@@ -117,6 +121,10 @@
     ],
     "setupFiles": [
       "<rootDir>/config/polyfills.js"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/jestsetup.js",
+      "<rootDir>/node_modules/jest-enzyme/lib/index.js"
     ],
     "testMatch": [
       "<rootDir>/src/**/__tests__/**/*.{js,jsx,mjs}",

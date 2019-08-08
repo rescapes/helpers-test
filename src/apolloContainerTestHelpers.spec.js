@@ -12,8 +12,9 @@ import {reqStrPathThrowing, promiseToTask, mergeDeep} from 'rescape-ramda';
 import {parentPropsForContainerTask} from 'componentTestHelpers';
 import {of} from 'folktale/concurrency/task';
 import * as Result from 'folktale/result';
-import {resolvedRemoteSchemaTask} from './schema.sample';
 import {loadingCompleteStatus, renderChoicepoint, eMap, renderErrorDefault, renderLoadingDefault} from 'rescape-helpers-component';
+import {resolvedRemoteSchemaTask} from './schemaHelpers';
+import {addResolvers} from './schema.sample';
 
 const [div] = eMap(['div']);
 
@@ -104,7 +105,7 @@ const chainedParentPropsTask = parentPropsForContainerTask(
 );
 
 describe('ApolloContainer', () => {
-  const {testMapStateToProps, testQuery, testRenderError, testRender} = apolloContainerTests({
+  const {testQuery, testRenderError, testRender} = apolloContainerTests({
     initialState: sampleConfig,
     schema,
     Container,
@@ -117,7 +118,6 @@ describe('ApolloContainer', () => {
     queryConfig: queries.region,
     errorMaker
   });
-  test('testMapStateToProps', testMapStateToProps);
   test('testQuery', testQuery);
   test('testRender', testRender);
   test('testRenderError', testRenderError);
@@ -225,7 +225,7 @@ describe('ApolloContainer Remote Integration Test', () => {
     }
   };
 
-  const schemaTask = resolvedRemoteSchemaTask(config);
+  const schemaTask = resolvedRemoteSchemaTask(config, addResolvers);
   const {testQuery: testQueryWithRemoteSchema, testRender: testRenderWithRemoteSchema, testRenderError: testRenderErrorWithRemoteSchema} = apolloContainerTests({
     initialState: sampleConfig,
     schema: schemaTask,

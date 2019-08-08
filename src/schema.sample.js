@@ -13,8 +13,7 @@
  * This is a minimized amount of graphql schema configuration for testing
  */
 
-import * as R from 'ramda';
-import {addResolveFunctionsToSchema} from 'graphql-tools';
+
 import {
   GraphQLSchema,
   GraphQLObjectType,
@@ -22,8 +21,9 @@ import {
   GraphQLNonNull,
   GraphQLList
 } from 'graphql';
+import {addResolveFunctionsToSchema} from 'graphql-tools';
 import {reqPathThrowing, findOneValueByParamsThrowing} from 'rescape-ramda';
-import {remoteSchemaTask} from 'rescape-apollo';
+
 
 const RegionType = new GraphQLObjectType({
   name: 'Region',
@@ -32,7 +32,7 @@ const RegionType = new GraphQLObjectType({
     name: {type: GraphQLString}
   }
 });
-;
+
 // Fake Apollo Schema
 const QueryType = new GraphQLObjectType({
   name: 'Query',
@@ -74,8 +74,10 @@ export const sampleConfig = {
 export const unresolvedSchema = new GraphQLSchema({
   query: QueryType
 });
+
+
 // Mutates resolvedSchema
-const addResolvers = schema => {
+export const addResolvers = schema => {
   // This function changes schema and doesn't return anything. Lame!
   addResolveFunctionsToSchema({
     schema: schema, resolvers: {
@@ -92,18 +94,8 @@ const addResolvers = schema => {
   return schema;
 };
 
+
 /**
  * This is our resolved schema created from the local schema above
  */
 export const resolvedSchema = addResolvers(unresolvedSchema);
-
-/***
- * Creates a resolved schema based on a remote schema, and not on the schema definitiion above
- * @param {Object} config Values that matter are settings.api.uri, the graphql uri
- * and settings.apiAuthorization = {username=..., password=...} to authenticate with graphql to fetch the schema
- * @return {Task} The resolved remote schema, which uses our resolvers defined above
- */
-export const resolvedRemoteSchemaTask = config => R.map(
-  ({schema}) => addResolvers(schema),
-  remoteSchemaTask(config)
-);
