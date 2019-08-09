@@ -12,9 +12,9 @@
 
 import {
   makeTestPropsFunction,
-  mockApolloClientWithSamples, waitForChildComponentRender, wrapWithMockGraphqlAndStore
+  mockApolloClientWithSamples, waitForChildComponentRender, enzymeMountWithMockGraphqlAndStore
 } from './componentTestHelpers';
-import {getClass} from 'rescape-helpers-component'
+import {getClass} from 'rescape-helpers-component';
 import PropTypes from 'prop-types';
 import {v} from 'rescape-validate';
 import {of, fromPromised} from 'folktale/concurrency/task';
@@ -32,6 +32,9 @@ import Result from 'folktale/result';
 import {loadingCompleteStatus} from 'rescape-helpers-component';
 import {authClientOrLoginTask} from 'rescape-apollo';
 import {graphql} from 'graphql';
+import {loggers} from 'rescape-log';
+const log = loggers.get('rescapeDefault');
+import { print } from 'graphql/language/printer'
 
 /**
  * Runs tests on an apollo React container with the * given config.
@@ -90,6 +93,7 @@ export const apolloContainerTests = v((config) => {
       // Required. The resolved schema used by Apollo to resolve data. This should be based on the Redux initial state or something similar
       // This can also be a Task that resolves to a resolved schema, which is useful for remote schemas
       schema,
+      mapStateToProps,
       // Optional, the class name if the component has an Apollo-based loading state
       childClassLoadingName,
       // Optional, the class name if the component has an Apollo-based error state
@@ -100,16 +104,15 @@ export const apolloContainerTests = v((config) => {
       // Optional, required if there are chainedParentPropsTask
       initialState,
       // Optional. Only for components with queries and/or mutations
-      graphqlTasks,
+      queryConfig,
       errorMaker
     } = config;
 
     // Run this apollo query
-    const queryTasks = queryConfig && gql`${queryConfig.query}`;
-
+    const query = queryConfig && gql`${queryConfig.query}`;
     // Use these query variables to call the function at queryConfig.arg.options, and then get the .variables of
     // the returned value
-    //const queryVariables = props => reqStrPathThrowing('variables', reqStrPathThrowing('args.options', queryConfig)(props));
+    const createQueryVariables = props => reqStrPathThrowing('variables', reqStrPathThrowing('args.options', queryConfig)(props));
     // Wrap schema in a task if it isn't one
     // TODO how do you check is Task?
     const schemaTask = R.unless(R.prop('run'), of)(schema);
@@ -137,33 +140,55 @@ export const apolloContainerTests = v((config) => {
       }).unsafeGet()
     );
 
+    /***
+     * Tests that mapStateToProps matches snapshot
+     * @return {Promise<void>}
+     */
+    const testMapStateToProps = done => {
+      // Get the test props for RegionContainer
+      parentPropsTask.run().listen(
+        defaultRunConfig({
+          onResolved: parentProps => {
+            expect(mapStateToProps(initialState, parentProps)).toMatchSnapshot();
+            done();
+          }
+        })
+      );
+    };
+
     /**
      * For Apollo Containers with queries, tests that the query results match the snapshot
      * @return {Promise<void>}
      */
     const testQuery = done => {
-      if (!query || !queryVariables) {
+      const errors = [];
+      if (!query || !createQueryVariables) {
         console.warn("Attempt to run testQuery when query or queryVariables was not specified. Does your component actually need this test?");
         return;
       }
 
       // Task Object -> Task
       const task = R.composeK(
-        ({query, initialState, mappedProps, schema}) => fromPromised(
-          () => mockApolloClientWithSamples(initialState, schema).query({
-            query,
-            // queryVariables are called with props to give us the variables for our query. This is just like Apollo
-            // does, accepting props to allow the Container to form the variables for the query
-            variables: queryVariables(mappedProps),
-            // Our context is initialState as our dataSource. In real environments Apollo would go to a remote server
-            // to fetch the data, but here our database is simply the initialState for testing purposes
-            // This works in conjunction with the local resolvers on the schema see schema.sample.js for an example
-            // If testing with a remote linked schema this will be ignored
-            context: {
-              dataSource: initialState
-            }
-          })
-        )(),
+        ({query, initialState, mappedProps, schema}) => {
+          const queryVariables = createQueryVariables(mappedProps);
+          log.debug(print(query));
+          log.debug(JSON.stringify(queryVariables));
+          return fromPromised(
+            () => mockApolloClientWithSamples(initialState, schema).query({
+              query,
+              // queryVariables are called with props to give us the variables for our query. This is just like Apollo
+              // does, accepting props to allow the Container to form the variables for the query
+              variables: queryVariables,
+              // Our context is initialState as our dataSource. In real environments Apollo would go to a remote server
+              // to fetch the data, but here our database is simply the initialState for testing purposes
+              // This works in conjunction with the local resolvers on the schema see schema.sample.js for an example
+              // If testing with a remote linked schema this will be ignored
+              context: {
+                dataSource: initialState
+              }
+            })
+          )();
+        },
         // Resolve the schema
         ({query, initialState, mappedProps}) => R.map(
           schema => ({query, initialState, mappedProps, schema}),
@@ -183,9 +208,8 @@ export const apolloContainerTests = v((config) => {
             if (data.error)
               throw data.error;
             expect(data).toMatchSnapshot();
-            done();
           }
-        })
+        }, errors, done)
       );
     };
 
@@ -195,12 +219,13 @@ export const apolloContainerTests = v((config) => {
      * @return {Promise<void>}
      */
     const testRender = done => {
+      const errors = [];
       R.composeK(
         ({props, schema}) => {
           // Wrap the component in mock Apollo and Redux providers.
           // If the component doesn't use Apollo it just means that it will render its children synchronously,
           // rather than asynchronously
-          const wrapper = wrapWithMockGraphqlAndStore(initialState, schema, Container(props));
+          const wrapper = enzymeMountWithMockGraphqlAndStore(initialState, schema, Container(props));
           // Find the top-level component. This is always rendered in any Apollo status (loading, error, store data)
           const component = wrapper.find(componentName);
           // Make sure the component props are consistent since the last test run
@@ -226,9 +251,8 @@ export const apolloContainerTests = v((config) => {
         defaultRunConfig({
           onResolved: childComponent => {
             expect(childComponent.props()).toMatchSnapshot();
-            done();
           }
-        })
+        }, errors, done)
       );
     };
 
@@ -238,13 +262,14 @@ export const apolloContainerTests = v((config) => {
      * @return {Promise<void>}
      */
     const testRenderError = (done) => {
+      const errors = [];
       if (!errorMaker || !childClassErrorName) {
         console.warn("One or both of errorMaker and childClassErrorName not specified, does your component actually need to test render errors?");
         return;
       }
       R.composeK(
         ({props, schema}) => {
-          const wrapper = wrapWithMockGraphqlAndStore(initialState, schema, Container(props));
+          const wrapper = enzymeMountWithMockGraphqlAndStore(initialState, schema, Container(props));
           const component = wrapper.find(componentName);
           expect(component.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
           expect(component.props()).toMatchSnapshot();
@@ -262,13 +287,13 @@ export const apolloContainerTests = v((config) => {
           // The error component should have an error message as props.children
           onResolved: childComponent => {
             expect(R.prop('children', childComponent.props())).toBeTruthy();
-            done();
           }
-        })
+        }, errors, done)
       );
     };
 
     return {
+      testMapStateToProps,
       testQuery,
       testRenderError,
       testRender

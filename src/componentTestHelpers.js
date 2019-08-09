@@ -27,6 +27,10 @@ import {of} from 'folktale/concurrency/task';
 import * as Result from 'folktale/result';
 import {v} from 'rescape-validate';
 import * as R from 'ramda';
+import {Provider} from 'react-redux';
+import {eMap} from 'rescape-helpers-component';
+
+const [provider] = eMap([Provider]);
 
 const middlewares = [thunk];
 // Importing this way because rollup can't find it
@@ -93,7 +97,6 @@ export const makeMockStore = (state, sampleUserSettings = {}) => {
 };
 
 export const mockApolloClient = (schema, context) => {
-  //addMockFunctionsToSchema({schema});
   const mockNetworkInterface = mockNetworkInterfaceWithSchema({schema});
 
   const errorLink = onError(({graphQLErrors, response, operation}) => {
@@ -122,6 +125,12 @@ export const mockApolloClientWithSamples = (state, resolvedSchema) => {
   return mockApolloClient(resolvedSchema, context);
 };
 
+// Wraps the component in a Redux store. (It no longer works to put the store in the context)
+export const mountWithProvider = (store, component, opts) => mount(
+  provider({store}, component),
+  opts
+);
+
 /**
  * Wraps a component in a graphql client and store context for Apollo/Redux testing
  * @param state
@@ -129,23 +138,22 @@ export const mockApolloClientWithSamples = (state, resolvedSchema) => {
  * @param component
  * @return {*}
  */
-export const wrapWithMockGraphqlAndStore = (state, resolvedSchema, component) => {
+export const enzymeMountWithMockGraphqlAndStore = (state, resolvedSchema, component) => {
   const store = makeSampleStore(state);
   const context = {options: {dataSource: state}};
 
   // shallow wrap the component, passing the Apollo client and redux store to the component and children
   // Also dive once to get passed the Apollo wrapper
-  return mount(
+  return mountWithProvider(
+    store,
     component,
     {
       context: {
         // Create a mock client that uses a SchemaLink. Schema and context are passed to the SchemaLink
-        client: mockApolloClient(resolvedSchema, context),
-        store
+        client: mockApolloClient(resolvedSchema, context)
       },
       childContextTypes: {
-        client: PropTypes.object.isRequired,
-        store: PropTypes.object.isRequired
+        client: PropTypes.object.isRequired
       }
     }
   );
@@ -155,23 +163,22 @@ export const wrapWithMockGraphqlAndStore = (state, resolvedSchema, component) =>
  * Wraps a component in a store context for Redux testing
  * @param state Sample state
  * @param config Sample config
- * @param component
+ * @param connectedComponent Redux-connected component
  * @return {*}
  */
-export const wrapWithMockStore = (state, component) => {
+export const enzymeMountWithMockStore = (state, connectedComponent) => {
 
   const store = makeSampleStore(state);
 
   // shallow wrap the component, passing the Apollo client and redux store to the component and children
   // Also dive once to get passed the Apollo wrapper
-  return mount(
-    component,
+  return mountWithProvider(
+    store,
+    connectedComponent,
     {
       context: {
-        store
       },
       childContextTypes: {
-        store: PropTypes.object.isRequired
       }
     }
   );
@@ -209,8 +216,7 @@ export const waitForChildComponentRender = (wrapper, componentName, childClassNa
   component.find = (...args) => {
     try {
       wrapper.update();
-    }
-    catch (e) {
+    } catch (e) {
       console.warn("Couldn't update wrapper. Assuming that render failed.");
       // If update failed because of a component error, just quit
     }
@@ -228,8 +234,7 @@ export const waitForChildComponentRender = (wrapper, componentName, childClassNa
         \n${inspect(comp.props().data, {depth: 3})}
       `
         );
-      }
-      else {
+      } else {
         throw error;
       }
     });

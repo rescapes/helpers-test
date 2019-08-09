@@ -9,7 +9,6 @@
  * THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import 'jsdom-global/register';
 import {gql} from 'apollo-client-preset';
 import {graphql} from 'react-apollo';
 import {connect} from 'react-redux';
@@ -19,10 +18,9 @@ import React from 'react';
 import {addResolveFunctionsToSchema} from 'graphql-tools';
 import {
   makeMockStore, makeSampleInitialState, propsFromSampleStateAndContainer, testState,
-  wrapWithMockGraphqlAndStore
+  enzymeMountWithMockGraphqlAndStore, enzymeMountWithMockStore
 } from 'componentTestHelpers';
-import {resolvedSchema} from 'schema.sample';
-import {wrapWithMockStore} from '../esm';
+import {resolvedLocalSchema} from 'schema.sample';
 
 
 const [div] = eMap(['div']);
@@ -32,7 +30,7 @@ const createInitialState = config => R.merge({
 const sampleConfig = {
   bar: 'roo'
 };
-addResolveFunctionsToSchema({schema: resolvedSchema, resolvers: {}});
+addResolveFunctionsToSchema({schema: resolvedLocalSchema, resolvers: {}});
 
 
 describe('componentTestHelpers', () => {
@@ -73,14 +71,14 @@ describe('componentTestHelpers', () => {
     expect(makeMockStore(config).getState()).toEqual(config);
   });
 
-  test('wrapWithMockGraphqlAndStore', () => {
+  test('enzymeMountWithMockGraphqlAndStore', () => {
     const parentProps = {};
     const query = gql`
-        query region {
-              regions {
-                  id
-                  name
-              }
+        query regions {
+            regions {
+                id
+                name
+            }
         }
     `;
 
@@ -90,17 +88,16 @@ describe('componentTestHelpers', () => {
       }
     }
 
-    const initialState = makeSampleInitialState(createInitialState, sampleConfig);
     // Wrap the component in apollo
     const ContainerWithData = graphql(query)(Component);
-    // Wrap the component in redux
-    const Container = connect(
+    // Make a Redux connected container
+    const ReduxConnectedApolloContainer = connect(
       (state, props) => ({someProp: 1})
-    )(wrapWithMockStore(initialState, ContainerWithData));
+    )(ContainerWithData);
     // Create a factory for container
-    const [container] = eMap([Container]);
+    const [reduxConnectedApolloContainer] = eMap([ReduxConnectedApolloContainer]);
     // Instantiate
-    const wrapper = wrapWithMockGraphqlAndStore(createInitialState(sampleConfig), resolvedSchema, container(parentProps));
+    const wrapper = enzymeMountWithMockGraphqlAndStore(createInitialState(sampleConfig), resolvedLocalSchema, reduxConnectedApolloContainer(parentProps));
     // Expect the apollo data prop, the redux dispatch, and the someProp we added
     expect(R.keys(wrapper.find(Component).props()).sort()).toEqual(['data', 'dispatch', 'someProp']);
   });

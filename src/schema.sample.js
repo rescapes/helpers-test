@@ -71,21 +71,18 @@ export const sampleConfig = {
  * Minimum schema for testing
  * @type {GraphQLSchema}
  */
-export const unresolvedSchema = new GraphQLSchema({
+export const unresolvedLocalSchema = new GraphQLSchema({
   query: QueryType
 });
 
 
-// Mutates resolvedSchema
+// Mutates resolvedLocalSchema
 export const addResolvers = schema => {
   // This function changes schema and doesn't return anything. Lame!
   addResolveFunctionsToSchema({
     schema: schema, resolvers: {
       Query: {
         regions: (parent, params, {options: {dataSource}}) => {
-          return findOneValueByParamsThrowing(params, reqPathThrowing(['regions'], dataSource));
-        },
-        region: (parent, params, {options: {dataSource}}) => {
           return findOneValueByParamsThrowing(params, reqPathThrowing(['regions'], dataSource));
         }
       }
@@ -98,4 +95,4 @@ export const addResolvers = schema => {
 /**
  * This is our resolved schema created from the local schema above
  */
-export const resolvedSchema = addResolvers(unresolvedSchema);
+export const resolvedLocalSchema = addResolvers(unresolvedLocalSchema);

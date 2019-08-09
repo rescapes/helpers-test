@@ -7,12 +7,18 @@ import * as R from 'ramda';
 import {connect} from 'react-redux';
 import {graphql} from 'react-apollo';
 import {Component} from 'react';
-import {resolvedSchema as schema, sampleConfig} from 'schema.sample';
-import {reqStrPathThrowing, promiseToTask, mergeDeep} from 'rescape-ramda';
+import {resolvedLocalSchema, sampleConfig} from 'schema.sample';
+import {reqStrPathThrowing} from 'rescape-ramda';
 import {parentPropsForContainerTask} from 'componentTestHelpers';
 import {of} from 'folktale/concurrency/task';
 import * as Result from 'folktale/result';
-import {loadingCompleteStatus, renderChoicepoint, eMap, renderErrorDefault, renderLoadingDefault} from 'rescape-helpers-component';
+import {
+  loadingCompleteStatus,
+  renderChoicepoint,
+  eMap,
+  renderErrorDefault,
+  renderLoadingDefault
+} from 'rescape-helpers-component';
 import {resolvedRemoteSchemaTask} from './schemaHelpers';
 import {addResolvers} from './schema.sample';
 
@@ -49,13 +55,13 @@ App.views = props => ({
 });
 
 // Run this apollo query
-const query = `query region($regionId: String!) {
+const query = `query regions($regionId: String!) {
       region(id: $regionId) {
             id
       }
 }`;
 const queries = {
-  region: {
+  regions: {
     query,
     args: {
       options: ({data: {region}}) => ({
@@ -74,12 +80,19 @@ const queries = {
 };
 
 const ContainerWithData = graphql(
-  gql`${queries.region.query}`,
-  queries.region.args
+  gql`${queries.regions.query}`,
+  queries.regions.args
 )(App);
 
 // ownProps will override with bad id for testing error
-const mapStateToProps = (state, ownProps) => R.merge({data: {region: {id: ownProps.regionId}}}, ownProps);
+const mapStateToProps = (state, ownProps) => R.merge(
+  {
+    data: {
+      region: {
+        id: ownProps.regionId
+      }
+    }
+  }, ownProps);
 const mapDispatchToProps = () => ({});
 const ContainerClass = connect(mapStateToProps, mapDispatchToProps, R.merge)(ContainerWithData);
 const [Container] = eMap([ContainerClass]);
@@ -93,7 +106,7 @@ const childClassLoadingName = 'loading';
 // Find this class in the error renderer
 const childClassErrorName = 'error';
 
-const errorMaker = parentProps => R.set(R.lensPath(['data', 'region', 'id']), 'foo', parentProps);
+const errorMaker = parentProps => R.set(R.lensPath(['data', 'regions', 'id']), 'foo', parentProps);
 
 // Pretend that there's some parent container that passes the regionId to a view called myContainer, which
 // is the container we are testing
@@ -107,7 +120,7 @@ const chainedParentPropsTask = parentPropsForContainerTask(
 describe('ApolloContainer', () => {
   const {testQuery, testRenderError, testRender} = apolloContainerTests({
     initialState: sampleConfig,
-    schema,
+    schema: resolvedLocalSchema,
     Container,
     chainedParentPropsTask,
     mapStateToProps,
@@ -115,7 +128,7 @@ describe('ApolloContainer', () => {
     childClassDataName,
     childClassErrorName,
     childClassLoadingName,
-    queryConfig: queries.region,
+    queryConfig: queries.regions,
     errorMaker
   });
   test('testQuery', testQuery);
@@ -137,7 +150,7 @@ describe('ApolloContainer', () => {
     // and sample data. Next apply the apollo query
     const queryObj = {
       query: `
-          query region($regionId: String!) {
+          query regions($regionId: String!) {
                 region(id: $regionId) {
                     id
                     name
@@ -153,7 +166,7 @@ describe('ApolloContainer', () => {
       }
     };
     // Make the function with the configuration
-    const func = makeApolloTestPropsTaskFunction(schema, sampleConfig, mapStateToProps, mapDispatchToProps, queryObj);
+    const func = makeApolloTestPropsTaskFunction(resolvedLocalSchema, sampleConfig, mapStateToProps, mapDispatchToProps, queryObj);
     // Now pretend we're calling it with state and props
     func(sampleState, sampleOwnProps).run().listen({
       // Map the Result, handling Result.Ok success and Result.Error failure
@@ -218,7 +231,7 @@ describe('ApolloContainer Remote Integration Test', () => {
         uri: 'http://localhost:8008/graphql'
       },
       // This user must be set up on the server in order for integration tests to pass
-      apiAuthorization: {
+      testAuthorization: {
         username: 'test',
         password: 'testpass'
       }
@@ -236,7 +249,7 @@ describe('ApolloContainer Remote Integration Test', () => {
     childClassDataName,
     childClassErrorName,
     childClassLoadingName,
-    queryConfig: queries.region,
+    queryConfig: queries.regions,
     errorMaker
   });
   test('testQueryWithRemoteSchema', testQueryWithRemoteSchema);

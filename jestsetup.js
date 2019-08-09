@@ -15,8 +15,12 @@ import Adapter from 'enzyme-adapter-react-16';
 // Makes localStorage available in node to Apollo
 import 'localstorage-polyfill'
 import 'regenerator-runtime'
+import 'jest-enzyme';
+import {rescapeDefaultTransports} from 'rescape-log';
 
 enzyme.configure({adapter: new Adapter()});
+// Just use the console for logging. We'll never log and error in tests
+rescapeDefaultTransports.console.level = 'debug';
 
 Error.stackTraceLimit = Infinity;
 // Have exceptions traces traverse async processes
