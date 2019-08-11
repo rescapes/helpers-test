@@ -1,6 +1,6 @@
 {
   "name": "rescape-helpers-test",
-  "version": "0.0.23",
+  "version": "0.0.24",
   "description": "Helpers for testing components",
   "main": "lib/index.js",
   "module": "esm/index.mjs",
@@ -57,7 +57,7 @@
     "redux-thunk": "^2.3.0",
     "regenerator-runtime": "^0.13.3",
     "rescape-apollo": "^0.0.71",
-    "rescape-helpers-component": "^1.5.35",
+    "rescape-helpers-component": "^1.5.36",
     "rescape-log": "^0.1.7",
     "rescape-ramda": "^1.5.70",
     "rescape-validate": "^1.2.25",
