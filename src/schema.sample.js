@@ -13,6 +13,11 @@
  * This is a minimized amount of graphql schema configuration for testing
  */
 
+/***
+ * @fileoverview Deprecated local schema in favor of remote schema. This still works but the resolvers don't get called
+ * with the Apollo config. So to use this again fix the Apollo config to work with local schema
+ */
+
 
 import {
   GraphQLSchema,
@@ -25,6 +30,23 @@ import {addResolveFunctionsToSchema} from 'graphql-tools';
 import {reqPathThrowing, findOneValueByParamsThrowing} from 'rescape-ramda';
 
 
+export const sampleConfig = {
+  settings: {
+    api: {
+      // Used to test a server connection
+      url: 'http://localhost:7000/api/graphql'
+    }
+  },
+  regions: [
+    {
+      id: 2020,
+      name: 2020
+    }
+  ]
+};
+
+
+/*
 const RegionType = new GraphQLObjectType({
   name: 'Region',
   fields: {
@@ -51,32 +73,23 @@ const QueryType = new GraphQLObjectType({
     }
   }
 });
+ */
 
-export const sampleConfig = {
-  settings: {
-    api: {
-      // Used to test a server connection
-      url: 'http://localhost:7000/api/graphql'
-    }
-  },
-  regions: [
-    {
-      id: 'oakland',
-      name: 'Oakland'
-    }
-  ]
-};
 
+/*
 /**
  * Minimum schema for testing
  * @type {GraphQLSchema}
  */
+/*
 export const unresolvedLocalSchema = new GraphQLSchema({
   query: QueryType
 });
+ */
 
 
-// Mutates resolvedLocalSchema
+/*
+// Mutates the schema
 export const addResolvers = schema => {
   // This function changes schema and doesn't return anything. Lame!
   addResolveFunctionsToSchema({
@@ -90,9 +103,12 @@ export const addResolvers = schema => {
   });
   return schema;
 };
+ */
 
 
 /**
  * This is our resolved schema created from the local schema above
  */
+/*
 export const resolvedLocalSchema = addResolvers(unresolvedLocalSchema);
+*/

@@ -19,7 +19,7 @@ import {addResolveFunctionsToSchema} from 'graphql-tools';
 import {
   makeMockStore, makeSampleInitialState, propsFromSampleStateAndContainer, testState,
   enzymeMountWithMockGraphqlAndStore, enzymeMountWithMockStore
-} from 'componentTestHelpers';
+} from './componentTestHelpers';
 import {resolvedLocalSchema} from 'schema.sample';
 
 

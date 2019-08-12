@@ -17,14 +17,15 @@ import {
 import {getClass} from 'rescape-helpers-component';
 import PropTypes from 'prop-types';
 import {v} from 'rescape-validate';
-import {of, fromPromised} from 'folktale/concurrency/task';
+import {of, fromPromised, waitAll} from 'folktale/concurrency/task';
 import {
   defaultRunConfig,
   promiseToTask,
   reqPathThrowing,
   reqStrPathThrowing,
   chainMDeep,
-  mergeDeep
+  mergeDeep,
+  strPathOr
 } from 'rescape-ramda';
 import {gql} from 'apollo-client-preset';
 import * as R from 'ramda';
@@ -33,8 +34,20 @@ import {loadingCompleteStatus} from 'rescape-helpers-component';
 import {authClientOrLoginTask} from 'rescape-apollo';
 import {graphql} from 'graphql';
 import {loggers} from 'rescape-log';
+
 const log = loggers.get('rescapeDefault');
-import { print } from 'graphql/language/printer'
+import {print} from 'graphql/language/printer';
+
+/**
+ *
+ * Use given props to call the function at graphqlRequests.arg.options, and then get the .variables of the returned value
+ * @param {Object} graphqlQuery
+ * @param {Object} graphqlQuery.args
+ * @param {Function<Object>} graphqlQuery.options A function that takes the props and returns {variables:...}
+ * @param {Object} props
+ * @returns {Object} variables to use for the query
+ */
+const createQueryVariables = (graphqlQuery, props) => reqStrPathThrowing('variables', reqStrPathThrowing('args.options', graphqlQuery)(props));
 
 /**
  * Runs tests on an apollo React container with the * given config.
@@ -61,10 +74,10 @@ import { print } from 'graphql/language/printer'
  * where the ancestor Container props might be Apollo based.
  * of the parentProps used to call propsFromSampleStateAndContainer. Required if the container component receives
  * props from its parent (it usually does)
- * @param {Object} [queryConfig] Optional Object that has a query property, a string representing the graphql query and
+ * @param {Object} [graphqlRequests] Optional Object that has a query property, a string representing the graphql query and
  * an args.options function that expects props and resolves to an object with a variables property which holds an
  * object of query variables. Example:
- * queryConfig =
+ * graphqlRequests =
  query: some query string
  args: {
       // options is a function that expects props an returns a vasriable object with variable key/values
@@ -104,15 +117,15 @@ export const apolloContainerTests = v((config) => {
       // Optional, required if there are chainedParentPropsTask
       initialState,
       // Optional. Only for components with queries and/or mutations
-      queryConfig,
+      graphqlRequests,
       errorMaker
     } = config;
 
-    // Run this apollo query
-    const query = queryConfig && gql`${queryConfig.query}`;
-    // Use these query variables to call the function at queryConfig.arg.options, and then get the .variables of
-    // the returned value
-    const createQueryVariables = props => reqStrPathThrowing('variables', reqStrPathThrowing('args.options', queryConfig)(props));
+    // Run these apollo queries
+    const graphqlQueriesObj = strPathOr(null, 'queries', graphqlRequests);
+    // Run these apollo mutations
+    const graphqlMutationsObj = strPathOr(null, 'mutatations', graphqlRequests);
+
     // Wrap schema in a task if it isn't one
     // TODO how do you check is Task?
     const schemaTask = R.unless(R.prop('run'), of)(schema);
@@ -145,14 +158,15 @@ export const apolloContainerTests = v((config) => {
      * @return {Promise<void>}
      */
     const testMapStateToProps = done => {
+      expect.assertions(1);
+      const errors = [];
       // Get the test props for RegionContainer
       parentPropsTask.run().listen(
         defaultRunConfig({
           onResolved: parentProps => {
             expect(mapStateToProps(initialState, parentProps)).toMatchSnapshot();
-            done();
           }
-        })
+        }, errors, done)
       );
     };
 
@@ -160,35 +174,40 @@ export const apolloContainerTests = v((config) => {
      * For Apollo Containers with queries, tests that the query results match the snapshot
      * @return {Promise<void>}
      */
-    const testQuery = done => {
+    const testQueries = done => {
+      expect.assertions(1);
       const errors = [];
-      if (!query || !createQueryVariables) {
+      if (!graphqlQueriesObj) {
         console.warn("Attempt to run testQuery when query or queryVariables was not specified. Does your component actually need this test?");
         return;
       }
 
       // Task Object -> Task
       const task = R.composeK(
-        ({query, initialState, mappedProps, schema}) => {
-          const queryVariables = createQueryVariables(mappedProps);
-          log.debug(print(query));
-          log.debug(JSON.stringify(queryVariables));
-          return fromPromised(
-            () => mockApolloClientWithSamples(initialState, schema).query({
-              query,
-              // queryVariables are called with props to give us the variables for our query. This is just like Apollo
-              // does, accepting props to allow the Container to form the variables for the query
-              variables: queryVariables,
-              // Our context is initialState as our dataSource. In real environments Apollo would go to a remote server
-              // to fetch the data, but here our database is simply the initialState for testing purposes
-              // This works in conjunction with the local resolvers on the schema see schema.sample.js for an example
-              // If testing with a remote linked schema this will be ignored
-              context: {
-                dataSource: initialState
-              }
-            })
-          )();
-        },
+        // Wait for all the queries to finish
+        ({query, initialState, mappedProps, schema}) => waitAll(R.map(
+          graphqlQuery => {
+            // Create variables for the curent graphqlQuery by sending props to its configuration
+            const queryVariables = createQueryVariables(graphqlQuery, mappedProps);
+            log.debug(print(query));
+            log.debug(JSON.stringify(queryVariables));
+            return fromPromised(
+              () => mockApolloClientWithSamples(initialState, schema).query({
+                query,
+                // queryVariables are called with props to give us the variables for our query. This is just like Apollo
+                // does, accepting props to allow the Container to form the variables for the query
+                variables: queryVariables,
+                // Our context is initialState as our dataSource. In real environments Apollo would go to a remote server
+                // to fetch the data, but here our database is simply the initialState for testing purposes
+                // This works in conjunction with the local resolvers on the schema see schema.sample.js for an example
+                // If testing with a remote linked schema this will be ignored
+                context: {
+                  dataSource: initialState
+                }
+              })
+            )();
+          }, graphqlRequests)
+        ),
         // Resolve the schema
         ({query, initialState, mappedProps}) => R.map(
           schema => ({query, initialState, mappedProps, schema}),
@@ -203,11 +222,16 @@ export const apolloContainerTests = v((config) => {
 
       task.run().listen(
         defaultRunConfig({
-          onResolved: data => {
+          onResolved: dataSets => {
             // If we resolve the task, make sure there is no data.error
-            if (data.error)
-              throw data.error;
-            expect(data).toMatchSnapshot();
+            R.forEach(
+              data => {
+                if (data.error)
+                  errors.push(data.error)
+              },
+              dataSets
+            );
+            expect(dataSets).toMatchSnapshot();
           }
         }, errors, done)
       );
@@ -219,6 +243,7 @@ export const apolloContainerTests = v((config) => {
      * @return {Promise<void>}
      */
     const testRender = done => {
+      expect.assertions(1);
       const errors = [];
       R.composeK(
         ({props, schema}) => {
@@ -262,6 +287,7 @@ export const apolloContainerTests = v((config) => {
      * @return {Promise<void>}
      */
     const testRenderError = (done) => {
+      expect.assertions(1);
       const errors = [];
       if (!errorMaker || !childClassErrorName) {
         console.warn("One or both of errorMaker and childClassErrorName not specified, does your component actually need to test render errors?");
@@ -320,7 +346,7 @@ export const apolloContainerTests = v((config) => {
 
 /**
  * Like makeTestPropsFunction, but additionally resolves an Apollo query to supply complete data for a test
- * @param {Object} resolvedSchema Apollo schema with resolvers
+ * @param {Object} schemaOrTask Apollo schema with resolvers or a remote schema task
  * @param {Object} sampleConfig This is used as a datasource for the resolvers
  * @param {Function} mapStateToProps Redux container function
  * @param {Function} mapDispatchToProps Redux container function
@@ -335,7 +361,7 @@ export const apolloContainerTests = v((config) => {
  *  The function returns a Task that resolves to Result.Error or Right. If Left there are errors in the Result.value. If
  *  Right then the value is the Apollo 'store' key
  */
-export const makeApolloTestPropsTaskFunction = R.curry((resolvedSchema, sampleConfig, mapStateToProps, mapDispatchToProps, {query, args}) => {
+export const makeApolloTestPropsTaskFunction = R.curry((schemaOrTask, sampleConfig, mapStateToProps, mapDispatchToProps, {query, args}) => {
 
   // composeK executes from right to left (bottom to top)
   return (state, props) => R.composeK(
@@ -364,9 +390,9 @@ export const makeApolloTestPropsTaskFunction = R.curry((resolvedSchema, sampleCo
     // Next take the merged props and call the graphql query.
     // Convert the function returning a promise to a Task
     // If if anything goes wrong wrap it in a Left. Otherwise put it in a Right
-    props => {
+    ({schema, props}) => {
       return fromPromised(() => graphql(
-        resolvedSchema,
+        schema,
         query, {},
         // Resolve graphql queries with the sampleConfig. Local resolvers rely on this value. See schema.sample.js
         // for an example. For a remote linked schema this is ignored
@@ -381,10 +407,20 @@ export const makeApolloTestPropsTaskFunction = R.curry((resolvedSchema, sampleCo
         })
       )();
     },
+
     // First create a function that expects state and props and uses them to call mapStateToProps and mapDispatchToProps
     // and merges the result. We wrap it in a task to give asynchronous function above
-    (state, props) => of(makeTestPropsFunction(mapStateToProps, mapDispatchToProps)(state, props))
-  )(state, props);
+    ({state, props, schema}) => of({
+      schema,
+      props: makeTestPropsFunction(mapStateToProps, mapDispatchToProps)(state, props)
+    }),
+
+    // Get the schema
+    ({schemaOrTask, state, props}) => R.map(
+      schema => ({schema, state, props}),
+      (R.unless(R.prop('run'), of)(schemaOrTask))
+    )
+  )({schemaOrTask, state, props});
 });
 
 /**
