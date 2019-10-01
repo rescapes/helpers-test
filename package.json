@@ -1,10 +1,10 @@
 {
   "name": "rescape-helpers-test",
-  "version": "0.0.28",
+  "version": "0.0.29",
   "description": "Helpers for testing components",
   "main": "lib/index.js",
-  "module": "esm/index.mjs",
-  "jsnext:main": "esm/index.mjs",
+  "module": "esm/index.js",
+  "jsnext:main": "esm/index.js",
   "files": [
     "esm",
     "src"
@@ -25,16 +25,11 @@
     "test:watch": "yarn test -- --watch",
     "test:cov": "yarn test -- --coverage",
     "build": "rollup -c",
-    "prepare": "yarn run clean && yarn run lint && yarn run build",
-    "docs:clean": "rimraf _book",
-    "docs:prepare": "gitbook install",
-    "docs:build": "yarn run docs:prepare && gitbook build -g reactjs/redux && cp logo/apple-touch-icon.png _book/gitbook/images/apple-touch-icon-precomposed-152.png && cp logo/favicon.ico _book/gitbook/images",
-    "docs:watch": "yarn run docs:prepare && gitbook serve",
-    "docs:publish": "yarn run docs:clean && yarn run docs:build && cp CNAME _book && cd _book && git init && git commit --allow-empty -m 'update book' && git checkout -b gh-pages && touch .nojekyll && git add . && git commit -am 'update book' && git push git@github.com:reactjs/redux gh-pages --force",
+    "prepare": "yarn run install-peers -f && cross-env ENABLE_INTEGRATION_TESTS=false yarn run clean && yarn run lint && yarn run build",
     "build-publish-patch": "yarn run build && yarn run publish-patch",
     "build-publish-minor": "yarn run build && yarn run publish-minor",
-    "publish-patch": "yarn --new-version version patch && yarn publish",
-    "publish-minor": "yarn --new-version version minor && yarn publish"
+    "publish-patch": "yarn version --patch && yarn publish --non-interactive --access",
+    "publish-minor": "yarn version --minor && yarn publish --non-interactive --access"
   },
   "dependencies": {
     "apollo-client": "^2.6.4",
@@ -57,7 +52,6 @@
     "redux-thunk": "^2.3.0",
     "regenerator-runtime": "^0.13.3",
     "rescape-apollo": "^0.0.74",
-    "rescape-helpers-component": "^1.5.36",
     "rescape-log": "^0.1.11",
     "rescape-ramda": "^1.5.78",
     "rescape-validate": "^1.2.23",
@@ -65,9 +59,8 @@
   },
   "devDependencies": {
     "@babel/core": "^7.5.5",
-    "@babel/plugin-proposal-object-rest-spread": "^7.5.5",
-    "@babel/plugin-transform-runtime": "^7.5.5",
-    "@babel/polyfill": "^7.4.4",
+    "@babel/node": "^7.5.5",
+    "@babel/plugin-transform-runtime": "^7.6.0",
     "@babel/preset-env": "^7.5.5",
     "@babel/runtime": "^7.5.5",
     "@types/jest": "^24.0.17",
@@ -84,17 +77,18 @@
     "eslint": "^6.1.0",
     "eslint-loader": "^2.2.1",
     "eslint-plugin-jest": "^22.15.1",
-    "graphql": "^14.4.2",
+    "graphql": ">=0.13.2",
     "install": "^0.13.0",
+    "install-peers-cli": "^2.1.1",
     "jest": "24.9.0",
     "jest-cli": "^24.9.0",
     "jest-enzyme": "^7.1.0",
     "jsdoc-babel": "^0.5.0",
     "jsdom": "^15.1.1",
     "localstorage-polyfill": "^1.0.1",
-    "react": "^16.9.0",
+    "react": ">=16.4.1",
     "react-dev-utils": "^9.0.3",
-    "react-dom": "^16.9.0",
+    "react-dom": ">=16.4.1",
     "rescape-sample-data": "^1.2.60",
     "rollup": "^1.19.4",
     "rollup-plugin-babel": "^4.3.3",
@@ -108,9 +102,10 @@
     "rollup-watch": "4.3.1"
   },
   "peerDependencies": {
-    "graphql": "^0.13.2",
-    "react": "^16.4.1",
-    "react-dom": "^16.4.1"
+    "graphql": ">=0.13.2",
+    "react": ">=16.4.1",
+    "react-dom": ">=16.4.1",
+    "rescape-helpers-component": ">=1.5.64"
   },
   "jest": {
     "modulePaths": [
@@ -119,22 +114,17 @@
     "collectCoverageFrom": [
       "src/**/*.{js,jsx,mjs}"
     ],
-    "setupFiles": [
-      "<rootDir>/config/polyfills.js"
-    ],
     "setupFilesAfterEnv": [
-      "<rootDir>/jestsetup.js",
-      "<rootDir>/node_modules/jest-enzyme/lib/index.js"
+      "<rootDir>/config/jestsetup.js"
     ],
     "testMatch": [
       "<rootDir>/src/**/__tests__/**/*.{js,jsx,mjs}",
       "<rootDir>/src/**/?(*.)(spec|test).{js,jsx,mjs}"
     ],
-    "testEnvironment": "jsdom",
+    "testEnvironment": "node",
     "testURL": "http://localhost",
     "transform": {
       "^.+\\.(js|jsx|mjs)$": "<rootDir>/node_modules/babel-jest",
-      "^.+\\.css$": "<rootDir>/config/jest/cssTransform.js",
       "^(?!.*\\.(js|jsx|mjs|css|json)$)": "<rootDir>/config/jest/fileTransform.js"
     },
     "transformIgnorePatterns": [
@@ -148,30 +138,28 @@
       "js",
       "json",
       "web.jsx",
-      "jsx",
-      "node",
-      "mjs"
+      "node"
     ]
   },
   "babel": {
     "sourceMaps": true,
     "presets": [
-      "@babel/preset-env"
+      [
+        "@babel/preset-env",
+        {
+          "useBuiltIns": "entry",
+          "corejs": "3x"
+        }
+      ]
     ],
     "env": {
       "test": {
         "plugins": [
+          "@babel/plugin-transform-runtime",
           [
             "transform-es2015-modules-commonjs-simple",
             {
               "noMangle": true
-            }
-          ],
-          [
-            "@babel/plugin-transform-runtime",
-            {
-              "helpers": true,
-              "regenerator": true
             }
           ]
         ]
