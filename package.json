@@ -1,6 +1,6 @@
 {
   "name": "rescape-helpers-test",
-  "version": "0.0.29",
+  "version": "0.0.30",
   "description": "Helpers for testing components",
   "main": "lib/index.js",
   "module": "esm/index.js",
@@ -28,8 +28,8 @@
     "prepare": "yarn run install-peers -f && cross-env ENABLE_INTEGRATION_TESTS=false yarn run clean && yarn run lint && yarn run build",
     "build-publish-patch": "yarn run build && yarn run publish-patch",
     "build-publish-minor": "yarn run build && yarn run publish-minor",
-    "publish-patch": "yarn version --patch && yarn publish --non-interactive --access",
-    "publish-minor": "yarn version --minor && yarn publish --non-interactive --access"
+    "publish-patch": "yarn version --patch && yarn publish --non-interactive",
+    "publish-minor": "yarn version --minor && yarn publish --non-interactive"
   },
   "dependencies": {
     "apollo-client": "^2.6.4",
