@@ -1,11 +1,12 @@
 {
   "name": "rescape-helpers-test",
-  "version": "0.0.32",
+  "version": "0.0.33",
   "description": "Helpers for testing components",
   "main": "lib/index.js",
   "module": "esm/index.js",
   "jsnext:main": "esm/index.js",
   "files": [
+    "lib",
     "esm",
     "src"
   ],
