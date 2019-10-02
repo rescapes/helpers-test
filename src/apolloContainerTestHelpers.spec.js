@@ -17,7 +17,7 @@ import {composeGraphqlQueryDefinitions} from 'rescape-helpers-component';
 import {
   loadingCompleteStatus,
   renderChoicepoint,
-  eMap,
+  e,
   renderErrorDefault,
   renderLoadingDefault
 } from 'rescape-helpers-component';
@@ -26,7 +26,6 @@ import {
   defaultRunToResultConfig
 } from 'rescape-ramda';
 
-const [div] = eMap(['div']);
 // Test with a remote schema. This is an integration test and requires a server
 // Run the graphql server in the rescape-graphene repo
 const config = {    // This server must be running in order for integration tests to pass
@@ -54,7 +53,7 @@ App.choicepoint = renderChoicepoint(
   renderErrorDefault('error'),
   renderLoadingDefault('loading'),
   () => {
-    return div({className: 'success'});
+    return e(div, {className: 'success'});
   }
 );
 
@@ -159,7 +158,7 @@ const mapStateToProps = (state, ownProps) => R.merge(
   }, ownProps);
 const mapDispatchToProps = () => ({});
 const ContainerClass = connect(mapStateToProps, mapDispatchToProps, R.merge)(ContainerWithData);
-const [Container] = eMap([ContainerClass]);
+const Container = e(ContainerClass);
 
 // Find this React component
 const componentName = 'App';

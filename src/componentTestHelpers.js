@@ -28,9 +28,9 @@ import * as Result from 'folktale/result';
 import {v} from 'rescape-validate';
 import * as R from 'ramda';
 import {Provider} from 'react-redux';
-import {eMap} from 'rescape-helpers-component';
+import {e} from 'rescape-helpers-component';
 
-const [provider] = eMap([Provider]);
+const provider = e(Provider);
 
 const middlewares = [thunk];
 // Importing this way because rollup can't find it

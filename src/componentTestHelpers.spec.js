@@ -13,7 +13,7 @@ import {gql} from 'apollo-client-preset';
 import {graphql} from 'react-apollo';
 import {connect} from 'react-redux';
 import * as R from 'ramda';
-import {eMap} from 'rescape-helpers-component';
+import {e} from 'rescape-helpers-component';
 import React from 'react';
 import {addResolveFunctionsToSchema} from 'graphql-tools';
 import {
@@ -23,7 +23,6 @@ import {
 import {resolvedLocalSchema} from 'schema.sample';
 
 
-const [div] = eMap(['div']);
 const createInitialState = config => R.merge({
   foo: 'boo'
 }, config);
@@ -84,7 +83,7 @@ describe('componentTestHelpers', () => {
 
     class Component extends React.Component {
       render() {
-        return div();
+        return e('div');
       }
     }
 
@@ -95,7 +94,7 @@ describe('componentTestHelpers', () => {
       (state, props) => ({someProp: 1})
     )(ContainerWithData);
     // Create a factory for container
-    const [reduxConnectedApolloContainer] = eMap([ReduxConnectedApolloContainer]);
+    const reduxConnectedApolloContainer = e(ReduxConnectedApolloContainer);
     // Instantiate
     const wrapper = enzymeMountWithMockGraphqlAndStore(createInitialState(sampleConfig), resolvedLocalSchema, reduxConnectedApolloContainer(parentProps));
     // Expect the apollo data prop, the redux dispatch, and the someProp we added
