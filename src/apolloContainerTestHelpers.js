@@ -12,7 +12,7 @@
 
 import {
   makeTestPropsFunction,
-  mockApolloClientWithSamples, waitForChildComponentRender, enzymeMountWithMockGraphqlAndStore
+  mockApolloClientWithSamples, waitForChildComponentRender, enzymeMountWithApolloClientAndReduxProvider
 } from './componentTestHelpers';
 import {getClass} from 'rescape-helpers-component';
 import PropTypes from 'prop-types';
@@ -250,7 +250,7 @@ export const apolloContainerTests = v((config) => {
           // Wrap the component in mock Apollo and Redux providers.
           // If the component doesn't use Apollo it just means that it will render its children synchronously,
           // rather than asynchronously
-          const wrapper = enzymeMountWithMockGraphqlAndStore(initialState, schema, Container(props));
+          const wrapper = enzymeMountWithApolloClientAndReduxProvider(initialState, schema, Container(props));
           // Find the top-level component. This is always rendered in any Apollo status (loading, error, store data)
           const component = wrapper.find(componentName);
           // Make sure the component props are consistent since the last test run
@@ -295,7 +295,7 @@ export const apolloContainerTests = v((config) => {
       }
       R.composeK(
         ({props, schema}) => {
-          const wrapper = enzymeMountWithMockGraphqlAndStore(initialState, schema, Container(props));
+          const wrapper = enzymeMountWithApolloClientAndReduxProvider(initialState, schema, Container(props));
           const component = wrapper.find(componentName);
           expect(component.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
           expect(component.props()).toMatchSnapshot();

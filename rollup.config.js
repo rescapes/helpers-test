@@ -12,7 +12,7 @@ const config = {
   ],
   plugins: []
 };
-const externals = ['symbol-observable', 'folktale/concurrency/task', 'folktale/result', 'enzyme', 'enzyme-wait'];
+const externals = ['symbol-observable', 'folktale/concurrency/task', 'folktale/result', 'enzyme', 'enzyme-wait', 'fast-json-stable-stringify'];
 
 const configs = R.map(c => {
   const x = R.merge(config, c);

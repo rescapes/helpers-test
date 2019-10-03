@@ -7,9 +7,9 @@ import * as R from 'ramda';
 import {connect} from 'react-redux';
 import {graphql} from 'react-apollo';
 import {Component} from 'react';
-import {sampleConfig} from 'schema.sample';
+import {remoteConfig} from 'remoteConfig';
 import {reqStrPathThrowing} from 'rescape-ramda';
-import {parentPropsForContainerTask} from './componentTestHelpers';
+import {parentPropsForContainerResultTask} from './componentTestHelpers';
 import {of} from 'folktale/concurrency/task';
 import * as Result from 'folktale/result';
 import {makeQuery, makeMutation} from 'rescape-apollo';
@@ -86,9 +86,10 @@ const outputParams = [
   'id',
   'name'
 ];
+
 export const makeRegionsQuery = (queryParams) => {
   const query = makeQuery('regions', readInputTypeMapper, outputParams, queryParams);
-  makeQuery('sampleResourceQuery', sampleInputParamTypeMapper, sampleResourceOutputParams)
+  makeQuery('sampleResourceQuery', sampleInputParamTypeMapper, sampleResourceOutputParams);
   log.debug(query);
   log.debug(JSON.stringify(queryParams));
   return gql`${query}`;
@@ -135,7 +136,7 @@ const graphqlRequests = {
       }
     }
   },
-  mutatations: {
+  mutations: {
     mutateRegion: {
       mutation: makeRegionsMutation
     }
@@ -144,7 +145,10 @@ const graphqlRequests = {
 
 const ContainerWithData = composeGraphqlQueryDefinitions(
   // Compose all the queries and mutations into a new container
-  ...[graphqlRequests.queries, graphqlRequests.mutations]
+  R.merge(
+    graphqlRequests.queries,
+    graphqlRequests.mutations
+  )
 )(App);
 
 // ownProps will override with bad id for testing error
@@ -173,7 +177,7 @@ const errorMaker = parentProps => R.set(R.lensPath(['data', 'regions', 'id']), '
 
 // Pretend that there's some parent container that passes the regionId to a view called myContainer, which
 // is the container we are testing
-const chainedParentPropsTask = parentPropsForContainerTask(
+const chainedParentPropsTask = parentPropsForContainerResultTask(
   // Pretend the parent returns the given props asynchronously
   of(Result.Ok({regionId: 2020})),
   props => ({views: {myContainer: {regionId: parseInt(props.regionId)}}}),
@@ -182,7 +186,7 @@ const chainedParentPropsTask = parentPropsForContainerTask(
 
 describe('ApolloContainer', () => {
   const {testQuery, testMutate, testRenderError, testRender} = apolloContainerTests({
-    initialState: sampleConfig,
+    initialState: remoteConfig,
     schema: schemaTask,
     Container,
     chainedParentPropsTask,
@@ -240,7 +244,7 @@ describe('ApolloContainer', () => {
       }
     };
     // Make the function with the configuration
-    const func = makeApolloTestPropsTaskFunction(schemaTask, sampleConfig, mapStateToProps, mapDispatchToProps, queryObj);
+    const func = makeApolloTestPropsTaskFunction(schemaTask, remoteConfig, mapStateToProps, mapDispatchToProps, queryObj);
     // Now pretend we're calling it with state and props
     const errors = [];
     func(sampleState, sampleOwnProps).run().listen(
@@ -288,7 +292,7 @@ describe('ApolloContainer Remote Integration Test', () => {
 
   const {testQuery: testQueryWithRemoteSchema, testRender: testRenderWithRemoteSchema, testRenderError: testRenderErrorWithRemoteSchema} =
     apolloContainerTests({
-      initialState: sampleConfig,
+      initialState: remoteConfig,
       schema: schemaTask,
       Container,
       chainedParentPropsTask,

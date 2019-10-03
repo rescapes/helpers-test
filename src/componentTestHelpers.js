@@ -29,8 +29,7 @@ import {v} from 'rescape-validate';
 import * as R from 'ramda';
 import {Provider} from 'react-redux';
 import {e} from 'rescape-helpers-component';
-
-const provider = e(Provider);
+import {ApolloProvider} from '@apollo/react-hooks'
 
 const middlewares = [thunk];
 // Importing this way because rollup can't find it
@@ -126,8 +125,8 @@ export const mockApolloClientWithSamples = (state, resolvedSchema) => {
 };
 
 // Wraps the component in a Redux store. (It no longer works to put the store in the context)
-export const mountWithProvider = (store, component, opts) => mount(
-  provider({store}, component),
+export const mountWithReduxProvider = (store, component, opts) => mount(
+  e(Provider, {store}, component),
   opts
 );
 
@@ -135,27 +134,18 @@ export const mountWithProvider = (store, component, opts) => mount(
  * Wraps a component in a graphql client and store context for Apollo/Redux testing
  * @param state
  * @param resolvedSchema
+ * @param apolloClient
  * @param component
  * @return {*}
  */
-export const enzymeMountWithMockGraphqlAndStore = (state, resolvedSchema, component) => {
+export const enzymeMountWithApolloClientAndReduxProvider = (state, resolvedSchema, apolloClient, component) => {
   const store = makeSampleStore(state);
-  const context = {options: {dataSource: state}};
-
+  // NOT currently working. Apollo find the ApolloProvider, even though it's here
   // shallow wrap the component, passing the Apollo client and redux store to the component and children
   // Also dive once to get passed the Apollo wrapper
-  return mountWithProvider(
+  return mountWithReduxProvider(
     store,
-    component,
-    {
-      context: {
-        // Create a mock client that uses a SchemaLink. Schema and context are passed to the SchemaLink
-        client: mockApolloClient(resolvedSchema, context)
-      },
-      childContextTypes: {
-        client: PropTypes.object.isRequired
-      }
-    }
+    e(ApolloProvider, {client: apolloClient}, component)
   );
 };
 
@@ -172,14 +162,12 @@ export const enzymeMountWithMockStore = (state, connectedComponent) => {
 
   // shallow wrap the component, passing the Apollo client and redux store to the component and children
   // Also dive once to get passed the Apollo wrapper
-  return mountWithProvider(
+  return mountWithReduxProvider(
     store,
     connectedComponent,
     {
-      context: {
-      },
-      childContextTypes: {
-      }
+      context: {},
+      childContextTypes: {}
     }
   );
 };
@@ -263,10 +251,10 @@ export const testPropsTaskMaker = (mapStateToProps, mapDispatchToProps) =>
  * @param parentComponentViews A function expecting props that returns an object keyed by view names
  * and valued by view props, where views are the child containers/components of the component
  * @param viewName The viewName in the parent component of the target container
- * @returns {Task} A Task to asynchronously return the parentContainer props passed to the given viewName
- * in an Result.Ok. If anything goes wrong an Result.Error is returned
+ * @returns {Task} A Task to resolve the parentContainer props passed to the given viewName
+ * in an Result.Ok. If anything goes wrong the task resolves with a Result.Error
  */
-export const parentPropsForContainerTask = v((parentContainerSamplePropsTask, parentComponentViews, viewName) => {
+export const parentPropsForContainerResultTask = v((parentContainerSamplePropsTask, parentComponentViews, viewName) => {
     return mapMDeep(2,
       props => reqPathThrowing(['views', viewName], parentComponentViews(props)),
       parentContainerSamplePropsTask
@@ -277,7 +265,7 @@ export const parentPropsForContainerTask = v((parentContainerSamplePropsTask, pa
     ['parentComponentViews', PropTypes.func.isRequired],
     ['viewName', PropTypes.string.isRequired]
   ],
-  'parentPropsForContainerTask');
+  'parentPropsForContainerResultTask');
 
 /**
  * Given a container's mapStateToProps and mapDispatchToProps, returns a function that accepts a sample state

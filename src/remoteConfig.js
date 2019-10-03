@@ -18,11 +18,20 @@
  * with the Apollo config. So to use this again fix the Apollo config to work with local schema
  */
 
-export const sampleConfig = {
+export const remoteConfig = {
   settings: {
+    domain: 'localhost',
     api: {
-      // Used to test a server connection
-      url: 'http://localhost:7000/api/graphql'
+      protocol: 'http',
+      host: 'localhost',
+      port: '8008',
+      path: '/graphql',
+      // This is normally calculated from the pieces above
+      uri: 'http://localhost:8008/graphql'
+    },
+    testAuthorization: {
+      username: 'test',
+      password: 'testpass'
     }
   },
   regions: [

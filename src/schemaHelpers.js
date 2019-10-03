@@ -9,18 +9,8 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import {reqPathThrowing, findOneValueByParamsThrowing} from 'rescape-ramda';
-import {remoteSchemaTask, remoteLinkedSchemaTask} from 'rescape-apollo';
 import * as R from 'ramda';
-import {addResolveFunctionsToSchema} from 'graphql-tools';
-
-/***
- * Creates a resolved schema based on a remote schema, and not on the schema definition above
- * @param {Object} config Values that matter are settings.api.uri, the graphql uri
- * and settings.apiAuthorization = {username=..., password=...} to authenticate with graphql to fetch the schema
- * @return {Task} The resolved remote schema, which uses our resolvers defined above
- */
-
+import {remoteLinkedSchemaTask, remoteSchemaTask} from 'rescape-apollo';
 
 
 /**
@@ -30,3 +20,12 @@ import {addResolveFunctionsToSchema} from 'graphql-tools';
  * @returns {Task}
  */
 export const resolvedRemoteSchemaTask = config => remoteLinkedSchemaTask(config);
+/**
+ * Returns a
+ * @param config
+ * @returns {Task<Object>} Resolves to an apolloClient
+ */
+export const remoteApolloClientTask = config => R.map(
+  ({apolloClient}) => apolloClient,
+  remoteSchemaTask(config)
+);

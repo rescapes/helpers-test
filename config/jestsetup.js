@@ -17,6 +17,7 @@ import 'localstorage-polyfill'
 import 'regenerator-runtime'
 import 'jest-enzyme';
 import {rescapeDefaultTransports} from 'rescape-log';
+require('jsdom-global')()
 
 enzyme.configure({adapter: new Adapter()});
 // Just use the console for logging. We'll never log and error in tests
