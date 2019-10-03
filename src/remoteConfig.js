@@ -18,18 +18,6 @@
  * with the Apollo config. So to use this again fix the Apollo config to work with local schema
  */
 
-
-import {
-  GraphQLSchema,
-  GraphQLObjectType,
-  GraphQLString,
-  GraphQLNonNull,
-  GraphQLList
-} from 'graphql';
-import {addResolveFunctionsToSchema} from 'graphql-tools';
-import {reqPathThrowing, findOneValueByParamsThrowing} from 'rescape-ramda';
-
-
 export const sampleConfig = {
   settings: {
     api: {
@@ -44,71 +32,3 @@ export const sampleConfig = {
     }
   ]
 };
-
-
-/*
-const RegionType = new GraphQLObjectType({
-  name: 'Region',
-  fields: {
-    id: {type: new GraphQLNonNull(GraphQLString)},
-    name: {type: GraphQLString}
-  }
-});
-
-// Fake Apollo Schema
-const QueryType = new GraphQLObjectType({
-  name: 'Query',
-  fields: {
-    regions: {
-      type: new GraphQLList(RegionType),
-      args: {
-        id: {type: new GraphQLNonNull(GraphQLString)}
-      }
-    },
-    region: {
-      type: RegionType,
-      args: {
-        id: {type: new GraphQLNonNull(GraphQLString)}
-      }
-    }
-  }
-});
- */
-
-
-/*
-/**
- * Minimum schema for testing
- * @type {GraphQLSchema}
- */
-/*
-export const unresolvedLocalSchema = new GraphQLSchema({
-  query: QueryType
-});
- */
-
-
-/*
-// Mutates the schema
-export const addResolvers = schema => {
-  // This function changes schema and doesn't return anything. Lame!
-  addResolveFunctionsToSchema({
-    schema: schema, resolvers: {
-      Query: {
-        regions: (parent, params, {options: {dataSource}}) => {
-          return findOneValueByParamsThrowing(params, reqPathThrowing(['regions'], dataSource));
-        }
-      }
-    }
-  });
-  return schema;
-};
- */
-
-
-/**
- * This is our resolved schema created from the local schema above
- */
-/*
-export const resolvedLocalSchema = addResolvers(unresolvedLocalSchema);
-*/

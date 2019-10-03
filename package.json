@@ -1,6 +1,6 @@
 {
   "name": "rescape-helpers-test",
-  "version": "0.0.33",
+  "version": "0.0.34",
   "description": "Helpers for testing components",
   "main": "lib/index.js",
   "module": "esm/index.js",
@@ -52,13 +52,11 @@
     "redux-mock-store": "^1.5.3",
     "redux-thunk": "^2.3.0",
     "regenerator-runtime": "^0.13.3",
-    "rescape-apollo": "^0.0.74",
-    "rescape-log": "^0.1.11",
-    "rescape-ramda": "^1.5.78",
-    "rescape-validate": "^1.2.23",
     "util": "^0.12.1"
   },
   "devDependencies": {
+    "@apollo/react-hooks": "^3.1.2",
+    "@apollo/react-testing": "^3.1.2",
     "@babel/core": "^7.5.5",
     "@babel/node": "^7.5.5",
     "@babel/plugin-transform-runtime": "^7.6.0",
@@ -86,6 +84,7 @@
     "jest-enzyme": "^7.1.0",
     "jsdoc-babel": "^0.5.0",
     "jsdom": "^15.1.1",
+    "jsdom-global": "^3.0.2",
     "localstorage-polyfill": "^1.0.1",
     "react": ">=16.4.1",
     "react-dev-utils": "^9.0.3",
@@ -106,7 +105,11 @@
     "graphql": ">=0.13.2",
     "react": ">=16.4.1",
     "react-dom": ">=16.4.1",
-    "rescape-helpers-component": ">=1.5.64"
+    "rescape-apollo": ">=0.0.74",
+    "rescape-helpers-component": ">=1.5.64",
+    "rescape-log": ">=0.1.11",
+    "rescape-ramda": ">=1.5.78",
+    "rescape-validate": ">=1.2.23"
   },
   "jest": {
     "modulePaths": [
