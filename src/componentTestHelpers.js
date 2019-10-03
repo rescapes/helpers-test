@@ -249,7 +249,8 @@ export const testPropsTaskMaker = (mapStateToProps, mapDispatchToProps) =>
  * receive {foo: 1}
  * @param {Object} config
  * @param {Object} config.schema The Apollo schema
- * @param {Task} parentContainerSamplePropsTask Task that resolves to the parent container props
+ * @param {Function} parentContainerSamplePropsTask Function expecting the Apollo schema as the unary argument.
+ * Returns a task that resolves to the parent container props
  * @param parentComponentViews A function expecting props that returns an object keyed by view names
  * and valued by view props, where views are the child containers/components of the component
  * @param viewName The viewName in the parent component of the target container
@@ -266,7 +267,7 @@ export const parentPropsForContainerResultTask = v(({schema}, parentContainerSam
     ['config', PropTypes.shape({
       schema: PropTypes.shape().isRequired
     }).isRequired],
-    ['parentContainerSamplePropsTask', PropTypes.shape().isRequired],
+    ['parentContainerSamplePropsTask', PropTypes.func.isRequired],
     ['parentComponentViews', PropTypes.func.isRequired],
     ['viewName', PropTypes.string.isRequired]
   ],
