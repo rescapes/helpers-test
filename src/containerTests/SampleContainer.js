@@ -1,6 +1,6 @@
 import {mergeDeep, taskToPromise, traverseReduce} from 'rescape-ramda';
 import {v} from 'rescape-validate';
-import {makeRegionsQueryContainer, regionOutputParams} from '../stores/scopeStores/regionStore';
+import {makeRegionsQueryContainer, regionOutputParams} from 'rescape-apollo'
 import {of} from 'folktale/concurrency/task';
 import Sample from './SampleComponent';
 import {asyncComponent} from 'react-async-component';

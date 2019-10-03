@@ -1,11 +1,11 @@
 import * as R from 'ramda';
 import {c} from './SampleComponent';
 import SampleContainer, {graphqlTasks} from './SampleContainer';
-import {chainedParentPropsTask} from './SampleContainer.sample';
-import {apolloContainerTests} from 'rescape-helpers-test';
-import {testConfig} from '../helpers/testHelpers';
-import {remoteSchemaTask} from '../schema/remoteSchema';
+import {chainedParentPropsResultTask} from './SampleContainer.sample';
+import {testConfig} from 'rescape-apollo'
+import {remoteSchemaTask} from 'rescape-apollo'
 import {e} from 'rescape-helpers-component'
+import {apolloContainerTests} from '../apolloContainerTestHelpers';
 
 // Test this container
 const Container = e(SampleContainer);
@@ -32,7 +32,7 @@ describe('SampleContainer', () => {
     childClassLoadingName,
     childClassErrorName,
     graphqlTasks: graphqlTasks,
-    chainedParentPropsTask,
+    chainedParentPropsResultTask,
     errorMaker
   });
   test('testRender', testRender);

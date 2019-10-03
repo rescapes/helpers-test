@@ -247,6 +247,8 @@ export const testPropsTaskMaker = (mapStateToProps, mapDispatchToProps) =>
  * if the parent container generated Apollo props like {data: {store: {foo: 1}}}} and the component's views
  * mapped props to viewName like props => ({foo: props.data.store.foo}), then the target container would
  * receive {foo: 1}
+ * @param {Object} config
+ * @param {Object} config.schema The Apollo schema
  * @param {Task} parentContainerSamplePropsTask Task that resolves to the parent container props
  * @param parentComponentViews A function expecting props that returns an object keyed by view names
  * and valued by view props, where views are the child containers/components of the component
@@ -254,13 +256,16 @@ export const testPropsTaskMaker = (mapStateToProps, mapDispatchToProps) =>
  * @returns {Task} A Task to resolve the parentContainer props passed to the given viewName
  * in an Result.Ok. If anything goes wrong the task resolves with a Result.Error
  */
-export const parentPropsForContainerResultTask = v((parentContainerSamplePropsTask, parentComponentViews, viewName) => {
+export const parentPropsForContainerResultTask = v(({schema}, parentContainerSamplePropsTask, parentComponentViews, viewName) => {
     return mapMDeep(2,
       props => reqPathThrowing(['views', viewName], parentComponentViews(props)),
-      parentContainerSamplePropsTask
+      parentContainerSamplePropsTask(schema)
     );
   },
   [
+    ['config', PropTypes.shape({
+      schema: PropTypes.shape().isRequired
+    }).isRequired],
     ['parentContainerSamplePropsTask', PropTypes.shape().isRequired],
     ['parentComponentViews', PropTypes.func.isRequired],
     ['viewName', PropTypes.string.isRequired]

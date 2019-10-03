@@ -177,7 +177,8 @@ const errorMaker = parentProps => R.set(R.lensPath(['data', 'regions', 'id']), '
 
 // Pretend that there's some parent container that passes the regionId to a view called myContainer, which
 // is the container we are testing
-const chainedParentPropsTask = parentPropsForContainerResultTask(
+const chainedParentPropsTask = schema => parentPropsForContainerResultTask(
+  {schema},
   // Pretend the parent returns the given props asynchronously
   of(Result.Ok({regionId: 2020})),
   props => ({views: {myContainer: {regionId: parseInt(props.regionId)}}}),

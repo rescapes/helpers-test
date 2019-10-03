@@ -8,10 +8,9 @@
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-import {parentPropsForContainerTask, makeApolloTestPropsTaskFunction} from 'rescape-helpers-test';
-import {queries} from './SampleContainer';
 import {of} from 'folktale/concurrency/task';
 import {Ok} from 'folktale/result';
+import {parentPropsForContainerResultTask} from '../componentTestHelpers';
 
 /**
  * @file Links sample props from a parent component to a Region component
@@ -26,7 +25,8 @@ import {Ok} from 'folktale/result';
 /**
  * Task returning sample parent props from all the way up the view hierarchy
  */
-export const chainedParentPropsTask = parentPropsForContainerTask(
+export const chainedParentPropsResultTask = schema =>  parentPropsForContainerResultTask(
+  {schema},
   // Fake this for now until we have a parent
   of(Ok({
     currentRegion: {
@@ -55,4 +55,4 @@ export const chainedParentPropsTask = parentPropsForContainerTask(
 /**
  * Task returning sample props from all the way up the view hierarchy
  */
-//export const chainedSamplePropsTask = propsFromParentPropsHelperTask(chainedParentPropsTask, samplePropsTaskMaker);
+//export const chainedSamplePropsTask = propsFromParentPropsHelperTask(chainedParentPropsResultTask, samplePropsTaskMaker);

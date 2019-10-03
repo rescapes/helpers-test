@@ -67,7 +67,8 @@ const createQueryVariables = (graphqlQuery, props) => reqStrPathThrowing('variab
  * @param {String} [config.childClassErrorName] Optional. A class used in a React component in the named
  * component's renderError method--or any render code called when apollo error is true. Normally only
  * needed for components with queries.
- * @param {Function} [config.chainedParentPropsTask] A Task that resolves to all properties needed by the container.
+ * @param {Function} [config.chainedParentPropsResultTask] A Function that expects the Apollo schema as the unary
+ * argument. Returns a task that resolves to all properties needed by the container.
  * The value must be an Result in case errors occur during loading parent data. An Result.Ok contains
  * successful props and Result.Error indicates an error that causes this function to throw
  * This can be done with constants, or as the name suggests by chaining all ancestor Components/Container props,
@@ -113,8 +114,8 @@ export const apolloContainerTests = v((config) => {
       childClassErrorName,
       // Optional, A Task that resolves props all the way up the hierarchy chain, ending with props for this
       // Container based on the ancestor Containers/Components
-      chainedParentPropsTask = of({}),
-      // Optional, required if there are chainedParentPropsTask
+      chainedParentPropsResultTask = schema => of(Result.Ok({})),
+      // Optional, required if there are chainedParentPropsResultTask
       initialState,
       // Optional. Only for components with queries and/or mutations
       graphqlRequests,
@@ -131,12 +132,10 @@ export const apolloContainerTests = v((config) => {
     const schemaTask = R.unless(R.prop('run'), of)(schema);
 
     // Resolve the Result to the Result.ok value or throw if Result.Error
-    // chainedParentPropsTask returns and Result so that the an error
+    // chainedParentPropsResultTask returns and Result so that the an error
     // in the query can be processed by detected a Result.Error value, but here
     // we only accept a Result.Ok
-    const parentPropsTask = chainedParentPropsTask.chain(result => result
-      .map(props => of(props))
-      .mapError(error => {
+    const parentPropsTask = schema => chainedParentPropsResultTask(schema).chain(result => result.map(props => of(props)).mapError(error => {
         // Unacceptable!
         if (R.is(Object, error)) {
           // GraphQL error(s)
@@ -161,7 +160,11 @@ export const apolloContainerTests = v((config) => {
       expect.assertions(1);
       const errors = [];
       // Get the test props for RegionContainer
-      parentPropsTask.run().listen(
+      R.composeK(
+        remoteSchema => parentPropsTask(remoteSchema),
+        // Call the schema task to resolve the remote schema
+        schemaTask
+      )().run().listen(
         defaultRunConfig({
           onResolved: parentProps => {
             expect(mapStateToProps(initialState, parentProps)).toMatchSnapshot();
@@ -227,7 +230,7 @@ export const apolloContainerTests = v((config) => {
             R.forEach(
               data => {
                 if (data.error)
-                  errors.push(data.error)
+                  errors.push(data.error);
               },
               dataSets
             );
@@ -329,6 +332,7 @@ export const apolloContainerTests = v((config) => {
     ['config', PropTypes.shape({
         initialState: PropTypes.shape().isRequired,
         Container: PropTypes.func.isRequired,
+        chainedParentPropsResultTask: PropTypes.func,
         componentName: PropTypes.string.isRequired,
         childClassDataName: PropTypes.string.isRequired,
         schema: PropTypes.shape().isRequired,
@@ -445,7 +449,7 @@ export const propsFromParentPropsTask = v((initialState, chainedParentPropsTask,
     ),
   [
     ['initialState', PropTypes.shape().isRequired],
-    ['chainedParentPropsTask', PropTypes.shape().isRequired],
+    ['chainedParentPropsResultTask', PropTypes.shape().isRequired],
     ['samplePropsTaskMaker', PropTypes.func.isRequired]
   ],
   'propsFromParentPropsTask'
