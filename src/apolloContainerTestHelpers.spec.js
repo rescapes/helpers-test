@@ -113,7 +113,7 @@ export const makeRegionsMutation = region => {
   );
 };
 
-const graphqlRequests = {
+const requests = {
   queries: {
     queryRegions: {
       query: makeRegionsQuery,
@@ -146,8 +146,8 @@ const graphqlRequests = {
 const ContainerWithData = composeGraphqlQueryDefinitions(
   // Compose all the queries and mutations into a new container
   R.merge(
-    graphqlRequests.queries,
-    graphqlRequests.mutations
+    requests.queries,
+    requests.mutations
   )
 )(App);
 
@@ -162,7 +162,7 @@ const mapStateToProps = (state, ownProps) => R.merge(
   }, ownProps);
 const mapDispatchToProps = () => ({});
 const ContainerClass = connect(mapStateToProps, mapDispatchToProps, R.merge)(ContainerWithData);
-const Container = e(ContainerClass);
+const container = e(ContainerClass);
 
 // Find this React component
 const componentName = 'App';
@@ -177,7 +177,7 @@ const errorMaker = parentProps => R.set(R.lensPath(['data', 'regions', 'id']), '
 
 // Pretend that there's some parent container that passes the regionId to a view called myContainer, which
 // is the container we are testing
-const chainedParentPropsTask = schema => parentPropsForContainerResultTask(
+const propsResultTask = schema => parentPropsForContainerResultTask(
   {schema},
   // Pretend the parent returns the given props asynchronously
   of(Result.Ok({regionId: 2020})),
@@ -186,19 +186,31 @@ const chainedParentPropsTask = schema => parentPropsForContainerResultTask(
 );
 
 describe('ApolloContainer', () => {
-  const {testQuery, testMutate, testRenderError, testRender} = apolloContainerTests({
-    initialState: remoteConfig,
-    schema: schemaTask,
-    Container,
-    chainedParentPropsTask,
-    mapStateToProps,
-    componentName,
-    childClassDataName,
-    childClassErrorName,
-    childClassLoadingName,
-    graphqlRequests,
-    errorMaker
-  });
+  const {testQuery, testMutate, testRenderError, testRender} = apolloContainerTests(
+    {
+      componentContext: {
+        name: componentName,
+        statusClasses: {
+          data: childClassDataName,
+          loading: childClassLoadingName,
+          error: childClassErrorName
+        }
+      },
+      apolloContext: {
+        state: remoteConfig,
+        schemaTask,
+        requests
+      },
+      reduxContext: {
+        mapStateToProps
+      },
+      testContext: {
+        errorMaker
+      }
+    },
+    container,
+    propsResultTask
+  );
   test('testMutate', testMutate);
   test('testQuery', testQuery);
   test('testRender', testRender);
@@ -217,8 +229,9 @@ describe('ApolloContainer', () => {
     // given mapStateToProps, mapDispatchToProps, and mergeProps we get a function back
     // that then takes sample state and ownProps. The result is a merged object based on container methods
     // and sample data. Next apply the apollo query
-    const queryObj = {
-      query: `;
+    const apolloRequests = {
+      query: {
+        query: `;
   query;
   regions($regionId
 :
@@ -236,16 +249,17 @@ describe('ApolloContainer', () => {
     }
   }
 `,
-      args: {
-        options: ({data: {regionId}}) => ({
-          variables: {
-            regionId
-          }
-        })
+        args: {
+          options: ({data: {regionId}}) => ({
+            variables: {
+              regionId
+            }
+          })
+        }
       }
     };
     // Make the function with the configuration
-    const func = makeApolloTestPropsTaskFunction(schemaTask, remoteConfig, mapStateToProps, mapDispatchToProps, queryObj);
+    const func = makeApolloTestPropsTaskFunction(schemaTask, remoteConfig, mapStateToProps, mapDispatchToProps, R.values(apolloRequests.query)[0]);
     // Now pretend we're calling it with state and props
     const errors = [];
     func(sampleState, sampleOwnProps).run().listen(
@@ -291,20 +305,35 @@ test('propsFromParentPropsTask', done => {
 
 describe('ApolloContainer Remote Integration Test', () => {
 
-  const {testQuery: testQueryWithRemoteSchema, testRender: testRenderWithRemoteSchema, testRenderError: testRenderErrorWithRemoteSchema} =
-    apolloContainerTests({
-      initialState: remoteConfig,
-      schema: schemaTask,
-      Container,
-      chainedParentPropsTask,
-      mapStateToProps,
-      componentName,
-      childClassDataName,
-      childClassErrorName,
-      childClassLoadingName,
-      queryConfig: graphqlRequests.regions,
-      errorMaker
-    });
+  const {
+    testQuery: testQueryWithRemoteSchema,
+    testRender: testRenderWithRemoteSchema,
+    testRenderError: testRenderErrorWithRemoteSchema
+  } = apolloContainerTests(
+    {
+      componentContext: {
+        name: componentName,
+        statusClasses: {
+          data: childClassDataName,
+          loading: childClassLoadingName,
+          error: childClassErrorName
+        }
+      },
+      apolloContext: {
+        state: remoteConfig,
+        schemaTask,
+        requests
+      },
+      reduxContext: {
+        mapStateToProps
+      },
+      testContext: {
+        errorMaker
+      }
+    },
+    container,
+    propsResultTask
+  );
   test('testQueryWithRemoteSchema', testQueryWithRemoteSchema);
   test('testRenderWithRemoteSchema', testRenderWithRemoteSchema);
   test('testRenderErrorWithRemoteSchema', testRenderErrorWithRemoteSchema);

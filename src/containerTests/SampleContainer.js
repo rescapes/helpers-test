@@ -1,34 +1,35 @@
-import {mergeDeep, taskToPromise, traverseReduce} from 'rescape-ramda';
-import {v} from 'rescape-validate';
-import {makeRegionsQueryContainer, regionOutputParams} from 'rescape-apollo'
-import {of} from 'folktale/concurrency/task';
-import Sample from './SampleComponent';
-import {asyncComponent} from 'react-async-component';
+import {makeRegionsQueryContainer, regionOutputParams} from 'rescape-apollo';
+import {composeGraphqlQueryDefinitions} from 'rescape-helpers-component';
 
-export const graphqlRequests = {
-  query: {
-    // Creates a function expecting a component to wrap and props
-    queryRegions: makeRegionsQueryContainer(
-      {
-        options: {
-          variables: (props) => ({
-            id: props.region.id
-          }),
-          // Pass through error so we can handle it in the component
-          errorPolicy: 'all'
+export const requests = {
+  region: {
+    query: {
+      // Creates a function expecting a component to wrap and props
+      queryRegions: makeRegionsQueryContainer(
+        {
+          options: {
+            variables: (props) => ({
+              id: props.region.id
+            }),
+            // Pass through error so we can handle it in the component
+            errorPolicy: 'all'
+          }
+        },
+        {
+          outputParams: regionOutputParams,
+          propsStructure: {
+            id: 0
+          }
         }
-      },
-      {
-        outputParams: regionOutputParams,
-        propsStructure: {
-          id: 0
-        }
-      }
-    )
+      )
+    }
   }
 };
 
-export default (component, propsStructure) => graphqlTasks[0](component, propsStructure);
+
+export default (component, propsStructure) =>
+  composeGraphqlQueryDefinitions
+graphqlTasks[0](component, propsStructure);
 
 /*
 // Create the GraphQL Container.

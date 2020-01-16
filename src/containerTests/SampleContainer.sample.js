@@ -25,7 +25,7 @@ import {parentPropsForContainerResultTask} from '../componentTestHelpers';
 /**
  * Task returning sample parent props from all the way up the view hierarchy
  */
-export const chainedParentPropsResultTask = schema =>  parentPropsForContainerResultTask(
+export const propsResultTask = schema =>  parentPropsForContainerResultTask(
   {schema},
   // Fake this for now until we have a parent
   of(Ok({
@@ -55,4 +55,4 @@ export const chainedParentPropsResultTask = schema =>  parentPropsForContainerRe
 /**
  * Task returning sample props from all the way up the view hierarchy
  */
-//export const chainedSamplePropsTask = propsFromParentPropsHelperTask(chainedParentPropsResultTask, samplePropsTaskMaker);
+//export const chainedSamplePropsTask = propsFromParentPropsHelperTask(propsResultTask, samplePropsTaskMaker);

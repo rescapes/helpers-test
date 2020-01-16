@@ -25,7 +25,9 @@ import {
   reqStrPathThrowing,
   chainMDeep,
   mergeDeep,
-  strPathOr
+  strPathOr,
+  composeWithChainMDeep,
+  mapToNamedResponseAndInputs
 } from 'rescape-ramda';
 import {gql} from 'apollo-client-preset';
 import * as R from 'ramda';
@@ -40,7 +42,7 @@ import {print} from 'graphql/language/printer';
 
 /**
  *
- * Use given props to call the function at graphqlRequests.arg.options, and then get the .variables of the returned value
+ * Use given props to call the function at requests.arg.options, and then get the .variables of the returned value
  * @param {Object} graphqlQuery
  * @param {Object} graphqlQuery.args
  * @param {Function<Object>} graphqlQuery.options A function that takes the props and returns {variables:...}
@@ -49,11 +51,42 @@ import {print} from 'graphql/language/printer';
  */
 const createQueryVariables = (graphqlQuery, props) => reqStrPathThrowing('variables', reqStrPathThrowing('args.options', graphqlQuery)(props));
 
+
+// Resolve the Result to the Result.ok value or throw if Result.Error
+// samplePropsResultTask returns and Result so that the an error
+// in the query can be processed by detected a Result.Error value, but here
+// we only accept a Result.Ok
+const parentPropsFromTaskFunction = (propsResultTask, schemaTask) => composeWithChainMDeep(1, [
+  R.map(
+    propsResult => {
+      return propsResult.matchWith({
+        Ok: ({value}) => value,
+        Error: ({value: error}) => {
+          // Unacceptable!
+          if (R.is(Object, error)) {
+            // GraphQL error(s)
+            const errors = R.propOr([], 'error', error);
+            R.forEach(error => {
+              console.error(error);
+              if (R.equals(error, R.last(errors)))
+                // throw the last error to quit, at least we logged all of them first
+                throw error;
+            }, errors);
+
+          }
+          throw error;
+        }
+      });
+    }
+  ),
+  schema => propsResultTask(schema),
+  () => schemaTask
+])();
+
 /**
  * Runs tests on an apollo React container with the * given config.
  * Even if the container being tested does not have an apollo query, this can be used
  * @param {Object} config
- * @param {Object} config.container The React container to test
  * @param {String} config.componentName The name of the React component that the container wraps
  * @param {String} config.childClassDataName A class used in a React component in the named
  * component's renderData method--or any render code when apollo data is loaded
@@ -67,7 +100,7 @@ const createQueryVariables = (graphqlQuery, props) => reqStrPathThrowing('variab
  * @param {String} [config.childClassErrorName] Optional. A class used in a React component in the named
  * component's renderError method--or any render code called when apollo error is true. Normally only
  * needed for components with queries.
- * @param {Function} [config.chainedParentPropsResultTask] A Function that expects the Apollo schema as the unary
+ * @param {Function} [config.propsResultTask] A Function that expects the Apollo schema as the unary
  * argument. Returns a task that resolves to all properties needed by the container.
  * The value must be an Result in case errors occur during loading parent data. An Result.Ok contains
  * successful props and Result.Error indicates an error that causes this function to throw
@@ -75,10 +108,10 @@ const createQueryVariables = (graphqlQuery, props) => reqStrPathThrowing('variab
  * where the ancestor Container props might be Apollo based.
  * of the parentProps used to call propsFromSampleStateAndContainer. Required if the container component receives
  * props from its parent (it usually does)
- * @param {Object} [graphqlRequests] Optional Object that has a query property, a string representing the graphql query and
+ * @param {Object} [requests] Optional Object that has a query property, a string representing the graphql query and
  * an args.options function that expects props and resolves to an object with a variables property which holds an
  * object of query variables. Example:
- * graphqlRequests =
+ * requests =
  query: some query string
  args: {
       // options is a function that expects props an returns a vasriable object with variable key/values
@@ -95,62 +128,47 @@ const createQueryVariables = (graphqlQuery, props) => reqStrPathThrowing('variab
     }
  }
  * @param {Function} [config.errorMaker] Optional unary function that expects the results of the
+ * @param {Object} container
+ * @param {Object} propsResultTask
  * parentProps and mutates something used by the queryVariables to make the query fail. This
  * is for testing the renderError part of the component. Only containers with queries should have an expected error state
  */
-export const apolloContainerTests = v((config) => {
-
+export const apolloContainerTests = v((context, container, propsResultTask) => {
     const {
-      Container,
-      componentName,
-      childClassDataName,
-      // Required. The resolved schema used by Apollo to resolve data. This should be based on the Redux initial state or something similar
-      // This can also be a Task that resolves to a resolved schema, which is useful for remote schemas
-      schema,
-      mapStateToProps,
-      // Optional, the class name if the component has an Apollo-based loading state
-      childClassLoadingName,
-      // Optional, the class name if the component has an Apollo-based error state
-      childClassErrorName,
-      // Optional, A Task that resolves props all the way up the hierarchy chain, ending with props for this
-      // Container based on the ancestor Containers/Components
-      chainedParentPropsResultTask = schema => of(Result.Ok({})),
-      // Optional, required if there are chainedParentPropsResultTask
-      initialState,
-      // Optional. Only for components with queries and/or mutations
-      graphqlRequests,
-      errorMaker
-    } = config;
+      componentContext: {
+        name: componentName,
+        statusClasses: {
+          data: childClassDataName,
+          loading: childClassLoadingName,
+          error: childClassErrorName
+        }
+      },
+      apolloContext: {
+        state = {},
+        schemaTask,
+        requests
+      },
+      reduxContext: {
+        // Default to passing the props through, ignoring the state
+        mapStateToProps = (state, props) => props
+      },
+      testContext: {
+        errorMaker
+      }
+    } = context;
+
+    // Optional, A Task that resolves props all the way up the hierarchy chain, ending with props for this
+    // container based on the ancestor Containers/Components
+    const resolvedPropsTask = R.ifElse(
+      R.identity,
+      propsResultTask => parentPropsFromTaskFunction(propsResultTask, schemaTask),
+      () => of(Result.Ok({}))
+    )(propsResultTask);
 
     // Run these apollo queries
-    const graphqlQueriesObj = strPathOr(null, 'queries', graphqlRequests);
+    const graphqlQueriesObj = strPathOr(null, 'queries', requests);
     // Run these apollo mutations
-    const graphqlMutationsObj = strPathOr(null, 'mutatations', graphqlRequests);
-
-    // Wrap schema in a task if it isn't one
-    // TODO how do you check is Task?
-    const schemaTask = R.unless(R.prop('run'), of)(schema);
-
-    // Resolve the Result to the Result.ok value or throw if Result.Error
-    // chainedParentPropsResultTask returns and Result so that the an error
-    // in the query can be processed by detected a Result.Error value, but here
-    // we only accept a Result.Ok
-    const parentPropsTask = schema => chainedParentPropsResultTask(schema).chain(result => result.map(props => of(props)).mapError(error => {
-        // Unacceptable!
-        if (R.is(Object, error)) {
-          // GraphQL error(s)
-          const errors = R.propOr([], 'error', error);
-          R.forEach(error => {
-            console.error(error);
-            if (R.equals(error, R.last(errors)))
-            // throw the last error to quit, at least we logged all of them first
-              throw error;
-          }, errors);
-
-        }
-        throw error;
-      }).unsafeGet()
-    );
+    const graphqlMutationsObj = strPathOr(null, 'mutations', requests);
 
     /***
      * Tests that mapStateToProps matches snapshot
@@ -159,12 +177,7 @@ export const apolloContainerTests = v((config) => {
     const testMapStateToProps = done => {
       expect.assertions(1);
       const errors = [];
-      // Get the test props for RegionContainer
-      R.composeK(
-        remoteSchema => parentPropsTask(remoteSchema),
-        // Call the schema task to resolve the remote schema
-        schemaTask
-      )().run().listen(
+      resolvedPropsTask.run().listen(
         defaultRunConfig({
           onResolved: parentProps => {
             expect(mapStateToProps(initialState, parentProps)).toMatchSnapshot();
@@ -173,178 +186,89 @@ export const apolloContainerTests = v((config) => {
       );
     };
 
+
     /**
      * For Apollo Containers with queries, tests that the query results match the snapshot
-     * @return {Promise<void>}
      */
-    const testQueries = done => {
-      expect.assertions(1);
-      const errors = [];
-      if (!graphqlQueriesObj) {
-        console.warn("Attempt to run testQuery when query or queryVariables was not specified. Does your component actually need this test?");
-        return;
-      }
+    const testQueries = done => _testQueries({
+      schemaTask,
+      resolvedPropsTask,
+      state,
+      mapStateToProps
+    }, graphqlQueriesObj, done);
 
-      // Task Object -> Task
-      const task = R.composeK(
-        // Wait for all the queries to finish
-        ({query, initialState, mappedProps, schema}) => waitAll(R.map(
-          graphqlQuery => {
-            // Create variables for the curent graphqlQuery by sending props to its configuration
-            const queryVariables = createQueryVariables(graphqlQuery, mappedProps);
-            log.debug(print(query));
-            log.debug(JSON.stringify(queryVariables));
-            return fromPromised(
-              () => mockApolloClientWithSamples(initialState, schema).query({
-                query,
-                // queryVariables are called with props to give us the variables for our query. This is just like Apollo
-                // does, accepting props to allow the Container to form the variables for the query
-                variables: queryVariables,
-                // Our context is initialState as our dataSource. In real environments Apollo would go to a remote server
-                // to fetch the data, but here our database is simply the initialState for testing purposes
-                // This works in conjunction with the local resolvers on the schema see schema.sample.js for an example
-                // If testing with a remote linked schema this will be ignored
-                context: {
-                  dataSource: initialState
-                }
-              })
-            )();
-          }, graphqlRequests)
-        ),
-        // Resolve the schema
-        ({query, initialState, mappedProps}) => R.map(
-          schema => ({query, initialState, mappedProps, schema}),
-          schemaTask
-        ),
-        // Resolve the parent props and map using initialState
-        ({query, initialState}) => R.map(
-          props => ({query, initialState, mappedProps: mapStateToProps(initialState, props)}),
-          parentPropsTask
-        )
-      )({query, initialState});
-
-      task.run().listen(
-        defaultRunConfig({
-          onResolved: dataSets => {
-            // If we resolve the task, make sure there is no data.error
-            R.forEach(
-              data => {
-                if (data.error)
-                  errors.push(data.error);
-              },
-              dataSets
-            );
-            expect(dataSets).toMatchSnapshot();
-          }
-        }, errors, done)
-      );
-    };
+    /**
+     * For Apollo Containers with mutations, tests that the mutation results match the snapshot
+     */
+    const testMutations = done => _testMutations({
+      schemaTask,
+      resolvedPropsTask,
+      state,
+      mapStateToProps
+    }, graphqlMutationsObj, done);
 
     /**
      * Tests that the correct child class renders and that the child component props match the snapshot
      * @param done
      * @return {Promise<void>}
      */
-    const testRender = done => {
-      expect.assertions(1);
-      const errors = [];
-      R.composeK(
-        ({props, schema}) => {
-          // Wrap the component in mock Apollo and Redux providers.
-          // If the component doesn't use Apollo it just means that it will render its children synchronously,
-          // rather than asynchronously
-          const wrapper = enzymeMountWithApolloClientAndReduxProvider(initialState, schema, Container(props));
-          // Find the top-level component. This is always rendered in any Apollo status (loading, error, store data)
-          const component = wrapper.find(componentName);
-          // Make sure the component props are consistent since the last test run
-          expect(component.props()).toMatchSnapshot();
-
-          // If we have an Apollo component, our immediate status after mounting the component is loading. Confirm
-          if (childClassLoadingName) {
-            expect(component.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
-          }
-
-          // If we have an Apollo component, we use enzyme-wait to await the query to run and the the child
-          // component that is dependent on the query result to render. If we don't have an Apollo component,
-          // this child will be rendered immediately without delay
-          return promiseToTask(waitForChildComponentRender(wrapper, componentName, childClassDataName));
-        },
-        // Resolve the schema
-        props => R.map(
-          schema => ({props, schema}),
-          schemaTask
-        ),
-        () => parentPropsTask
-      )().run().listen(
-        defaultRunConfig({
-          onResolved: childComponent => {
-            expect(childComponent.props()).toMatchSnapshot();
-          }
-        }, errors, done)
-      );
-    };
+    const testRender = done => _testRender({
+      schemaTask, resolvedPropsTask, componentName, childClassDataName, state, childClassLoadingName
+    }, container, done);
 
     /**
      * For components with an error state, tests that the error component renders
      * @param done
      * @return {Promise<void>}
      */
-    const testRenderError = (done) => {
-      expect.assertions(1);
-      const errors = [];
-      if (!errorMaker || !childClassErrorName) {
-        console.warn("One or both of errorMaker and childClassErrorName not specified, does your component actually need to test render errors?");
-        return;
-      }
-      R.composeK(
-        ({props, schema}) => {
-          const wrapper = enzymeMountWithApolloClientAndReduxProvider(initialState, schema, Container(props));
-          const component = wrapper.find(componentName);
-          expect(component.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
-          expect(component.props()).toMatchSnapshot();
-          return promiseToTask(waitForChildComponentRender(wrapper, componentName, childClassErrorName));
-        },
-        ({props, schema}) => of({props: errorMaker(props), schema}),
-        // Resolve the schema
-        props => R.map(
-          schema => ({props, schema}),
-          schemaTask
-        ),
-        () => parentPropsTask
-      )().run().listen(
-        defaultRunConfig({
-          // The error component should have an error message as props.children
-          onResolved: childComponent => {
-            expect(R.prop('children', childComponent.props())).toBeTruthy();
-          }
-        }, errors, done)
-      );
-    };
+    const testRenderError = done => _testRenderError({
+      schemaTask,
+      resolvedPropsTask,
+      componentName,
+      childClassDataName,
+      state,
+      childClassErrorName,
+      childClassLoadingName,
+      errorMaker
+    }, container, done);
 
     return {
       testMapStateToProps,
-      testQuery,
+      testQueries,
+      testMutations,
       testRenderError,
       testRender
     };
   },
   [
     ['config', PropTypes.shape({
-        initialState: PropTypes.shape().isRequired,
-        Container: PropTypes.func.isRequired,
-        chainedParentPropsResultTask: PropTypes.func,
-        componentName: PropTypes.string.isRequired,
-        childClassDataName: PropTypes.string.isRequired,
-        schema: PropTypes.shape().isRequired,
-        childClassLoadingName: PropTypes.string,
-        childClassErrorName: PropTypes.string,
-        samplePropsMaker: PropTypes.func,
-        asyncParentProps: PropTypes.func,
-        query: PropTypes.shape(),
-        queryVariables: PropTypes.func,
-        errorMaker: PropTypes.func
+        componentContext: PropTypes.shape({
+          name: PropTypes.string.isRequired,
+          statusClasses: {
+            data: PropTypes.string.isRequired,
+            loading: PropTypes.string,
+            error: PropTypes.string
+          }
+        }),
+        apolloContext: PropTypes.shape({
+          state: PropTypes.shape(),
+          schemaTask: PropTypes.shape().isRequired,
+          requests: PropTypes.shape()
+        }),
+        reduxContext: PropTypes.shape({
+          mapStateToProps: PropTypes.func
+        }),
+        testContext: PropTypes.shape({
+          errorMaker: PropTypes.func
+        })
       }
-    )]
+    )],
+    [
+      'container', PropTypes.func.isRequired
+    ],
+    [
+      'propsResultTask', PropTypes.shape().isRequired
+    ]
   ], 'apolloContainerTests');
 
 
@@ -426,6 +350,325 @@ export const makeApolloTestPropsTaskFunction = R.curry((schemaOrTask, sampleConf
     )
   )({schemaOrTask, state, props});
 });
+
+/**
+ * Runs the apollo queries in graphqlQueriesObj
+ * @param schemaTask
+ * @param resolvedPropsTask
+ * @param state
+ * @param mapStateToProps
+ * @param graphqlQueriesObj
+ * @return {*}
+ * @private
+ */
+const _apolloQueryResponsesTask = ({schemaTask, resolvedPropsTask, state, mapStateToProps}, graphqlQueriesObj) => {
+  // Task Object -> Task
+  return R.composeK(
+    // Wait for all the queries to finish
+    ({graphqlQueriesObj, state, mappedProps, schema}) => waitAll(
+      R.map(
+        graphqlQueryObj => {
+          const query = reqStrPathThrowing('query', graphqlQueryObj);
+          // Create variables for the curent graphqlQueryObj by sending props to its configuration
+          const queryVariables = createQueryVariables(graphqlQueryObj, mappedProps);
+          log.debug(print(query));
+          log.debug(JSON.stringify(queryVariables));
+          return fromPromised(
+            () => mockApolloClientWithSamples(state, schema).query({
+              query,
+              // queryVariables are called with props to give us the variables for our query. This is just like Apollo
+              // does, accepting props to allow the container to form the variables for the query
+              variables: queryVariables,
+              // Our context is initialState as our dataSource. In real environments Apollo would go to a remote server
+              // to fetch the data, but here our database is simply the initialState for testing purposes
+              // This works in conjunction with the local resolvers on the schemaTask see schemaTask.sample.js for an example
+              // If testing with a remote linked schemaTask this will be ignored
+              context: {
+                dataSource: state
+              }
+            })
+          )();
+        },
+        graphqlQueriesObj
+      )
+    ),
+    // Resolve the schemaTask
+    mapToNamedResponseAndInputs('state',
+      schemaTask
+    ),
+    // Resolve the parent props and map using initialState
+    mapToNamedResponseAndInputs('mappedProps',
+      ({state, props}) => mapStateToProps(state, props)
+    ),
+    // Resolve the props from the task
+    mapToNamedResponseAndInputs('props',
+      () => resolvedPropsTask
+    )
+  )({schemaTask, resolvedPropsTask, state, mapStateToProps, graphqlQueriesObj});
+};
+
+/**
+ * Runs an apollo queries test and asserts results
+ * @param schemaTask
+ * @param resolvedPropsTask
+ * @param state
+ * @param mapStateToProps
+ * @param graphqlQueriesObj
+ * @param done
+ * @return {Promise<void>}
+ * @private
+ */
+const _testQueries = (
+  {
+    schemaTask,
+    resolvedPropsTask,
+    state,
+    mapStateToProps
+  },
+  graphqlQueriesObj,
+  done
+) => {
+  expect.assertions(1);
+  const errors = [];
+  if (!graphqlQueriesObj) {
+    console.warn("Attempt to run testQuery when query or queryVariables was not specified. Does your component actually need this test?");
+    return;
+  }
+  const apolloQueryResponsesTask = _apolloQueryResponsesTask({
+    schemaTask,
+    resolvedPropsTask,
+    state,
+    mapStateToProps
+  }, graphqlQueriesObj);
+  apolloQueryResponsesTask.run().listen(
+    defaultRunConfig({
+      onResolved: dataSets => {
+        // If we resolve the task, make sure there is no data.error
+        R.forEach(
+          data => {
+            if (data.error)
+              errors.push(data.error);
+          },
+          dataSets
+        );
+        expect(dataSets).toMatchSnapshot();
+      }
+    }, errors, done)
+  );
+};
+
+
+/**
+ * Runs the apollo mutations in graphqlMutationsObj
+ * @param schemaTask
+ * @param resolvedPropsTask
+ * @param state
+ * @param mapStateToProps
+ * @param graphqlMutationsObj
+ * @return {*}
+ * @private
+ */
+const _apolloMutationResponsesTask = ({schemaTask, resolvedPropsTask, state, mapStateToProps}, graphqlMutationsObj) => {
+  // TODO untested
+  // Task Object -> Task
+  return R.composeK(
+    // Wait for all the queries to finish
+    ({graphqlQueriesObj, state, mappedProps, schema}) => waitAll(
+      R.map(
+        graphqlMutationsObj => {
+          const mutation = reqStrPathThrowing('mutation', graphqlMutationsObj);
+          // Create variables for the curent graphqlQueryObj by sending props to its configuration
+          const queryVariables = createQueryVariables(graphqlMutationsObj, mappedProps);
+          log.debug(print(mutation));
+          log.debug(JSON.stringify(queryVariables));
+          return fromPromised(
+            () => mockApolloClientWithSamples(state, schema).mutate({
+              mutation: mutation,
+              // queryVariables are called with props to give us the variables for our mutation. This is just like Apollo
+              // does, accepting props to allow the container to form the variables for the mutation
+              variables: queryVariables,
+              // Our context is initialState as our dataSource. In real environments Apollo would go to a remote server
+              // to fetch the data, but here our database is simply the initialState for testing purposes
+              // This works in conjunction with the local resolvers on the schemaTask see schemaTask.sample.js for an example
+              // If testing with a remote linked schemaTask this will be ignored
+              context: {
+                dataSource: state
+              }
+            })
+          )();
+        },
+        graphqlMutationsObj
+      )
+    ),
+    // Resolve the schemaTask
+    mapToNamedResponseAndInputs('state',
+      schemaTask
+    ),
+    // Resolve the parent props and map using initialState
+    mapToNamedResponseAndInputs('mappedProps',
+      ({state, props}) => mapStateToProps(state, props)
+    ),
+    // Resolve the props from the task
+    mapToNamedResponseAndInputs('props',
+      () => resolvedPropsTask
+    )
+  )({schemaTask, resolvedPropsTask, state, mapStateToProps, graphqlMutationsObj});
+};
+
+
+/**
+ * Runs an apollo queries test and asserts results
+ * @param schemaTask
+ * @param resolvedPropsTask
+ * @param state
+ * @param mapStateToProps
+ * @param graphqlQueriesObj
+ * @param done
+ * @return {Promise<void>}
+ * @private
+ */
+const _testMutations = (
+  {
+    schemaTask,
+    resolvedPropsTask,
+    state,
+    mapStateToProps
+  },
+  graphqlQueriesObj,
+  done
+) => {
+  expect.assertions(1);
+  const errors = [];
+  if (!graphqlQueriesObj) {
+    console.warn("Attempt to run testQuery when query or queryVariables was not specified. Does your component actually need this test?");
+    return;
+  }
+  const apolloQueryResponsesTask = _apolloMutationResponsesTask({
+    schemaTask,
+    resolvedPropsTask,
+    state,
+    mapStateToProps
+  }, graphqlQueriesObj);
+  apolloQueryResponsesTask.run().listen(
+    defaultRunConfig({
+      onResolved: dataSets => {
+        // If we resolve the task, make sure there is no data.error
+        R.forEach(
+          data => {
+            if (data.error)
+              errors.push(data.error);
+          },
+          dataSets
+        );
+        expect(dataSets).toMatchSnapshot();
+      }
+    }, errors, done)
+  );
+};
+/**
+ * Runs a render test and asserts results
+ * @param schemaTask
+ * @param resolvedPropsTask
+ * @param componentName
+ * @param childClassDataName
+ * @param state
+ * @param childClassLoadingName
+ * @param container
+ * @param done
+ * @return {*}
+ * @private
+ */
+const _testRender = ({schemaTask, resolvedPropsTask, componentName, childClassDataName, state, childClassLoadingName}, container, done) => {
+  expect.assertions(2);
+  const errors = [];
+  return R.composeK(
+    ({props, schema}) => {
+      // Wrap the component in mock Apollo and Redux providers.
+      // If the component doesn't use Apollo it just means that it will render its children synchronously,
+      // rather than asynchronously
+      const wrapper = enzymeMountWithApolloClientAndReduxProvider(state, schema, container(props));
+      // Find the top-level component. This is always rendered in any Apollo status (loading, error, store data)
+      const component = wrapper.find(componentName);
+      // Make sure the component props are consistent since the last test run
+      expect(component.props()).toMatchSnapshot();
+
+      // If we have an Apollo component, our immediate status after mounting the component is loading. Confirm
+      if (childClassLoadingName) {
+        expect(component.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
+      }
+
+      // If we have an Apollo component, we use enzyme-wait to await the query to run and the the child
+      // component that is dependent on the query result to render. If we don't have an Apollo component,
+      // this child will be rendered immediately without delay
+      return fromPromised(() => waitForChildComponentRender(wrapper, componentName, childClassDataName));
+    },
+    // Resolve the schemaTask)
+    mapToNamedResponseAndInputs('schema',
+      ({schemaTask}) => schemaTask
+    ),
+    mapToNamedResponseAndInputs('props',
+      ({resolvedPropsTask}) => resolvedPropsTask
+    )
+  )({schemaTask, resolvedPropsTask, componentName, childClassDataName}).run().listen(
+    defaultRunConfig({
+      onResolved: childComponent => {
+        expect(childComponent.props()).toMatchSnapshot();
+      }
+    }, errors, done)
+  );
+};
+
+/**
+ * Tests render errors results and asserts
+ * @param schemaTask
+ * @param resolvedPropsTask
+ * @param componentName
+ * @param childClassDataName
+ * @param childClassErrorName
+ * @param childClassLoadingName
+ * @param state
+ * @param errorMaker
+ * @param container
+ * @param done
+ * @private
+ */
+const _testRenderError = (
+  {
+    schemaTask, resolvedPropsTask, componentName, childClassDataName, state, childClassLoadingName, childClassErrorName, errorMaker
+  },
+  container,
+  done
+) => {
+  expect.assertions(1);
+  const errors = [];
+  if (!errorMaker || !childClassErrorName) {
+    console.warn("One or both of errorMaker and childClassErrorName not specified, does your component actually need to test render errors?");
+    return;
+  }
+  R.composeK(
+    ({props, schema}) => {
+      const wrapper = enzymeMountWithApolloClientAndReduxProvider(state, schema, container(props));
+      const component = wrapper.find(componentName);
+      expect(component.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
+      expect(component.props()).toMatchSnapshot();
+      return promiseToTask(waitForChildComponentRender(wrapper, componentName, childClassErrorName));
+    },
+    ({props, schema}) => of({props: errorMaker(props), schema}),
+    // Resolve the schemaTask
+    props => R.map(
+      schema => ({props, schema}),
+      schemaTask
+    ),
+    () => resolvedPropsTask
+  )().run().listen(
+    defaultRunConfig({
+      // The error component should have an error message as props.children
+      onResolved: childComponent => {
+        expect(R.prop('children', childComponent.props())).toBeTruthy();
+      }
+    }, errors, done)
+  );
+};
 
 /**
  * Given a Task to fetch parent container props and a task to fetch the current container props,

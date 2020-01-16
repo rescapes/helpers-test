@@ -1,14 +1,15 @@
 import * as R from 'ramda';
 import {c} from './SampleComponent';
-import SampleContainer, {graphqlTasks} from './SampleContainer';
-import {chainedParentPropsResultTask} from './SampleContainer.sample';
-import {testConfig} from 'rescape-apollo'
-import {remoteSchemaTask} from 'rescape-apollo'
-import {e} from 'rescape-helpers-component'
+import SampleContainer, {requests} from './SampleContainer';
+import {propsResultTask} from './SampleContainer.sample';
+import {testConfig} from 'rescape-apollo';
+import {remoteSchemaTask} from 'rescape-apollo';
+import {e} from 'rescape-helpers-component';
 import {apolloContainerTests} from '../apolloContainerTestHelpers';
+import {remoteConfig} from '../remoteConfig';
 
 // Test this container
-const Container = e(SampleContainer);
+const container = e(SampleContainer);
 // Find this React component
 const componentName = 'Sample';
 // Find this class in the data renderer
@@ -21,20 +22,30 @@ const errorMaker = parentProps => R.set(R.lensPath(['sample', 'id']), 'foo', par
 
 describe('SampleContainer', () => {
 
-  const {testQuery, testRenderError, testRender} = apolloContainerTests({
-    // This was for Redux. We shouldn't need it now since our Apollo LinkState stores all state
-    initialState: {},
-    // Get the remote schema based on the test config
-    schema: remoteSchemaTask(testConfig),
-    Container,
-    componentName,
-    childClassDataName,
-    childClassLoadingName,
-    childClassErrorName,
-    graphqlTasks: graphqlTasks,
-    chainedParentPropsResultTask,
-    errorMaker
-  });
+  const {testQuery, testRenderError, testRender} = apolloContainerTests(
+    {
+      componentContext: {
+        name: componentName,
+        statusClasses: {
+          data: childClassDataName,
+          loading: childClassLoadingName,
+          error: childClassErrorName
+        }
+      },
+      apolloContext: {
+        state: {},
+        schemaTask: remoteSchemaTask(testConfig),
+        requests
+      },
+      reduxContext: {
+      },
+      testContext: {
+        errorMaker
+      }
+    },
+    container,
+    propsResultTask
+  );
   test('testRender', testRender);
   test('testRenderError', testRenderError);
 });
