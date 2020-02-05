@@ -13,28 +13,14 @@
 import enzyme from 'enzyme';
 import Adapter from 'enzyme-adapter-react-16';
 // Makes localStorage available in node to Apollo
-import 'localstorage-polyfill'
-import 'regenerator-runtime'
+import 'localstorage-polyfill';
+import 'regenerator-runtime';
 import 'jest-enzyme';
 import {rescapeDefaultTransports} from 'rescape-log';
-require('jsdom-global')()
+
+require('jsdom-global')();
 
 enzyme.configure({adapter: new Adapter()});
 // Just use the console for logging. We'll never log and error in tests
 rescapeDefaultTransports.console.level = 'debug';
-
 Error.stackTraceLimit = Infinity;
-// Have exceptions traces traverse async processes
-if (process.env.NODE_ENV !== 'production') {
-  require('longjohn');
-}
-
-
-// In Node v7 unhandled promise rejections will terminate the process
-if (!process.env.LISTENING_TO_UNHANDLED_REJECTION) {
-  process.on('unhandledRejection', event => {
-    console.error(event)
-  })
-  // Avoid memory leak by adding too many listeners
-  process.env.LISTENING_TO_UNHANDLED_REJECTION = true
-}

@@ -1,30 +1,31 @@
-import {
-  apolloContainerTests, makeApolloTestPropsTaskFunction,
-  propsFromParentPropsTask
-} from './apolloContainerTestHelpers';
-import {gql} from 'apollo-client-preset';
+import {apolloContainerTests, propsFromParentPropsTask} from './apolloContainerTestHelpers';
 import * as R from 'ramda';
 import {connect} from 'react-redux';
-import {graphql} from 'react-apollo';
 import {Component} from 'react';
 import {remoteConfig} from 'remoteConfig';
-import {reqStrPathThrowing} from 'rescape-ramda';
+import {ApolloProvider} from '@apollo/react-hooks';
+import {
+  composeWithChainMDeep,
+  defaultRunConfig,
+  mapToNamedResponseAndInputs,
+  reqStrPathThrowing,
+  toNamedResponseAndInputs
+} from 'rescape-ramda';
 import {parentPropsForContainerResultTask} from './componentTestHelpers';
 import {of} from 'folktale/concurrency/task';
 import * as Result from 'folktale/result';
-import {makeQuery, makeMutation} from 'rescape-apollo';
-import {composeGraphqlQueryDefinitions} from 'rescape-helpers-component';
 import {
-  loadingCompleteStatus,
-  renderChoicepoint,
-  e,
-  renderErrorDefault,
-  renderLoadingDefault
-} from 'rescape-helpers-component';
+  makeRegionMutationContainer,
+  makeRegionsQueryContainer,
+  regionOutputParams
+} from 'rescape-place';
+import {
+  testAuthTask,
+  testConfig
+} from 'rescape-apollo';
+import {e, renderChoicepoint, renderErrorDefault, renderLoadingDefault} from 'rescape-helpers-component';
 import {resolvedRemoteSchemaTask} from './schemaHelpers';
-import {
-  defaultRunToResultConfig
-} from 'rescape-ramda';
+import {requests} from './containerTests/SampleContainer';
 
 // Test with a remote schema. This is an integration test and requires a server
 // Run the graphql server in the rescape-graphene repo
@@ -73,99 +74,58 @@ App.views = props => ({
   }
 });
 
-// Run this apollo query
-const query = `query regions($regionId: Int!) {
-      regions(id: $regionId) {
-            id
-      }
-}`;
-
-// No complex input types
-const readInputTypeMapper = {};
-const outputParams = [
-  'id',
-  'name'
-];
-
-export const makeRegionsQuery = (queryParams) => {
-  const query = makeQuery('regions', readInputTypeMapper, outputParams, queryParams);
-  makeQuery('sampleResourceQuery', sampleInputParamTypeMapper, sampleResourceOutputParams);
-  log.debug(query);
-  log.debug(JSON.stringify(queryParams));
-  return gql`${query}`;
-};
-
-export const makeRegionsMutation = region => {
-  const name = 'region';
-  const {variablesAndTypes, namedOutputParams, crud} = mutationParts(
-    {
-      name,
-      outputParams
-    }, {regionData: region}
-  );
-  // create|update[Model Name]
-  const createOrUpdateName = `${crud}${capitalize(name)}`;
-
-  return makeMutation(
-    createOrUpdateName,
-    variablesAndTypes,
-    namedOutputParams
-  );
-};
-
-const requests = {
-  queries: {
-    queryRegions: {
-      query: makeRegionsQuery,
-      args: {
-        // Options for the query that expects the props as input
-        // We always put our props in the format data: ... to match what graphql returns
-        options: ({data: {region}}) => ({
-          // The variables and values that will be used
-          variables: {
-            regionId: parseInt(region.id)
-          },
-          // Pass through error so we can handle it in the component
-          errorPolicy: 'all'
-        }),
-        // Upon completion of the query merge the results--data-- with our ownProps that came from Redux or the parent
-        props: ({data, ownProps}) => R.merge(
-          ownProps,
-          {data}
-        )
-      }
-    }
-  },
-  mutations: {
-    mutateRegion: {
-      mutation: makeRegionsMutation
-    }
-  }
-};
-
-const ContainerWithData = composeGraphqlQueryDefinitions(
-  // Compose all the queries and mutations into a new container
-  R.merge(
-    requests.queries,
-    requests.mutations
-  )
-)(App);
-
+// TODO mapStateToProps and mapDispatchToProps will go away when we remove Redux
 // ownProps will override with bad id for testing error
 const mapStateToProps = (state, ownProps) => R.merge(
   {
     data: {
       region: {
-        id: parseFloat(ownProps.regionId)
+        id: parseInt(ownProps.regionId)
       }
     }
   }, ownProps);
 const mapDispatchToProps = () => ({});
-const ContainerClass = connect(mapStateToProps, mapDispatchToProps, R.merge)(ContainerWithData);
-const container = e(ContainerClass);
+
+// Compose the Apollo query container and mutation container
+const apolloContainer = R.curry((component, props) => {
+  return R.compose(
+    toNamedResponseAndInputs('component',
+      ({outputParams, component, props}) => {
+        return makeRegionsQueryContainer({}, {outputParams}, component, props);
+      }
+    ),
+    toNamedResponseAndInputs('component',
+      ({outputParams, component, props}) => {
+        return makeRegionMutationContainer({}, {outputParams}, component, props);
+      }
+    )
+  )({outputParams: regionOutputParams, component, props});
+});
+
+const configuredTestAuthTask = testAuthTask(testConfig);
+const providerWrappedApolloContainer = R.curry((component, props) => {
+  return composeWithChainMDeep(1, [
+    // Wrap it in an ApolloProvider
+    ({apolloConfig: {apolloClient}, apolloContainer, component, props}) => {
+      return of(e(
+        ApolloProvider,
+        {client: apolloClient},
+        apolloContainer(component, props)
+      ));
+    },
+    mapToNamedResponseAndInputs('apolloConfig',
+      () => {
+        return configuredTestAuthTask;
+      }
+    )
+  ])({apolloContainer, component, props});
+});
+
+const Container = connect(mapStateToProps, mapDispatchToProps, R.merge)(apolloContainer);
+const container = e(Container);
 
 // Find this React component
-const componentName = 'App';
+const componentName = 'Region';
 // Find this class in the data renderer
 const childClassDataName = 'success';
 // Find this class in the loading renderer
@@ -175,18 +135,48 @@ const childClassErrorName = 'error';
 
 const errorMaker = parentProps => R.set(R.lensPath(['data', 'regions', 'id']), 'foo', parentProps);
 
-// Pretend that there's some parent container that passes the regionId to a view called myContainer, which
+// Pretend that there's some parent container that passes the regionId to a view called myRegion, which
 // is the container we are testing
 const propsResultTask = schema => parentPropsForContainerResultTask(
   {schema},
   // Pretend the parent returns the given props asynchronously
-  of(Result.Ok({regionId: 2020})),
-  props => ({views: {myContainer: {regionId: parseInt(props.regionId)}}}),
-  'myContainer'
+  schema => of(Result.Ok({regionId: 2020})),
+  props => ({views: {myRegion: {regionId: parseInt(props.regionId)}}}),
+  'myRegion'
 );
 
 describe('ApolloContainer', () => {
-  const {testQuery, testMutate, testRenderError, testRender} = apolloContainerTests(
+
+  // Test the composition of the apolloContainer
+  test('apolloContainer', done => {
+    const errors = [];
+    const task = composeWithChainMDeep(1, [
+      // Use the container and sample props
+      ({value: props}) => {
+        return providerWrappedApolloContainer(container, props);
+      },
+      // Get sample props
+      schema => {
+        return propsResultTask(schema);
+      },
+      () => schemaTask
+    ])();
+    task.run().listen(
+      defaultRunConfig({
+        onResolved: value => {
+          expect(value).toBeTruthy();
+        }
+      }, errors, done)
+    );
+  }, 50000);
+
+  const {
+    testMapStateToProps,
+    testQueries,
+    testMutations,
+    testRenderError,
+    testRender
+  } = apolloContainerTests(
     {
       componentContext: {
         name: componentName,
@@ -199,7 +189,10 @@ describe('ApolloContainer', () => {
       apolloContext: {
         state: remoteConfig,
         schemaTask,
-        requests
+        requests: {
+          queryComponents: [makeRegionsQueryContainer({}, {outputParams: regionOutputParams})],
+          mutationComponents: [makeRegionMutationContainer({}, {outputParams: regionOutputParams})]
+        }
       },
       reduxContext: {
         mapStateToProps
@@ -211,95 +204,27 @@ describe('ApolloContainer', () => {
     container,
     propsResultTask
   );
-  test('testMutate', testMutate);
-  test('testQuery', testQuery);
+  test('testMapStateToProps', testMapStateToProps);
+  test('testQueries', testQueries);
+  test('testMutations', testMutations);
   test('testRender', testRender);
   test('testRenderError', testRenderError);
 
-  test('mooMakeApolloTestPropsTaskFunction', done => {
-    const sampleState = ({data: {regionId: 2020}, views: {aComponent: {stuff: 1}, bComponent: {moreStuff: 2}}});
-    const sampleOwnProps = {style: {width: 100}};
-    const mapStateToProps = (state, ownProps) => R.merge(state, ownProps);
-    const dispatchResults = {
-      action1: R.identity,
-      action2: R.identity,
-      action3: R.identity
-    };
-    const mapDispatchToProps = (dispatch, ownProps) => dispatchResults;
-    // given mapStateToProps, mapDispatchToProps, and mergeProps we get a function back
-    // that then takes sample state and ownProps. The result is a merged object based on container methods
-    // and sample data. Next apply the apollo query
-    const apolloRequests = {
-      query: {
-        query: `;
-  query;
-  regions($regionId
-:
-  Int;
-  !
-)
-  {
-    regions(id
-  :
-    $regionId;
-  )
-    {
-      id;
-      name;
-    }
-  }
-`,
-        args: {
-          options: ({data: {regionId}}) => ({
-            variables: {
-              regionId
-            }
-          })
-        }
-      }
-    };
-    // Make the function with the configuration
-    const func = makeApolloTestPropsTaskFunction(schemaTask, remoteConfig, mapStateToProps, mapDispatchToProps, R.values(apolloRequests.query)[0]);
-    // Now pretend we're calling it with state and props
-    const errors = [];
-    func(sampleState, sampleOwnProps).run().listen(
-      defaultRunToResultConfig({
-        // Map the Result, handling Result.Ok success and Result.Error failure
-        onResolved: value => {
-          expect(value).toEqual(
-            R.merge({
-              // Expect this data came from Apollo along with the other props that were passed through: style adn views
-              data: R.merge(
-                loadingCompleteStatus, {
-                  region: {id: "oakland", name: "Oakland"},
-                  regionId: 2020
-                }),
-              style: {width: 100},
-              views: {
-                aComponent: {stuff: 1},
-                bComponent: {moreStuff: 2}
-              }
-            }, dispatchResults)
-          );
-        }
-      }, errors, done)
-    );
-  });
-});
 
-test('propsFromParentPropsTask', done => {
-  propsFromParentPropsTask(
-    {foo: 1},
-    of(Result.Ok({bar: 1})),
-    (initialState, parentContainerSampleProps) => of(R.merge(initialState, parentContainerSampleProps))
-  ).run().listen({
-    onResolved: value => {
-      expect(value).toEqual({
-        foo: 1,
-        bar: 1
-      });
-      done();
-    }
+  test('propsFromParentPropsTask', done => {
+    propsFromParentPropsTask(
+      {foo: 1},
+      of(Result.Ok({bar: 1})),
+      (initialState, parentContainerSampleProps) => of(R.merge(initialState, parentContainerSampleProps))
+    ).run().listen({
+      onResolved: value => {
+        expect(value).toEqual({
+          foo: 1,
+          bar: 1
+        });
+        done();
+      }
+    });
   });
 });
 
@@ -307,6 +232,7 @@ describe('ApolloContainer Remote Integration Test', () => {
 
   const {
     testQuery: testQueryWithRemoteSchema,
+    testMutation: testMutationWithRemoteSchema,
     testRender: testRenderWithRemoteSchema,
     testRenderError: testRenderErrorWithRemoteSchema
   } = apolloContainerTests(
@@ -335,6 +261,7 @@ describe('ApolloContainer Remote Integration Test', () => {
     propsResultTask
   );
   test('testQueryWithRemoteSchema', testQueryWithRemoteSchema);
+  test('testMutationWithRemoteSchema', testMutationWithRemoteSchema);
   test('testRenderWithRemoteSchema', testRenderWithRemoteSchema);
   test('testRenderErrorWithRemoteSchema', testRenderErrorWithRemoteSchema);
 });

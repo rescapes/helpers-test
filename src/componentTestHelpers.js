@@ -140,9 +140,6 @@ export const mountWithReduxProvider = (store, component, opts) => mount(
  */
 export const enzymeMountWithApolloClientAndReduxProvider = (state, resolvedSchema, apolloClient, component) => {
   const store = makeSampleStore(state);
-  // NOT currently working. Apollo find the ApolloProvider, even though it's here
-  // shallow wrap the component, passing the Apollo client and redux store to the component and children
-  // Also dive once to get passed the Apollo wrapper
   return mountWithReduxProvider(
     store,
     e(ApolloProvider, {client: apolloClient}, component)
@@ -249,25 +246,26 @@ export const testPropsTaskMaker = (mapStateToProps, mapDispatchToProps) =>
  * receive {foo: 1}
  * @param {Object} config
  * @param {Object} config.schema The Apollo schema
- * @param {Function} parentContainerSamplePropsTask Function expecting the Apollo schema as the unary argument.
- * Returns a task that resolves to the parent container props
+ * @param {Function} schemaToSamplePropsResultTaskFunction Function expecting the Apollo schema as the unary argument.
+ * Returns a task that resolves to the parent container props in a Result.Ok for success or Result.Error if
+ * and error occurs
  * @param parentComponentViews A function expecting props that returns an object keyed by view names
  * and valued by view props, where views are the child containers/components of the component
  * @param viewName The viewName in the parent component of the target container
  * @returns {Task} A Task to resolve the parentContainer props passed to the given viewName
  * in an Result.Ok. If anything goes wrong the task resolves with a Result.Error
  */
-export const parentPropsForContainerResultTask = v(({schema}, parentContainerSamplePropsTask, parentComponentViews, viewName) => {
+export const parentPropsForContainerResultTask = v(({schema}, schemaToSamplePropsResultTaskFunction, parentComponentViews, viewName) => {
     return mapMDeep(2,
       props => reqPathThrowing(['views', viewName], parentComponentViews(props)),
-      parentContainerSamplePropsTask(schema)
+      schemaToSamplePropsResultTaskFunction(schema)
     );
   },
   [
     ['config', PropTypes.shape({
       schema: PropTypes.shape().isRequired
     }).isRequired],
-    ['parentContainerSamplePropsTask', PropTypes.func.isRequired],
+    ['schemaToSamplePropsTaskFunction', PropTypes.func.isRequired],
     ['parentComponentViews', PropTypes.func.isRequired],
     ['viewName', PropTypes.string.isRequired]
   ],

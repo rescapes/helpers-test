@@ -28,9 +28,9 @@ import {parentPropsForContainerResultTask} from '../componentTestHelpers';
 export const propsResultTask = schema =>  parentPropsForContainerResultTask(
   {schema},
   // Fake this for now until we have a parent
-  of(Ok({
+  schema => of(Ok({
     currentRegion: {
-      // This is needed so we can scale Mapbox based on absolute numbers
+      // Some props
       style: {
         width: 500,
         height: 500
@@ -44,8 +44,7 @@ export const propsResultTask = schema =>  parentPropsForContainerResultTask(
           }
         }
       }
-    },
-
+    }
   })),
   // Normally this is the parent views function
   props => ({views: props}),

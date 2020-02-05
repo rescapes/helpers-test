@@ -1,15 +1,17 @@
 import * as R from 'ramda';
-import {c} from './SampleComponent';
-import SampleContainer, {requests} from './SampleContainer';
+import Sample, {c} from './SampleComponent';
+import SampleContainer, {apolloContainers} from './SampleContainer';
 import {propsResultTask} from './SampleContainer.sample';
 import {testConfig} from 'rescape-apollo';
 import {remoteSchemaTask} from 'rescape-apollo';
 import {e} from 'rescape-helpers-component';
 import {apolloContainerTests} from '../apolloContainerTestHelpers';
 import {remoteConfig} from '../remoteConfig';
+import {composeGraphqlQueryDefinitions} from 'rescape-helpers-component';
+import {chainObjToValues, mapObjToValues} from 'rescape-ramda';
 
 // Test this container
-const container = e(SampleContainer);
+const container = SampleContainer;
 // Find this React component
 const componentName = 'Sample';
 // Find this class in the data renderer
@@ -22,7 +24,30 @@ const errorMaker = parentProps => R.set(R.lensPath(['sample', 'id']), 'foo', par
 
 describe('SampleContainer', () => {
 
-  const {testQuery, testRenderError, testRender} = apolloContainerTests(
+  test('composeGraphqlQueryDefinitions', () => {
+    const ContainerWithData = composeGraphqlQueryDefinitions(apolloContainers)(Sample);
+    // Testing this requires running data through the Container, connecting to a graphql schema etc.
+    expect(ContainerWithData({
+      currentRegion: {
+        // Some props
+        style: {
+          width: 500,
+          height: 500
+        },
+        region: {
+          // This matches a testConfig Region
+          id: "1",
+          mapbox: {
+            viewport: {
+              zoom: 10
+            }
+          }
+        }
+      }
+    })).toBeTruthy();
+  });
+
+  const {testQueries, testRenderError, testRender} = apolloContainerTests(
     {
       componentContext: {
         name: componentName,
@@ -37,8 +62,7 @@ describe('SampleContainer', () => {
         schemaTask: remoteSchemaTask(testConfig),
         requests
       },
-      reduxContext: {
-      },
+      reduxContext: {},
       testContext: {
         errorMaker
       }
@@ -46,8 +70,9 @@ describe('SampleContainer', () => {
     container,
     propsResultTask
   );
-  test('testRender', testRender);
-  test('testRenderError', testRenderError);
+  test('testQueries', testQueries, 10000);
+  test('testRender', testRender, 10000);
+  test('testRenderError', testRenderError, 1000);
 });
 
 /*

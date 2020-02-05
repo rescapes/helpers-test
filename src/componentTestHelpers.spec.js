@@ -16,8 +16,11 @@ import * as R from 'ramda';
 import {e} from 'rescape-helpers-component';
 import React from 'react';
 import {
-  makeMockStore, makeSampleInitialState, propsFromSampleStateAndContainer, testState,
-  enzymeMountWithApolloClientAndReduxProvider
+  enzymeMountWithApolloClientAndReduxProvider,
+  makeMockStore,
+  makeSampleInitialState,
+  propsFromSampleStateAndContainer,
+  testState
 } from './componentTestHelpers';
 import {remoteApolloClientTask, resolvedRemoteSchemaTask} from './schemaHelpers';
 import {remoteConfig} from './remoteConfig';
@@ -69,7 +72,6 @@ describe('componentTestHelpers', () => {
   });
 
   test('enzymeMountWithApolloClientAndReduxProvider', async done => {
-    const parentProps = {};
     const query = gql`
         query regions {
             regions {
@@ -98,12 +100,12 @@ describe('componentTestHelpers', () => {
     // Instantiate
     const wrapper = enzymeMountWithApolloClientAndReduxProvider(
       createInitialState(sampleConfig),
-      apolloClient,
       schema,
+      apolloClient,
       reduxConnectedApolloContainer
     );
     // Expect the apollo data prop, the redux dispatch, and the someProp we added
     expect(R.keys(wrapper.find(Component).props()).sort()).toEqual(['data', 'dispatch', 'someProp']);
-    done()
+    done();
   }, 20000);
 });

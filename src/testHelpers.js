@@ -19,15 +19,9 @@ import {taskToPromise} from 'rescape-ramda';
  * @returns {undefined}
  */
 export const expectTask = task => expect(taskToPromise(task));
-/**
- * Same as expectTask but expects a rejects so diables debugging
- * @param {Task} task The Task
- * @returns {undefined}
- */
-export const expectTaskRejected = task => expect(taskToPromise(task, true));
 
 /**
- * Converts an Result to a Promise. Result.Right calls resolve and Result.Left calls reject
+ * Converts an Result to a Promise. Result.Ok calls resolve and Result.Error calls reject
  * @param result
  */
 export const resultToPromise = result => {

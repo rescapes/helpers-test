@@ -105,12 +105,12 @@
     "react": ">=16.4.1",
     "react-dom": ">=16.4.1",
     "rescape-apollo": ">=0.0.74",
-    "rescape-helpers": "^1.1.109",
+    "rescape-helpers": ">=1.1.109",
     "rescape-helpers-component": ">=1.5.64",
     "rescape-log": ">=0.1.11",
-    "rescape-place": "^0.0.105",
+    "rescape-place": ">=0.0.105",
     "rescape-ramda": ">=1.5.78",
-    "rescape-sample-data": "^1.2.60",
+    "rescape-sample-data": ">=1.2.60",
     "rescape-validate": ">=1.2.23"
   },
   "jest": {
