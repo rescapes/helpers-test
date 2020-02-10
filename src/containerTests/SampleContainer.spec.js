@@ -2,13 +2,9 @@ import * as R from 'ramda';
 import Sample, {c} from './SampleComponent';
 import SampleContainer, {apolloContainers} from './SampleContainer';
 import {propsResultTask} from './SampleContainer.sample';
-import {testConfig} from 'rescape-apollo';
-import {remoteSchemaTask} from 'rescape-apollo';
-import {e} from 'rescape-helpers-component';
-import {apolloContainerTests} from '../apolloContainerTestHelpers';
-import {remoteConfig} from '../remoteConfig';
+import {remoteSchemaTask, testConfig} from 'rescape-apollo';
 import {composeGraphqlQueryDefinitions} from 'rescape-helpers-component';
-import {chainObjToValues, mapObjToValues} from 'rescape-ramda';
+import {apolloContainerTests} from '../apolloContainerTestHelpers';
 
 // Test this container
 const container = SampleContainer;
@@ -60,7 +56,7 @@ describe('SampleContainer', () => {
       apolloContext: {
         state: {},
         schemaTask: remoteSchemaTask(testConfig),
-        requests
+        apolloContainers
       },
       reduxContext: {},
       testContext: {

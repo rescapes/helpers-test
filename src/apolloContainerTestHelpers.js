@@ -112,7 +112,7 @@ const parentPropsFromTaskFunction = (schemaToPropsResultTask, schemaTask) => com
  * where the ancestor Container props might be Apollo based.
  * of the parentProps used to call propsFromSampleStateAndContainer. Required if the container component receives
  * props from its parent (it usually does)
- * @param {Object} [requests] Optional Object that has a query property, a string representing the graphql query and
+ * @param {Object} [apolloContainers] Optional Object that has a query property, a string representing the graphql query and
  * an args.options function that expects props and resolves to an object with a variables property which holds an
  * object of query variables. Example:
  * requests =
@@ -157,7 +157,7 @@ export const apolloContainerTests = v((context, container, propsResultTask) => {
       apolloContext: {
         state = {},
         schemaTask,
-        requests
+        apolloContainers
       },
       reduxContext: {
         // Default to passing the props through, ignoring the state
@@ -177,9 +177,9 @@ export const apolloContainerTests = v((context, container, propsResultTask) => {
     )(propsResultTask);
 
     // Run these apollo queries
-    const queryComponents = strPathOr(null, 'query', requests);
+    const queryComponents = strPathOr(null, 'query', apolloContainers);
     // Run these apollo mutations
-    const mutationComponents = strPathOr(null, 'mutation', requests);
+    const mutationComponents = strPathOr(null, 'mutation', apolloContainers);
 
     /***
      * Tests that mapStateToProps matches snapshot

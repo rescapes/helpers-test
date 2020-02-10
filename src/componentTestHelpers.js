@@ -27,7 +27,7 @@ import {of} from 'folktale/concurrency/task';
 import * as Result from 'folktale/result';
 import {v} from 'rescape-validate';
 import * as R from 'ramda';
-import {Provider} from 'react-redux';
+import {Provider as ReduxProvider} from 'react-redux';
 import {e} from 'rescape-helpers-component';
 import {ApolloProvider} from '@apollo/react-hooks'
 
@@ -126,7 +126,7 @@ export const mockApolloClientWithSamples = (state, resolvedSchema) => {
 
 // Wraps the component in a Redux store. (It no longer works to put the store in the context)
 export const mountWithReduxProvider = (store, component, opts) => mount(
-  e(Provider, {store}, component),
+  e(ReduxProvider, {store}, component),
   opts
 );
 

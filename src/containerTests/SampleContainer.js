@@ -1,11 +1,14 @@
+import {chainObjToValues} from 'rescape-ramda';
 import {makeRegionsQueryContainer, regionOutputParams, makeRegionMutationContainer} from 'rescape-place';
-import {composeGraphqlQueryDefinitions} from 'rescape-helpers-component';
+import {composeApolloContainers} from 'rescape-helpers-component';
 import Sample from './SampleComponent';
+import {e} from 'rescape-helpers-component';
+import {adopt} from 'react-adopt';
 
 // Each query and mutation expects a container to compose then props
-export const apolloContainers = [
+export const apolloContainers = {
   // Creates a function expecting a component to wrap and props
-  makeRegionsQueryContainer(
+  queryRegions: makeRegionsQueryContainer(
     {
       options: {
         variables: (props) => ({
@@ -20,9 +23,9 @@ export const apolloContainers = [
       propsStructure: {
         id: 0
       }
-    },
+    }
   ),
-  makeRegionMutationContainer(
+  mutateRegion: makeRegionMutationContainer(
     {
       options: {
         errorPolicy: 'all'
@@ -32,12 +35,15 @@ export const apolloContainers = [
       outputParams: regionOutputParams
     }
   )
-];
+};
 
 // This produces a function expecting props
-export default composeGraphqlQueryDefinitions(apolloContainers)(Sample);
+const apolloContainer = adopt(apolloContainers);
+export default e(apolloContainer, {}, Sample);
 
 /*
+// TODO I'd like to use async components instead of having makeRegionMutationContainer, etc return Maybes. They
+// should return tasks that we convert to promises
 // Create the GraphQL Container.
 const ContainerWithData = child => asyncComponent({
   resolve: () => {
