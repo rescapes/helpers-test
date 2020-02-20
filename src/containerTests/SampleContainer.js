@@ -1,31 +1,54 @@
-import {chainObjToValues} from 'rescape-ramda';
-import {makeRegionsQueryContainer, regionOutputParams, makeRegionMutationContainer} from 'rescape-place';
-import {composeApolloContainers} from 'rescape-helpers-component';
+import {makeRegionMutationContainer, makeRegionsQueryContainer, regionOutputParams} from 'rescape-place';
 import Sample from './SampleComponent';
-import {e} from 'rescape-helpers-component';
 import {adopt} from 'react-adopt';
+import {apolloHOC} from '../apolloContainerTestHelpers';
+import {makeMutationRequestContainer, makeQueryContainer} from 'rescape-apollo';
+import * as R from 'ramda';
+
+export const readInputTypeMapper = {
+  //'data': 'DataTypeofLocationTypeRelatedReadInputType'
+  'geojson': 'FeatureCollectionDataTypeofRegionTypeRelatedReadInputType'
+};
+const _makeRegionsQueryContainer = R.curry((apolloConfig, {outputParams}, props) => {
+  return makeQueryContainer(
+    apolloConfig,
+    {name: 'regions', readInputTypeMapper, outputParams},
+    props
+  );
+});
+export const _makeRegionMutationContainer = R.curry(
+  (apolloConfig, {outputParams}, props) => {
+    return makeMutationRequestContainer(
+      apolloConfig,
+      {
+        name: 'region',
+        outputParams
+      },
+      props
+    );
+  });
 
 // Each query and mutation expects a container to compose then props
 export const apolloContainers = {
   // Creates a function expecting a component to wrap and props
-  queryRegions: makeRegionsQueryContainer(
+  queryRegions: _makeRegionsQueryContainer(
     {
       options: {
-        variables: (props) => ({
-          id: props.region.id
-        }),
+        variables: (props) => {
+          return {
+            id: parseInt(props.region.id)
+          };
+        },
         // Pass through error so we can handle it in the component
         errorPolicy: 'all'
       }
     },
     {
       outputParams: regionOutputParams,
-      propsStructure: {
-        id: 0
-      }
     }
   ),
-  mutateRegion: makeRegionMutationContainer(
+  /*
+  mutateRegion: _makeRegionMutationContainer(
     {
       options: {
         errorPolicy: 'all'
@@ -35,11 +58,15 @@ export const apolloContainers = {
       outputParams: regionOutputParams
     }
   )
+   */
 };
 
 // This produces a function expecting props
-const apolloContainer = adopt(apolloContainers);
-export default e(apolloContainer, {}, Sample);
+const apolloContainerComposed = adopt(apolloContainers);
+const apolloHoc = apolloHOC(apolloContainerComposed);
+export default apolloHoc(Sample);
+// No apolloHOC would be needed if Sample is just a render function:
+//e(apolloContainerComposed, {}, Sample)
 
 /*
 // TODO I'd like to use async components instead of having makeRegionMutationContainer, etc return Maybes. They

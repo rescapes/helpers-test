@@ -87,19 +87,19 @@ const mapStateToProps = (state, ownProps) => R.merge(
 const mapDispatchToProps = () => ({});
 
 // Compose the Apollo query container and mutation container
-const apolloContainer = R.curry((component, props) => {
+const apolloContainer = R.curry(props => {
   return R.compose(
     toNamedResponseAndInputs('component',
-      ({outputParams, component, props}) => {
-        return makeRegionsQueryContainer({}, {outputParams}, component, props);
+      ({outputParams, props}) => {
+        return makeRegionsQueryContainer({}, {outputParams}, props);
       }
     ),
     toNamedResponseAndInputs('component',
-      ({outputParams, component, props}) => {
-        return makeRegionMutationContainer({}, {outputParams}, component, props);
+      ({outputParams, props}) => {
+        return makeRegionMutationContainer({}, {outputParams}, props);
       }
     )
-  )({outputParams: regionOutputParams, component, props});
+  )({outputParams: regionOutputParams, props});
 });
 
 const configuredTestAuthTask = testAuthTask(testConfig);
@@ -189,9 +189,9 @@ describe('ApolloContainer', () => {
       apolloContext: {
         state: remoteConfig,
         schemaTask,
-        requests: {
-          queryComponents: [makeRegionsQueryContainer({}, {outputParams: regionOutputParams})],
-          mutationComponents: [makeRegionMutationContainer({}, {outputParams: regionOutputParams})]
+        apolloContainers: {
+          regionsQuery: makeRegionsQueryContainer({}, {outputParams: regionOutputParams}),
+          regionsMutation: makeRegionMutationContainer({}, {outputParams: regionOutputParams})
         }
       },
       reduxContext: {

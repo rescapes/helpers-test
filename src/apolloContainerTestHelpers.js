@@ -9,14 +9,14 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-
+import React from 'react';
 import {
-  enzymeMountWithApolloClientAndReduxProvider,
   makeTestPropsFunction,
   mockApolloClientWithSamples,
+  mountWithApolloClientAndReduxProvider,
   waitForChildComponentRender
 } from './componentTestHelpers';
-import {getClass, loadingCompleteStatus} from 'rescape-helpers-component';
+import {e, getClass, loadingCompleteStatus} from 'rescape-helpers-component';
 import PropTypes from 'prop-types';
 import {v} from 'rescape-validate';
 import {fromPromised, of, waitAll} from 'folktale/concurrency/task';
@@ -24,32 +24,32 @@ import {
   chainMDeep,
   composeWithChainMDeep,
   defaultRunConfig,
-  mapToNamedResponseAndInputs,
+  filterWithKeys,
+  mapObjToValues,
   mapToMergedResponseAndInputs,
+  mapToNamedResponseAndInputs,
   mergeDeep,
   promiseToTask,
   reqPathThrowing,
-  reqStrPathThrowing,
-  strPathOr
+  reqStrPathThrowing
 } from 'rescape-ramda';
 import * as R from 'ramda';
 import Result from 'folktale/result';
 import {graphql} from 'graphql';
 import {loggers} from 'rescape-log';
-import {print} from 'graphql/language/printer';
 
 const log = loggers.get('rescapeDefault');
 
 /**
  *
  * Use given props to call the function at requests.arg.options, and then get the .variables of the returned value
- * @param {Object} graphqlQuery
- * @param {Object} graphqlQuery.args
- * @param {Function<Object>} graphqlQuery.options A function that takes the props and returns {variables:...}
+ * @param {Function} graphqlQuery Function that takes props and results in props with props.variables
  * @param {Object} props
  * @returns {Object} variables to use for the query
  */
-const createQueryVariables = (graphqlQuery, props) => reqStrPathThrowing('variables', reqStrPathThrowing('args.options', graphqlQuery)(props));
+const createQueryVariables = (graphqlQuery, props) => {
+  return reqStrPathThrowing('props.variables', graphqlQuery(props));
+};
 
 
 /**
@@ -177,9 +177,19 @@ export const apolloContainerTests = v((context, container, propsResultTask) => {
     )(propsResultTask);
 
     // Run these apollo queries
-    const queryComponents = strPathOr(null, 'query', apolloContainers);
+    const queryComponents = filterWithKeys(
+      (_, key) => {
+        return R.includes('query', key);
+      },
+      apolloContainers
+    );
     // Run these apollo mutations
-    const mutationComponents = strPathOr(null, 'mutation', apolloContainers);
+    const mutationComponents = filterWithKeys(
+      (_, key) => {
+        return R.includes('mutation', key);
+      },
+      apolloContainers
+    );
 
     /***
      * Tests that mapStateToProps matches snapshot
@@ -377,40 +387,42 @@ const _apolloQueryResponsesTask = ({schemaTask, resolvedPropsTask, state, mapSta
   // Task Object -> Task
   return R.composeK(
     // Wait for all the queries to finish
-    ({graphqlQueriesObj, state, mappedProps, schema}) => waitAll(
-      R.map(
-        graphqlQueryObj => {
-          const query = reqStrPathThrowing('query', graphqlQueryObj);
-          // Create variables for the curent graphqlQueryObj by sending props to its configuration
-          const queryVariables = createQueryVariables(graphqlQueryObj, mappedProps);
-          log.debug(print(query));
-          log.debug(JSON.stringify(queryVariables));
-          return fromPromised(
-            () => mockApolloClientWithSamples(state, schema).query({
-              query,
-              // queryVariables are called with props to give us the variables for our query. This is just like Apollo
-              // does, accepting props to allow the container to form the variables for the query
-              variables: queryVariables,
-              // Our context is initialState as our dataSource. In real environments Apollo would go to a remote server
-              // to fetch the data, but here our database is simply the initialState for testing purposes
-              // This works in conjunction with the local resolvers on the schemaTask see schemaTask.sample.js for an example
-              // If testing with a remote linked schemaTask this will be ignored
-              context: {
-                dataSource: state
+    ({graphqlQueriesObj, state, mappedProps, schema}) => {
+      return waitAll(
+        mapObjToValues(
+          query => {
+            // Create variables for the curent graphqlQueryObj by sending props to its configuration
+            const queryVariables = createQueryVariables(query, mappedProps);
+            log.debug(JSON.stringify(queryVariables));
+            return fromPromised(
+              () => {
+                return mockApolloClientWithSamples(state, schema).query({
+                  query,
+                  // queryVariables are called with props to give us the variables for our query. This is just like Apollo
+                  // does, accepting props to allow the container to form the variables for the query
+                  variables: queryVariables,
+                  // Our context is initialState as our dataSource. In real environments Apollo would go to a remote server
+                  // to fetch the data, but here our database is simply the initialState for testing purposes
+                  // This works in conjunction with the local resolvers on the schemaTask see schemaTask.sample.js for an example
+                  // If testing with a remote linked schemaTask this will be ignored
+                  context: {
+                    dataSource: state
+                  }
+                });
               }
-            })
-          )();
-        },
-        graphqlQueriesObj
-      )
-    ),
+            )();
+          },
+          graphqlQueriesObj
+        )
+      );
+    },
     // Resolve the schemaTask
-    mapToNamedResponseAndInputs('state',
-      schemaTask
+    mapToNamedResponseAndInputs('schema',
+      ({}) => schemaTask
     ),
     // Resolve the parent props and map using initialState
     mapToNamedResponseAndInputs('mappedProps',
-      ({state, props}) => mapStateToProps(state, props)
+      ({state, props}) => of(mapStateToProps(state, props))
     ),
     // Resolve the props from the task
     mapToNamedResponseAndInputs('props',
@@ -486,33 +498,34 @@ const _apolloMutationResponsesTask = ({schemaTask, resolvedPropsTask, state, map
   // Task Object -> Task
   return R.composeK(
     // Wait for all the queries to finish
-    ({graphqlQueriesObj, state, mappedProps, schema}) => waitAll(
-      R.map(
-        graphqlMutationsObj => {
-          const mutation = reqStrPathThrowing('mutation', graphqlMutationsObj);
-          // Create variables for the curent graphqlQueryObj by sending props to its configuration
-          const queryVariables = createQueryVariables(graphqlMutationsObj, mappedProps);
-          log.debug(print(mutation));
-          log.debug(JSON.stringify(queryVariables));
-          return fromPromised(
-            () => mockApolloClientWithSamples(state, schema).mutate({
-              mutation: mutation,
-              // queryVariables are called with props to give us the variables for our mutation. This is just like Apollo
-              // does, accepting props to allow the container to form the variables for the mutation
-              variables: queryVariables,
-              // Our context is initialState as our dataSource. In real environments Apollo would go to a remote server
-              // to fetch the data, but here our database is simply the initialState for testing purposes
-              // This works in conjunction with the local resolvers on the schemaTask see schemaTask.sample.js for an example
-              // If testing with a remote linked schemaTask this will be ignored
-              context: {
-                dataSource: state
-              }
-            })
-          )();
-        },
-        graphqlMutationsObj
-      )
-    ),
+    ({graphqlQueriesObj, state, mappedProps, schema}) => {
+      return waitAll(
+        R.map(
+          graphqlMutationsObj => {
+            const mutation = reqStrPathThrowing('mutation', graphqlMutationsObj);
+            // Create variables for the curent graphqlQueryObj by sending props to its configuration
+            const queryVariables = createQueryVariables(graphqlMutationsObj, mappedProps);
+            log.debug(JSON.stringify(queryVariables));
+            return fromPromised(
+              () => mockApolloClientWithSamples(state, schema).mutate({
+                mutation: mutation,
+                // queryVariables are called with props to give us the variables for our mutation. This is just like Apollo
+                // does, accepting props to allow the container to form the variables for the mutation
+                variables: queryVariables,
+                // Our context is initialState as our dataSource. In real environments Apollo would go to a remote server
+                // to fetch the data, but here our database is simply the initialState for testing purposes
+                // This works in conjunction with the local resolvers on the schemaTask see schemaTask.sample.js for an example
+                // If testing with a remote linked schemaTask this will be ignored
+                context: {
+                  dataSource: state
+                }
+              })
+            )();
+          },
+          graphqlMutationsObj
+        )
+      );
+    },
     // Resolve the schemaTask
     mapToNamedResponseAndInputs('state',
       schemaTask
@@ -597,17 +610,17 @@ const _testMutations = (
  * @private
  */
 const _testRender = ({schemaTask, resolvedPropsTask, componentName, childClassDataName, state, childClassLoadingName}, container, done) => {
-  expect.assertions(2);
+  expect.assertions(3);
   const errors = [];
   return composeWithChainMDeep(1, [
     ({props, schema, apolloClient}) => {
       // Wrap the component in mock Apollo and Redux providers.
       // If the component doesn't use Apollo it just means that it will render its children synchronously,
       // rather than asynchronously
-      const composedContainer = container(props);
-      const wrapper = enzymeMountWithApolloClientAndReduxProvider(state, schema, apolloClient, composedContainer);
+      const composedContainer = e(container, props);
+      const wrapper = mountWithApolloClientAndReduxProvider(state, schema, apolloClient, composedContainer);
       // Find the top-level component. This is always rendered in any Apollo status (loading, error, store data)
-      const component = wrapper.find(componentName);
+      const component = wrapper.find(container);
       // Make sure the component props are consistent since the last test run
       expect(component.props()).toMatchSnapshot();
 
@@ -619,7 +632,7 @@ const _testRender = ({schemaTask, resolvedPropsTask, componentName, childClassDa
       // If we have an Apollo component, we use enzyme-wait to await the query to run and the the child
       // component that is dependent on the query result to render. If we don't have an Apollo component,
       // this child will be rendered immediately without delay
-      return fromPromised(() => waitForChildComponentRender(wrapper, componentName, childClassDataName));
+      return fromPromised(() => waitForChildComponentRender(wrapper, componentName, childClassDataName))();
     },
     // Resolve the schemaTask. This resolves to {schema, apolloClient}
     mapToMergedResponseAndInputs(
@@ -666,7 +679,7 @@ const _testRenderError = (
   }
   R.composeK(
     ({props, schema}) => {
-      const wrapper = enzymeMountWithApolloClientAndReduxProvider(state, schema, container(props));
+      const wrapper = mountWithApolloClientAndReduxProvider(state, schema, container(props));
       const component = wrapper.find(componentName);
       expect(component.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
       expect(component.props()).toMatchSnapshot();
@@ -717,4 +730,32 @@ export const propsFromParentPropsTask = v((initialState, chainedParentPropsTask,
   'propsFromParentPropsTask'
 );
 
+// Pass the Sample component that has a render function that expects the two Apollo request results
+// TODO apolloContainerComposed expects a render function for its children. Can this be a component class
+// containing a render function?
+export const apolloHOC = R.curry((AdoptedApolloContainer, Component) => {
+  return class extends React.Component {
+    render() {
+      return e(AdoptedApolloContainer, this.props,
+        // The Adopted apollo container expends a render function at the children prop
+        // This function provides Component with the results of the Apollo requests
+        props => {
+          return e(Component, props);
+        }
+      );
+    }
+  };
+});
 
+/**
+ * Given a apolloContainers keyed by render function prop label and valued by a function returning
+ * and apollo component, composes the apolloContainers into an HOC that expects a child component containing
+ * a render method that expects each prop of the apolloContainers object
+ * @param {Object} apolloContainers
+ * @param {Object} Component
+ * @returns {Object} Component composed with the apolloContainers
+ * @type {any}
+ */
+export const apolloContainersHOC = R.curry((apolloContainers, Component) => {
+  return apolloHOC(apolloContainers, Component);
+});

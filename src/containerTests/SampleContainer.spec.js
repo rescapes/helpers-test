@@ -32,7 +32,7 @@ describe('SampleContainer', () => {
         },
         region: {
           // This matches a testConfig Region
-          id: "1",
+          id: 1,
           mapbox: {
             viewport: {
               zoom: 10
@@ -66,8 +66,8 @@ describe('SampleContainer', () => {
     container,
     propsResultTask
   );
-  test('testQueries', testQueries, 10000);
-  test('testRender', testRender, 10000);
+  test('testQueries', testQueries, 100000);
+  test('testRender', testRender, 100000);
   test('testRenderError', testRenderError, 1000);
 });
 
@@ -81,7 +81,7 @@ const ContainerWithData = child => R.composeK(
   mapToNamedResponseAndInputs(
     'queryOne',
     props => query({query: queryOne})
-  )
+
 );
 ContainerWithData(Sample);
 */

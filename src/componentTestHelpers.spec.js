@@ -16,7 +16,7 @@ import * as R from 'ramda';
 import {e} from 'rescape-helpers-component';
 import React from 'react';
 import {
-  enzymeMountWithApolloClientAndReduxProvider,
+  mountWithApolloClientAndReduxProvider,
   makeMockStore,
   makeSampleInitialState,
   propsFromSampleStateAndContainer,
@@ -98,7 +98,7 @@ describe('componentTestHelpers', () => {
     // Create a factory for container
     const reduxConnectedApolloContainer = e(ReduxConnectedApolloContainer);
     // Instantiate
-    const wrapper = enzymeMountWithApolloClientAndReduxProvider(
+    const wrapper = mountWithApolloClientAndReduxProvider(
       createInitialState(sampleConfig),
       schema,
       apolloClient,

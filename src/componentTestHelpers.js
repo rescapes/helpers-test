@@ -9,7 +9,7 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-
+import {act} from 'react-dom/test-utils';
 import {inspect} from 'util';
 import {createWaitForElement} from 'enzyme-wait';
 import PropTypes from 'prop-types';
@@ -29,7 +29,7 @@ import {v} from 'rescape-validate';
 import * as R from 'ramda';
 import {Provider as ReduxProvider} from 'react-redux';
 import {e} from 'rescape-helpers-component';
-import {ApolloProvider} from '@apollo/react-hooks'
+import {ApolloProvider} from '@apollo/react-hooks';
 
 const middlewares = [thunk];
 // Importing this way because rollup can't find it
@@ -125,10 +125,16 @@ export const mockApolloClientWithSamples = (state, resolvedSchema) => {
 };
 
 // Wraps the component in a Redux store. (It no longer works to put the store in the context)
-export const mountWithReduxProvider = (store, component, opts) => mount(
-  e(ReduxProvider, {store}, component),
-  opts
-);
+export const mountWithReduxProvider = (store, component, opts) => {
+  let c;
+  act(() => {
+    c = mount(
+      e(ReduxProvider, {store}, component),
+      opts
+    );
+  });
+  return c;
+};
 
 /**
  * Wraps a component in a graphql client and store context for Apollo/Redux testing
@@ -138,7 +144,7 @@ export const mountWithReduxProvider = (store, component, opts) => mount(
  * @param component
  * @return {*}
  */
-export const enzymeMountWithApolloClientAndReduxProvider = (state, resolvedSchema, apolloClient, component) => {
+export const mountWithApolloClientAndReduxProvider = (state, resolvedSchema, apolloClient, component) => {
   const store = makeSampleStore(state);
   return mountWithReduxProvider(
     store,

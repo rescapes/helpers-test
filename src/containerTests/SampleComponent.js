@@ -5,6 +5,7 @@ import {
 } from 'rescape-helpers-component';
 import {strPath} from 'rescape-ramda';
 import PropTypes from 'prop-types';
+import * as R from 'ramda';
 
 export const c = nameLookup({
   sample: true,
@@ -36,7 +37,7 @@ Sample.viewStyles = () => {
   return {
     [c.sample]: {},
     [c.sampleHeader]: {}
-  }
+  };
 };
 
 Sample.viewProps = (props) => {
@@ -49,17 +50,14 @@ Sample.viewProps = (props) => {
       sample
     },
 
-    [c.sampleMapboxOuter]: {
-    },
+    [c.sampleMapboxOuter]: {},
 
-    [c.sampleHeader]: {
-    },
+    [c.sampleHeader]: {}
   };
 };
 
 Sample.viewActions = () => {
-  return {
-  };
+  return {};
 };
 
 Sample.renderData = ({views}) => {
@@ -67,7 +65,7 @@ Sample.renderData = ({views}) => {
 
   return [
     e('div', props(c.sampleMapboxOuter),
-      e('div', props(c.sampleHeader)),
+      e('div', props(c.sampleHeader))
     )
   ];
 };
@@ -88,9 +86,15 @@ Sample.views = composeViews(
  * Loading, Error, or Data based on the props
  */
 Sample.choicepoint = renderChoicepoint(
-  renderErrorDefault(c.sampleError),
-  renderLoadingDefault(c.sampleLoading),
-  Sample.renderData
+  {
+    onError: renderErrorDefault(c.sampleError),
+    onLoading: renderLoadingDefault(c.sampleLoading),
+    onData: Sample.renderData
+  },
+  {
+    queryRegions: true,
+    mutateRegions: true
+  }
 );
 
 Sample.propTypes = {
@@ -99,14 +103,8 @@ Sample.propTypes = {
 };
 
 Sample.propTypes = {
-  data: PropTypes.shape({
-    // The Sample object
-    sample: PropTypes.shape(),
-    // All locations of the Sample
-    locations: PropTypes.arrayOf(PropTypes.shape()).isRequired,
-    // All locations with currently loaded geojson. Meaning they can be goespatially shown on the map
-    locationsWithGeojson: PropTypes.arrayOf(PropTypes.shape()).isRequired
-  }).isRequired
+  queryRegions: PropTypes.shape({}).isRequired,
+  //mutationRegions: PropTypes.shape({}).isRequired,
 };
 
 export default Sample;
