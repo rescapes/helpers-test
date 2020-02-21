@@ -16,7 +16,8 @@ const childClassDataName = c.sampleMapboxOuter;
 const childClassLoadingName = c.sampleLoading;
 // Find this class in the error renderer
 const childClassErrorName = c.sampleError;
-const errorMaker = parentProps => R.set(R.lensPath(['sample', 'id']), 'foo', parentProps);
+// Error maker creates an unknown id that can't be queried
+const errorMaker = parentProps => R.set(R.lensPath(['region', 'id']), 'foo', parentProps);
 
 describe('SampleContainer', () => {
 
@@ -43,7 +44,7 @@ describe('SampleContainer', () => {
     })).toBeTruthy();
   });
 
-  const {testQueries, testRenderError, testRender} = apolloContainerTests(
+  const {testQueries, testMutations, testRenderError, testRender} = apolloContainerTests(
     {
       componentContext: {
         name: componentName,
@@ -67,8 +68,9 @@ describe('SampleContainer', () => {
     propsResultTask
   );
   test('testQueries', testQueries, 100000);
+  test('testMutations', testMutations, 100000);
   test('testRender', testRender, 100000);
-  test('testRenderError', testRenderError, 1000);
+  test('testRenderError', testRenderError, 100000);
 });
 
 /*

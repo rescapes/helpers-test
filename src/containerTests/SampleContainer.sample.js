@@ -37,10 +37,14 @@ export const propsResultTask = schema =>  parentPropsForContainerResultTask(
       },
       region: {
         // This matches a testConfig Region
-        id: "1",
-        mapbox: {
-          viewport: {
-            zoom: 10
+        id: 1,
+        key: 'MyBuddy',
+        name: 'My Buddy',
+        data: {
+          mapbox: {
+            viewport: {
+              zoom: 10
+            }
           }
         }
       }

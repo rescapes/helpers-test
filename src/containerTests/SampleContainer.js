@@ -16,17 +16,16 @@ const _makeRegionsQueryContainer = R.curry((apolloConfig, {outputParams}, props)
     props
   );
 });
-export const _makeRegionMutationContainer = R.curry(
-  (apolloConfig, {outputParams}, props) => {
-    return makeMutationRequestContainer(
-      apolloConfig,
-      {
-        name: 'region',
-        outputParams
-      },
-      props
-    );
-  });
+export const _makeRegionMutationContainer = R.curry((apolloConfig, {outputParams}, props) => {
+  return makeMutationRequestContainer(
+    apolloConfig,
+    {
+      name: 'region',
+      outputParams
+    },
+    props
+  );
+});
 
 // Each query and mutation expects a container to compose then props
 export const apolloContainers = {
@@ -44,13 +43,15 @@ export const apolloContainers = {
       }
     },
     {
-      outputParams: regionOutputParams,
+      outputParams: regionOutputParams
     }
   ),
-  /*
   mutateRegion: _makeRegionMutationContainer(
     {
       options: {
+        variables: (props) => {
+          return R.prop('region', props);
+        },
         errorPolicy: 'all'
       }
     },
@@ -58,7 +59,6 @@ export const apolloContainers = {
       outputParams: regionOutputParams
     }
   )
-   */
 };
 
 // This produces a function expecting props

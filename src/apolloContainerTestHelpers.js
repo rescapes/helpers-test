@@ -9,6 +9,7 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+import {act} from 'react-dom/test-utils';
 import React from 'react';
 import {
   makeTestPropsFunction,
@@ -43,12 +44,12 @@ const log = loggers.get('rescapeDefault');
 /**
  *
  * Use given props to call the function at requests.arg.options, and then get the .variables of the returned value
- * @param {Function} graphqlQuery Function that takes props and results in props with props.variables
+ * @param {Function} graphqlRequest Function that takes props and results in props with props.variables
  * @param {Object} props
  * @returns {Object} variables to use for the query
  */
-const createQueryVariables = (graphqlQuery, props) => {
-  return reqStrPathThrowing('props.variables', graphqlQuery(props));
+const createRequestVariables = (graphqlRequest, props) => {
+  return reqStrPathThrowing('props.variables', graphqlRequest(props));
 };
 
 
@@ -186,7 +187,7 @@ export const apolloContainerTests = v((context, container, propsResultTask) => {
     // Run these apollo mutations
     const mutationComponents = filterWithKeys(
       (_, key) => {
-        return R.includes('mutation', key);
+        return R.includes('mutat', key);
       },
       apolloContainers
     );
@@ -234,7 +235,12 @@ export const apolloContainerTests = v((context, container, propsResultTask) => {
      * @return {Promise<void>}
      */
     const testRender = done => _testRender({
-      schemaTask, resolvedPropsTask, componentName, childClassDataName, state, childClassLoadingName
+      schemaTask,
+      resolvedPropsTask,
+      componentName,
+      childClassDataName,
+      state,
+      childClassLoadingName
     }, container, done);
 
     /**
@@ -385,19 +391,22 @@ export const makeApolloTestPropsTaskFunction = R.curry((schemaOrTask, sampleConf
  */
 const _apolloQueryResponsesTask = ({schemaTask, resolvedPropsTask, state, mapStateToProps}, graphqlQueriesObj) => {
   // Task Object -> Task
-  return R.composeK(
+  return composeWithChainMDeep(1, [
     // Wait for all the queries to finish
-    ({graphqlQueriesObj, state, mappedProps, schema}) => {
+    ({graphqlQueriesObj, state, mappedProps, apolloClient}) => {
       return waitAll(
         mapObjToValues(
           query => {
-            // Create variables for the curent graphqlQueryObj by sending props to its configuration
-            const queryVariables = createQueryVariables(query, mappedProps);
+            // Create variables for the current graphqlQueryObj by sending props to its configuration
+            // Add a render function that returns null to prevent react from complaining
+            const props = R.merge(mappedProps, {render: props => null});
+            const queryVariables = createRequestVariables(query, props);
             log.debug(JSON.stringify(queryVariables));
-            return fromPromised(
+            const task = fromPromised(
               () => {
-                return mockApolloClientWithSamples(state, schema).query({
-                  query,
+                return apolloClient.query({
+                  // pass props the query so we can get the Query component and extract the query string
+                  query: reqStrPathThrowing('props.query', query(props)),
                   // queryVariables are called with props to give us the variables for our query. This is just like Apollo
                   // does, accepting props to allow the container to form the variables for the query
                   variables: queryVariables,
@@ -411,24 +420,31 @@ const _apolloQueryResponsesTask = ({schemaTask, resolvedPropsTask, state, mapSta
                 });
               }
             )();
+            return task;
           },
           graphqlQueriesObj
         )
       );
     },
     // Resolve the schemaTask
-    mapToNamedResponseAndInputs('schema',
-      ({}) => schemaTask
+    mapToMergedResponseAndInputs(
+      ({}) => {
+        return schemaTask;
+      }
     ),
     // Resolve the parent props and map using initialState
     mapToNamedResponseAndInputs('mappedProps',
-      ({state, props}) => of(mapStateToProps(state, props))
+      ({state, props}) => {
+        return of(mapStateToProps(state, props));
+      }
     ),
     // Resolve the props from the task
     mapToNamedResponseAndInputs('props',
-      () => resolvedPropsTask
+      () => {
+        return resolvedPropsTask;
+      }
     )
-  )({schemaTask, resolvedPropsTask, state, mapStateToProps, graphqlQueriesObj});
+  ])({schemaTask, resolvedPropsTask, state, mapStateToProps, graphqlQueriesObj});
 };
 
 /**
@@ -497,46 +513,55 @@ const _apolloMutationResponsesTask = ({schemaTask, resolvedPropsTask, state, map
   // TODO untested
   // Task Object -> Task
   return R.composeK(
-    // Wait for all the queries to finish
-    ({graphqlQueriesObj, state, mappedProps, schema}) => {
+    // Wait for all the mutations to finish
+    ({graphqlMutationsObj, state, mappedProps, apolloClient}) => {
       return waitAll(
-        R.map(
-          graphqlMutationsObj => {
-            const mutation = reqStrPathThrowing('mutation', graphqlMutationsObj);
+        mapObjToValues(
+          mutation => {
             // Create variables for the curent graphqlQueryObj by sending props to its configuration
-            const queryVariables = createQueryVariables(graphqlMutationsObj, mappedProps);
-            log.debug(JSON.stringify(queryVariables));
-            return fromPromised(
-              () => mockApolloClientWithSamples(state, schema).mutate({
-                mutation: mutation,
-                // queryVariables are called with props to give us the variables for our mutation. This is just like Apollo
-                // does, accepting props to allow the container to form the variables for the mutation
-                variables: queryVariables,
-                // Our context is initialState as our dataSource. In real environments Apollo would go to a remote server
-                // to fetch the data, but here our database is simply the initialState for testing purposes
-                // This works in conjunction with the local resolvers on the schemaTask see schemaTask.sample.js for an example
-                // If testing with a remote linked schemaTask this will be ignored
-                context: {
-                  dataSource: state
-                }
-              })
+            const props = R.merge(mappedProps, {render: props => null});
+            const mutationVariables = createRequestVariables(mutation, props);
+            log.debug(JSON.stringify(mutationVariables));
+            const task = fromPromised(
+              () => {
+                return apolloClient.mutate({
+                  mutation: reqStrPathThrowing('props.mutation', mutation(props)),
+                  // queryVariables are called with props to give us the variables for our mutation. This is just like Apollo
+                  // does, accepting props to allow the container to form the variables for the mutation
+                  variables: mutationVariables,
+                  // Our context is initialState as our dataSource. In real environments Apollo would go to a remote server
+                  // to fetch the data, but here our database is simply the initialState for testing purposes
+                  // This works in conjunction with the local resolvers on the schemaTask see schemaTask.sample.js for an example
+                  // If testing with a remote linked schemaTask this will be ignored
+                  context: {
+                    dataSource: state
+                  }
+                });
+              }
             )();
+            return task;
           },
           graphqlMutationsObj
         )
       );
     },
     // Resolve the schemaTask
-    mapToNamedResponseAndInputs('state',
-      schemaTask
+    mapToMergedResponseAndInputs(
+      ({}) => {
+        return schemaTask;
+      }
     ),
     // Resolve the parent props and map using initialState
     mapToNamedResponseAndInputs('mappedProps',
-      ({state, props}) => mapStateToProps(state, props)
+      ({state, props}) => {
+        return of(mapStateToProps(state, props));
+      }
     ),
     // Resolve the props from the task
     mapToNamedResponseAndInputs('props',
-      () => resolvedPropsTask
+      () => {
+        return resolvedPropsTask;
+      }
     )
   )({schemaTask, resolvedPropsTask, state, mapStateToProps, graphqlMutationsObj});
 };
@@ -610,7 +635,7 @@ const _testMutations = (
  * @private
  */
 const _testRender = ({schemaTask, resolvedPropsTask, componentName, childClassDataName, state, childClassLoadingName}, container, done) => {
-  expect.assertions(3);
+  expect.assertions(childClassLoadingName ? 3 : 2);
   const errors = [];
   return composeWithChainMDeep(1, [
     ({props, schema, apolloClient}) => {
@@ -632,7 +657,11 @@ const _testRender = ({schemaTask, resolvedPropsTask, componentName, childClassDa
       // If we have an Apollo component, we use enzyme-wait to await the query to run and the the child
       // component that is dependent on the query result to render. If we don't have an Apollo component,
       // this child will be rendered immediately without delay
-      return fromPromised(() => waitForChildComponentRender(wrapper, componentName, childClassDataName))();
+      let p;
+      act(() => {
+        p = waitForChildComponentRender(wrapper, componentName, childClassDataName);
+      });
+      return fromPromised(() => p)();
     },
     // Resolve the schemaTask. This resolves to {schema, apolloClient}
     mapToMergedResponseAndInputs(
@@ -678,21 +707,29 @@ const _testRenderError = (
     return;
   }
   R.composeK(
-    ({props, schema}) => {
-      const wrapper = mountWithApolloClientAndReduxProvider(state, schema, container(props));
-      const component = wrapper.find(componentName);
-      expect(component.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
-      expect(component.props()).toMatchSnapshot();
-      return promiseToTask(waitForChildComponentRender(wrapper, componentName, childClassErrorName));
+    ({props, schema, apolloClient}) => {
+      const composedContainer = e(container, props);
+      let p;
+      act(() => {
+        const wrapper = mountWithApolloClientAndReduxProvider(state, schema, apolloClient, composedContainer);
+        const component = wrapper.find(componentName);
+        expect(component.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
+        expect(component.props()).toMatchSnapshot();
+        p = waitForChildComponentRender(wrapper, componentName, childClassErrorName);
+      });
+      return fromPromised(() => p)();
     },
-    ({props, schema}) => of({props: errorMaker(props), schema}),
-    // Resolve the schemaTask
-    props => R.map(
-      schema => ({props, schema}),
-      schemaTask
+    // Resolve the schemaTask. This resolves to {schema, apolloClient}
+    mapToMergedResponseAndInputs(
+      ({schemaTask}) => schemaTask
     ),
-    () => resolvedPropsTask
-  )().run().listen(
+    mapToNamedResponseAndInputs('props',
+      ({resolvedPropsTask}) => R.map(
+        props => errorMaker(props),
+        resolvedPropsTask
+      )
+    )
+  )({schemaTask, resolvedPropsTask, componentName, childClassDataName}).run().listen(
     defaultRunConfig({
       // The error component should have an error message as props.children
       onResolved: childComponent => {

@@ -104,7 +104,7 @@ Sample.propTypes = {
 
 Sample.propTypes = {
   queryRegions: PropTypes.shape({}).isRequired,
-  //mutationRegions: PropTypes.shape({}).isRequired,
+  mutateRegion: PropTypes.func.isRequired,
 };
 
 export default Sample;

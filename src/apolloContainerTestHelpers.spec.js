@@ -210,7 +210,6 @@ describe('ApolloContainer', () => {
   test('testRender', testRender);
   test('testRenderError', testRenderError);
 
-
   test('propsFromParentPropsTask', done => {
     propsFromParentPropsTask(
       {foo: 1},
