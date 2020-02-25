@@ -9,6 +9,7 @@ const config = {
     'src/index.js',
     'src/apolloContainerTestHelpers.js',
     'src/componentTestHelpers.js',
+    'src/testHelpers.js',
   ],
   plugins: []
 };
