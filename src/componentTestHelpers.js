@@ -23,7 +23,7 @@ import {InMemoryCache} from 'apollo-client-preset';
 import {SchemaLink} from 'apollo-link-schema';
 import {getClass} from 'rescape-helpers-component';
 import {onError} from "apollo-link-error";
-import {of} from 'folktale/concurrency/task';
+import {of, task} from 'folktale/concurrency/task';
 import * as Result from 'folktale/result';
 import {v} from 'rescape-validate';
 import * as R from 'ramda';
@@ -129,28 +129,42 @@ export const mountWithReduxProvider = (store, component, opts) => {
   let c;
   act(() => {
     c = mount(
-      e(ReduxProvider, {store}, component),
+      component,
       opts
     );
   });
+  if (!c) {
+    throw new Error("act failed!");
+  }
   return c;
 };
 
 /**
- * Wraps a component in a graphql client and store context for Apollo/Redux testing
- * @param state
- * @param resolvedSchema
- * @param apolloClient
+ * Wraps a component in an Apollo Provider for testing
+ * @param apolloConfig
+ * @param apolloConfig.apolloClient
  * @param component
+ * @param props for the component
  * @return {*}
  */
-export const mountWithApolloClientAndReduxProvider = (state, resolvedSchema, apolloClient, component) => {
-  const store = makeSampleStore(state);
-  return mountWithReduxProvider(
-    store,
-    e(ApolloProvider, {client: apolloClient}, component)
-  );
-};
+export const mountWithApolloClient = v((apolloConfig, component) => {
+  let c;
+  act(() => {
+    c = mount(
+      e(
+        ApolloProvider,
+        {client: reqStrPathThrowing('apolloClient', apolloConfig)},
+        component
+      )
+    );
+  });
+  return c;
+}, [
+  ['apolloConfig', PropTypes.shape({
+    apolloClient: PropTypes.shape().isRequired
+  }).isRequired],
+  ['component', PropTypes.shape().isRequired]
+], 'mountWithApolloClient');
 
 /**
  * Wraps a component in a store context for Redux testing
@@ -196,7 +210,7 @@ export const shallowWrap = (componentFactory, props) => {
  * @returns {Promise} A promise that returns the component matching childClassName or if an error
  * occurs return an Error with the message and dump of the props
  */
-export const waitForChildComponentRender = (wrapper, componentName, childClassName) => {
+export const waitForChildComponentRenderTask = (wrapper, componentName, childClassName) => {
   const component = wrapper.find(componentName);
   const childClassNameStr = `.${getClass(childClassName)}`;
   // Wait for the child component to render, which indicates that data loading completed
@@ -214,21 +228,26 @@ export const waitForChildComponentRender = (wrapper, componentName, childClassNa
     // Find the component with the updated wrapper, otherwise we get the old component
     return find.apply(wrapper.find(componentName), args);
   };
-  return waitForChild(component)
-    .then(component => component.find(childClassNameStr).first())
-    .catch(error => {
-      const comp = wrapper.find(componentName);
-      if (comp.length) {
-        throw new Error(`${error.message}
+  return task(resolver => {
+    waitForChild(component)
+      .then(component => {
+        return resolver.resolve(component.find(childClassNameStr).first());
+      })
+      .catch(error => {
+          const comp = wrapper.find(componentName);
+          if (comp.length) {
+            return resolver.reject(new Error(`${error.message}
         \n${error.stack}
         \n${comp.debug()}
         \n${inspect(comp.props().data, {depth: 3})}
       `
-        );
-      } else {
-        throw error;
-      }
-    });
+            ));
+          } else {
+            throw resolver.reject(error);
+          }
+        }
+      );
+  });
 };
 
 /**

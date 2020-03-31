@@ -2,8 +2,7 @@ import * as R from 'ramda';
 import Sample, {c} from './SampleComponent';
 import SampleContainer, {apolloContainers} from './SampleContainer';
 import {propsResultTask} from './SampleContainer.sample';
-import {remoteSchemaTask, testConfig} from 'rescape-apollo';
-import {composeGraphqlQueryDefinitions} from 'rescape-helpers-component';
+import {remoteSchemaTask, localTestConfig, localTestAuthTask} from 'rescape-apollo';
 import {apolloContainerTests} from '../apolloContainerTestHelpers';
 
 // Test this container
@@ -18,33 +17,12 @@ const childClassLoadingName = c.sampleLoading;
 const childClassErrorName = c.sampleError;
 // Error maker creates an unknown id that can't be queried
 const errorMaker = parentProps => R.set(R.lensPath(['region', 'id']), 'foo', parentProps);
+const omitKeysFromSnapshots = ['id', 'createdAt', 'updatedAt'];
+const updatedPaths = ['queryRegions.data.regions.0.updatedAt'];
 
 describe('SampleContainer', () => {
 
-  test('composeGraphqlQueryDefinitions', () => {
-    const ContainerWithData = composeGraphqlQueryDefinitions(apolloContainers)(Sample);
-    // Testing this requires running data through the Container, connecting to a graphql schema etc.
-    expect(ContainerWithData({
-      currentRegion: {
-        // Some props
-        style: {
-          width: 500,
-          height: 500
-        },
-        region: {
-          // This matches a testConfig Region
-          id: 1,
-          mapbox: {
-            viewport: {
-              zoom: 10
-            }
-          }
-        }
-      }
-    })).toBeTruthy();
-  });
-
-  const {testQueries, testMutations, testRenderError, testRender} = apolloContainerTests(
+  const {testComposeRequests, testQueries, testMutations, testRenderError, testRender} = apolloContainerTests(
     {
       componentContext: {
         name: componentName,
@@ -56,20 +34,28 @@ describe('SampleContainer', () => {
       },
       apolloContext: {
         state: {},
-        schemaTask: remoteSchemaTask(testConfig),
+        apolloConfigTask: localTestAuthTask,
+        // Use the rescape-apollo localTestConfig, since this module doesn't need it's own configuration
+        // TODO I'm guessing I no longer need this if I pass the apolloContainerTask
+        schemaTask: remoteSchemaTask(localTestConfig),
         apolloContainers
       },
       reduxContext: {},
       testContext: {
-        errorMaker
+        errorMaker,
+        // Don't snapshot compare these nondeterministic keys on any object
+        omitKeysFromSnapshots,
+        // This value should change when we mutate
+        updatedPaths
       }
     },
     container,
     propsResultTask
   );
-  test('testQueries', testQueries, 100000);
-  test('testMutations', testMutations, 100000);
-  test('testRender', testRender, 100000);
+  test('testComposeRequests', testComposeRequests, 10000);
+  test('testQueries', testQueries, 10000);
+  test('testMutations', testMutations, 1000000);
+  test('testRender', testRender, 10000);
   test('testRenderError', testRenderError, 100000);
 });
 

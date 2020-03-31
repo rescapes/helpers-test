@@ -23,7 +23,9 @@ export const c = nameLookup({
 class Sample extends Component {
   render() {
     const props = Sample.views(this.props);
-    return e('div', propsFor(props.views, c.sample),
+    return e(
+      'div',
+      propsFor(props.views, c.sample),
       Sample.choicepoint(props)
     );
   }
@@ -63,11 +65,9 @@ Sample.viewActions = () => {
 Sample.renderData = ({views}) => {
   const props = propsFor(views);
 
-  return [
-    e('div', props(c.sampleMapboxOuter),
-      e('div', props(c.sampleHeader))
-    )
-  ];
+  return e('div', props(c.sampleMapboxOuter),
+    e('div', props(c.sampleHeader))
+  );
 };
 
 
@@ -104,7 +104,7 @@ Sample.propTypes = {
 
 Sample.propTypes = {
   queryRegions: PropTypes.shape({}).isRequired,
-  mutateRegion: PropTypes.func.isRequired,
+  mutateRegion: PropTypes.func.isRequired
 };
 
 export default Sample;

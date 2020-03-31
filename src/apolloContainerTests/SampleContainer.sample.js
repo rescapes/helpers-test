@@ -25,35 +25,37 @@ import {parentPropsForContainerResultTask} from '../componentTestHelpers';
 /**
  * Task returning sample parent props from all the way up the view hierarchy
  */
-export const propsResultTask = schema =>  parentPropsForContainerResultTask(
-  {schema},
-  // Fake this for now until we have a parent
-  schema => of(Ok({
-    currentRegion: {
-      // Some props
-      style: {
-        width: 500,
-        height: 500
-      },
-      region: {
-        // This matches a testConfig Region
-        id: 1,
-        key: 'MyBuddy',
-        name: 'My Buddy',
-        data: {
-          mapbox: {
-            viewport: {
-              zoom: 10
+export const propsResultTask = schema => {
+  return parentPropsForContainerResultTask(
+    {schema},
+    // Fake this for now until we have a parent
+    schema => of(Ok({
+      currentRegion: {
+        // Some props
+        style: {
+          width: 500,
+          height: 500
+        },
+        region: {
+          // This matches a testConfig Region
+          id: 1,
+          key: 'MyBuddy',
+          name: 'My Buddy',
+          data: {
+            mapbox: {
+              viewport: {
+                zoom: 10
+              }
             }
           }
         }
       }
-    }
-  })),
-  // Normally this is the parent views function
-  props => ({views: props}),
-  'currentRegion'
-);
+    })),
+    // Normally this is the parent views function
+    props => ({views: props}),
+    'currentRegion'
+  );
+};
 
 /**
  * Task returning sample props from all the way up the view hierarchy

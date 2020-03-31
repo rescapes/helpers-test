@@ -9,11 +9,18 @@ const config = {
     'src/index.js',
     'src/apolloContainerTestHelpers.js',
     'src/componentTestHelpers.js',
-    'src/testHelpers.js',
+    'src/testHelpers.js'
   ],
   plugins: []
 };
-const externals = ['symbol-observable', 'folktale/concurrency/task', 'folktale/result', 'enzyme', 'enzyme-wait', 'fast-json-stable-stringify', 'react-dom-utils'];
+const externals = [
+  'symbol-observable',
+  'folktale/concurrency/task',
+  'folktale/result',
+  'enzyme',
+  'enzyme-wait',
+  'fast-json-stable-stringify',
+];
 
 const configs = R.map(c => {
   const x = R.merge(config, c);
@@ -46,6 +53,7 @@ const configs = R.map(c => {
     ])
   },
   // ES
+  /*
   {
     output: {
       dir: 'esm',
@@ -61,9 +69,8 @@ const configs = R.map(c => {
     plugins: R.concat(config.plugins, [
       nodeResolve({}), babel()
     ])
-  },
+  }
 
-  /*
   // ES for Browsers
   {
     output: {

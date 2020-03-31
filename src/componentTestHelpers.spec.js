@@ -16,7 +16,7 @@ import * as R from 'ramda';
 import {e} from 'rescape-helpers-component';
 import React from 'react';
 import {
-  mountWithApolloClientAndReduxProvider,
+  mountWithApolloClient,
   makeMockStore,
   makeSampleInitialState,
   propsFromSampleStateAndContainer,
@@ -24,6 +24,7 @@ import {
 } from './componentTestHelpers';
 import {remoteApolloClientTask, resolvedRemoteSchemaTask} from './schemaHelpers';
 import {remoteConfig} from './remoteConfig';
+import {localTestConfig, remoteSchemaTask} from 'rescape-apollo';
 
 const createInitialState = config => R.merge({
   foo: 'boo'
@@ -87,25 +88,16 @@ describe('componentTestHelpers', () => {
       }
     }
 
-    const schema = await resolvedRemoteSchemaTask(remoteConfig).run().promise();
-    const apolloClient = await remoteApolloClientTask(remoteConfig).run().promise();
+    const {schema, apolloClient} = await remoteSchemaTask(localTestConfig).run().promise();
     // Wrap the component in apollo
     const ContainerWithData = graphql(query)(Component);
-    // Make a Redux connected container
-    const ReduxConnectedApolloContainer = connect(
-      (state, props) => ({someProp: 1})
-    )(ContainerWithData);
-    // Create a factory for container
-    const reduxConnectedApolloContainer = e(ReduxConnectedApolloContainer);
     // Instantiate
-    const wrapper = mountWithApolloClientAndReduxProvider(
-      createInitialState(sampleConfig),
-      schema,
-      apolloClient,
-      reduxConnectedApolloContainer
+    const wrapper = mountWithApolloClient(
+      {apolloClient},
+      e(ContainerWithData, {})
     );
     // Expect the apollo data prop, the redux dispatch, and the someProp we added
-    expect(R.keys(wrapper.find(Component).props()).sort()).toEqual(['data', 'dispatch', 'someProp']);
+    expect(R.keys(wrapper.find(Component).props()).sort()).toEqual(['data']);
     done();
   }, 20000);
 });

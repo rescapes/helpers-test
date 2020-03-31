@@ -50,7 +50,7 @@ export const apolloContainers = {
     {
       options: {
         variables: (props) => {
-          return R.prop('region', props);
+          return R.propOr({}, 'region', props);
         },
         errorPolicy: 'all'
       }

@@ -1,10 +1,9 @@
 
 export {
-  waitForChildComponentRender, propsFromSampleStateAndContainer, makeMockStore,
+  waitForChildComponentRenderTask, propsFromSampleStateAndContainer, makeMockStore,
   makeSampleInitialState, makeSampleStore, mockApolloClient, mockApolloClientWithSamples, shallowWrap, testState,
-  mountWithApolloClientAndReduxProvider, enzymeMountWithMockStore, testPropsTaskMaker, parentPropsForContainerResultTask, makeTestPropsFunction,
+  mountWithApolloClient, enzymeMountWithMockStore, testPropsTaskMaker, parentPropsForContainerResultTask, makeTestPropsFunction,
 } from './componentTestHelpers';
 
 export { apolloContainerTests, makeApolloTestPropsTaskFunction, propsFromParentPropsTask } from './apolloContainerTestHelpers'
-export {expectKeys} from './testHelpers'
-
+export {expectKeys, expectKeysAtPath} from './testHelpers'

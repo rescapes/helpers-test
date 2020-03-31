@@ -9,7 +9,10 @@
  * THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import {taskToPromise} from 'rescape-ramda';
+import {taskToPromise, keyStringToLensPath, reqStrPathThrowing} from 'rescape-ramda';
+import {v} from 'rescape-validate';
+import * as R from 'ramda';
+import PropTypes from 'prop-types';
 
 /**
  * Given a task, wraps it in promise and passes it to Jest's expect.
@@ -52,8 +55,42 @@ export const expectKeys = v(R.curry((keyPaths, obj) => {
     new Set(keyPaths)
   );
   // Required for validated functions
-  return true
+  return true;
 }), [
   ['keys', PropTypes.arrayOf(PropTypes.string).isRequired],
+  ['obj', PropTypes.shape({}).isRequired]
+]);
+
+/**
+ * Convenient way to check if an object has a few expected keys at the given path
+ * @param {[String]} keyPaths keys or dot-separated key paths of the object to check
+ * @param {String} strPath path in the obj to check keyPaths for
+ * @param {Object} obj The object to check
+ * @return {*} Expects the object has the given keys. Throws if expect fails* @return {*}
+ */
+export const expectKeysAtPath = v(R.curry((keyPaths, strPath, obj) => {
+  expect(
+    R.compose(
+      // Put the keyPaths that survive in a set for comparison
+      a => new Set(a),
+      // Filter out keyPaths that don't resolve to a non-nil value
+      obj => R.filter(
+        keyPath => R.complement(R.isNil)(
+          R.view(
+            R.lensPath(keyStringToLensPath(keyPath)),
+            reqStrPathThrowing(strPath, obj)
+          )
+        ),
+        keyPaths
+      )
+    )(obj)
+  ).toEqual(
+    new Set(keyPaths)
+  );
+  // Required for validated functions
+  return true;
+}), [
+  ['keys', PropTypes.arrayOf(PropTypes.string).isRequired],
+  ['strPath', PropTypes.string.isRequired],
   ['obj', PropTypes.shape({}).isRequired]
 ]);
