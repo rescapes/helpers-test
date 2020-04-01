@@ -510,7 +510,7 @@ const _testQueries = (
 
 
 /**
- * Runs the apollo mutations in queryComponents
+ * Runs the apollo mutations in mutationComponents
  * @param schemaTask
  * @param resolvedPropsTask
  * @param mutationComponents
@@ -568,7 +568,9 @@ const _apolloMutationResponsesTask = ({schemaTask, resolvedPropsTask}, mutationC
 
 
 /**
- * Runs an apollo queries test and asserts results
+ * Runs an apollo mutation components to test and asserts results. Note that we also test the mutations
+ * in _testRender by grabbing the render methods apollo component result props mutate functions,
+ * so this is a bit redundant
  * @param config
  * @param config.schemaTask
  * @param config.resolvedPropsTask
