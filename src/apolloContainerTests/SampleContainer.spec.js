@@ -1,7 +1,7 @@
 import * as R from 'ramda';
 import Sample, {c} from './SampleComponent';
 import SampleContainer, {apolloContainers} from './SampleContainer';
-import {propsResultTask} from './SampleContainer.sample';
+import {schemaToPropsResultTask} from './SampleContainer.sample';
 import {remoteSchemaTask, localTestConfig, localTestAuthTask} from 'rescape-apollo';
 import {apolloContainerTests} from '../apolloContainerTestHelpers';
 
@@ -43,14 +43,14 @@ describe('SampleContainer', () => {
       reduxContext: {},
       testContext: {
         errorMaker,
-        // Don't snapshot compare these nondeterministic keys on any object
+        // Don't snapshot compare these non-deterministic keys on any object
         omitKeysFromSnapshots,
         // This value should change when we mutate
         updatedPaths
       }
     },
     container,
-    propsResultTask
+    schemaToPropsResultTask
   );
   test('testComposeRequests', testComposeRequests, 10000);
   test('testQueries', testQueries, 10000);

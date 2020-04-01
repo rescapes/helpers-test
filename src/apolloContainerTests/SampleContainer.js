@@ -1,14 +1,19 @@
-import {makeRegionMutationContainer, makeRegionsQueryContainer, regionOutputParams} from 'rescape-place';
+import {regionOutputParams} from 'rescape-place';
 import Sample from './SampleComponent';
 import {adopt} from 'react-adopt';
-import {apolloHOC} from '../apolloContainerTestHelpers';
-import {makeMutationRequestContainer, makeQueryContainer} from 'rescape-apollo';
+import {apolloHOC, makeMutationRequestContainer, makeQueryContainer} from 'rescape-apollo';
 import * as R from 'ramda';
 
+// The __typename that represent the fields of the Region type. We need these to query by object types rather than
+// just by primitives, e.g. to query by geojson: {feature: {type: 'FeatureCollection'}} to get objects whose
+// geojson type is a 'FeatureCollection'
+// TODO, these should be derived from the remote schema
 export const readInputTypeMapper = {
   //'data': 'DataTypeofLocationTypeRelatedReadInputType'
   'geojson': 'FeatureCollectionDataTypeofRegionTypeRelatedReadInputType'
 };
+
+// Sample query of the region object that is in the rescape-apollo remote schema
 const _makeRegionsQueryContainer = R.curry((apolloConfig, {outputParams}, props) => {
   return makeQueryContainer(
     apolloConfig,
@@ -16,6 +21,8 @@ const _makeRegionsQueryContainer = R.curry((apolloConfig, {outputParams}, props)
     props
   );
 });
+
+// Sample mutation of the region object that is in the rescape-apollo remote schema
 export const _makeRegionMutationContainer = R.curry((apolloConfig, {outputParams}, props) => {
   return makeMutationRequestContainer(
     apolloConfig,
@@ -61,23 +68,12 @@ export const apolloContainers = {
   )
 };
 
-// This produces a function expecting props
-const apolloContainerComposed = adopt(apolloContainers);
-const apolloHoc = apolloHOC(apolloContainerComposed);
+// This produces a component class that expects a props object keyed by the keys in apolloContainers
+// The value at each key is the result of the corresponding query container or the mutate function of the corresponding
+// mutation container
+const AdoptedApolloContainer = adopt(apolloContainers);
+// Wrap AdoptedApolloContainer in
+const apolloHoc = apolloHOC(AdoptedApolloContainer);
 export default apolloHoc(Sample);
 // No apolloHOC would be needed if Sample is just a render function:
 //e(apolloContainerComposed, {}, Sample)
-
-/*
-// TODO I'd like to use async components instead of having makeRegionMutationContainer, etc return Maybes. They
-// should return tasks that we convert to promises
-// Create the GraphQL Container.
-const ContainerWithData = child => asyncComponent({
-  resolve: () => {
-    return taskToPromise(composeGraphqlRequestsTaskMaker(child, {id: 0}));
-  }
-});
-
-const asyncContainer = ContainerWithData(Sample);
-*/
-

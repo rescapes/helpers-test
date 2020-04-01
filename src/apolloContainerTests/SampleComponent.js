@@ -1,11 +1,15 @@
-import React, {Component} from 'react';
+import {Component} from 'react';
 import {
-  nameLookup, e, propsFor, renderChoicepoint, composeViews,
-  renderLoadingDefault, renderErrorDefault
+  composeViews,
+  e,
+  nameLookup,
+  propsFor,
+  renderChoicepoint,
+  renderErrorDefault,
+  renderLoadingDefault
 } from 'rescape-helpers-component';
 import {strPath} from 'rescape-ramda';
 import PropTypes from 'prop-types';
-import * as R from 'ramda';
 
 export const c = nameLookup({
   sample: true,

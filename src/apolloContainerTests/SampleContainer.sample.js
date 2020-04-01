@@ -13,7 +13,8 @@ import {Ok} from 'folktale/result';
 import {parentPropsForContainerResultTask} from '../componentTestHelpers';
 
 /**
- * @file Links sample props from a parent component to a Region component
+ * @file Normally links sample props from a parent component to a Region component. In this case
+ * we just have a Region component with a fake parent
  */
 
 /**
@@ -24,8 +25,11 @@ import {parentPropsForContainerResultTask} from '../componentTestHelpers';
 
 /**
  * Task returning sample parent props from all the way up the view hierarchy
+ * @param {Object} schema. The schema allows us to get props from a theoretical parent component.
+ * We fake the parent here, pretending that our Region component is named 'currentRegion' in the parent component
+ * TODO put in a real parent to demonstrate this
  */
-export const propsResultTask = schema => {
+export const schemaToPropsResultTask = schema => {
   return parentPropsForContainerResultTask(
     {schema},
     // Fake this for now until we have a parent
@@ -60,4 +64,4 @@ export const propsResultTask = schema => {
 /**
  * Task returning sample props from all the way up the view hierarchy
  */
-//export const chainedSamplePropsTask = propsFromParentPropsHelperTask(propsResultTask, samplePropsTaskMaker);
+//export const chainedSamplePropsTask = propsFromParentPropsHelperTask(schemaToPropsResultTask, samplePropsTaskMaker);

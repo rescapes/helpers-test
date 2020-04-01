@@ -10,7 +10,6 @@
  */
 
 import {act} from 'react-dom/test-utils';
-import React from 'react';
 import {mountWithApolloClient, waitForChildComponentRenderTask} from './componentTestHelpers';
 import {e, getClass, loadingCompleteStatus} from 'rescape-helpers-component';
 import PropTypes from 'prop-types';
@@ -24,7 +23,7 @@ import {
   filterWithKeys,
   mapObjToValues,
   mapToMergedResponseAndInputs,
-  mapToNamedResponseAndInputs, mapToObjValue,
+  mapToNamedResponseAndInputs,
   mergeDeep,
   omitDeep,
   reqPathThrowing,
@@ -59,34 +58,36 @@ const createRequestVariables = (apolloComponent, props) => {
  * @param schemaTask
  * @return {*}
  */
-const parentPropsFromTaskFunction = (schemaToPropsResultTask, schemaTask) => composeWithChainMDeep(1, [
-  propsResult => {
-    return of(propsResult.matchWith({
-      Ok: ({value}) => value,
-      Error: ({value: error}) => {
-        // Unacceptable!
-        if (R.is(Object, error)) {
-          // GraphQL error(s)
-          const errors = R.propOr([], 'error', error);
-          R.forEach(error => {
-            console.error(error);
-            if (R.equals(error, R.last(errors)))
-              // throw the last error to quit, at least we logged all of them first
-              throw error;
-          }, errors);
+const parentPropsTask = (schemaToPropsResultTask, schemaTask) => {
+  return composeWithChainMDeep(1, [
+    propsResult => {
+      return of(propsResult.matchWith({
+        Ok: ({value}) => value,
+        Error: ({value: error}) => {
+          // Unacceptable!
+          if (R.is(Object, error)) {
+            // GraphQL error(s)
+            const errors = R.propOr([], 'error', error);
+            R.forEach(error => {
+              console.error(error);
+              if (R.equals(error, R.last(errors)))
+                // throw the last error to quit, at least we logged all of them first
+                throw error;
+            }, errors);
 
+          }
+          throw error;
         }
-        throw error;
-      }
-    }));
-  },
-  schema => {
-    return schemaToPropsResultTask(schema);
-  },
-  () => {
-    return schemaTask;
-  }
-])();
+      }));
+    },
+    schema => {
+      return schemaToPropsResultTask(schema);
+    },
+    () => {
+      return schemaTask;
+    }
+  ])();
+};
 
 /**
  * Runs tests on an apollo React container with the * given config.
@@ -103,7 +104,7 @@ const parentPropsFromTaskFunction = (schemaToPropsResultTask, schemaTask) => com
  * @param {String} [config.childClassErrorName] Optional. A class used in a React component in the named
  * component's renderError method--or any render code called when apollo error is true. Normally only
  * needed for components with queries.
- * @param {Function} [config.propsResultTask] A Function that expects the Apollo schema as the unary
+ * @param {Function} [config.schemaToPropsResultTask] A Function that expects the Apollo schema as the unary
  * argument. Returns a task that resolves to all properties needed by the container.
  * The value must be an Result in case errors occur during loading parent data. An Result.Ok contains
  * successful props and Result.Error indicates an error that causes this function to throw
@@ -138,7 +139,7 @@ const parentPropsFromTaskFunction = (schemaToPropsResultTask, schemaTask) => com
  * @param {[String]} testContext.updatedPaths Paths to values that should change between mutations.
  * This only works for things like update date or instance version number that change every mutation.
  * @param {Object} container
- * @param {Function} propsResultTask A function expecting the schema and resolving to the props in a Task<Result.Ok>
+ * @param {Function} schemaToPropsResultTask A function expecting the schema and resolving to the props in a Task<Result.Ok>
  * parentProps and mutates something used by the queryVariables to make the query fail. This
  * is for testing the renderError part of the component. Only containers with queries should have an expected error state
  *    {
@@ -174,13 +175,19 @@ export const apolloContainerTests = v((context, container, schemaToPropsResultTa
 
     // Optional, A Task that resolves props all the way up the hierarchy chain, ending with props for this
     // container based on the ancestor Containers/Components
-    const resolvedPropsTask = R.ifElse(
-      R.identity,
-      schemaToPropsResultTask => {
-        return parentPropsFromTaskFunction(schemaToPropsResultTask, schemaTask);
+    const resolvedPropsTask = R.map(
+      props => {
+        // Add the test prop which instructs our HOC instance to store the apollo component results for testing
+        return R.merge(props, {_testApolloRenderProps: true});
       },
-      () => of(Result.Ok({}))
-    )(schemaToPropsResultTask);
+      R.ifElse(
+        R.identity,
+        schemaToPropsResultTask => {
+          return parentPropsTask(schemaToPropsResultTask, schemaTask);
+        },
+        () => of({})
+      )(schemaToPropsResultTask)
+    );
 
     // Run these apollo queries
     const queryComponents = filterWithKeys(
@@ -837,18 +844,18 @@ const _testRenderError = (
 /**
  * Given a Task to fetch parent container props and a task to fetch the current container props,
  * Fetches the parent props and then samplePropsTaskMaker with the  parent props
- * @param {Task} chainedParentPropsTask Task that resolves to the parent container props in a Result.Ok
+ * @param {Task<Result>} chainedParentPropsResultTask Task that resolves to the parent container props in a Result.Ok
  * @param {Function} samplePropsTaskMaker 2 arity function expecting parent props.
  * Returns a Task from a container that expects sampleOwnProps resolves to Result.Ok
  * @returns {Task} A Task to asynchronously return the parentContainer props merged with sampleOwnProps
  * in an Result.Ok. If anything goes wrong an Result.Error is returned
  */
-export const propsFromParentPropsTask = v((chainedParentPropsTask, samplePropsTaskMaker) =>
+export const propsFromParentPropsTask = v((chainedParentPropsResultTask, samplePropsTaskMaker) =>
     chainMDeep(2,
       // Chain the Result.Ok value to a Task combine the parent props with the props maker
       // Task Result.Ok -> Task Object
-      parentContainerSampleProps => samplePropsTaskMaker(initialState, parentContainerSampleProps),
-      chainedParentPropsTask
+      parentContainerSampleProps => samplePropsTaskMaker(parentContainerSampleProps),
+      chainedParentPropsResultTask
     ),
   [
     ['initialState', PropTypes.shape().isRequired],
@@ -858,35 +865,4 @@ export const propsFromParentPropsTask = v((chainedParentPropsTask, samplePropsTa
   'propsFromParentPropsTask'
 );
 
-// Pass the component that has a render function that expects the two Apollo request results
-// TODO apolloContainerComposed expects a render function for its children. Can this be a component class
-// containing a render function?
-export const apolloHOC = R.curry((AdoptedApolloContainer, Component) => {
-  return class extends React.Component {
-    render() {
-      const self = this;
-      return e(AdoptedApolloContainer, this.props,
-        // The Adopted apollo container expects a render function at the children prop
-        // This function provides Component with the results of the Apollo requests
-        props => {
-          // Set this for tests so we can call the mutate functions passed by apoll
-          self._apolloRenderProps = props;
-          return e(Component, props);
-        }
-      );
-    }
-  };
-});
 
-/**
- * Given a apolloContainers keyed by render function prop label and valued by a function returning
- * and apollo component, composes the apolloContainers into an HOC that expects a child component containing
- * a render method that expects each prop of the apolloContainers object
- * @param {Object} apolloContainers
- * @param {Object} Component
- * @returns {Object} Component composed with the apolloContainers
- * @type {any}
- */
-export const apolloContainersHOC = R.curry((apolloContainers, Component) => {
-  return apolloHOC(apolloContainers, Component);
-});
