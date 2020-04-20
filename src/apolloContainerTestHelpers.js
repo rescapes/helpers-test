@@ -33,19 +33,11 @@ import * as R from 'ramda';
 import Result from 'folktale/result';
 import {graphql} from 'graphql';
 import {loggers} from 'rescape-log';
+import {apolloQueryResponsesTask, createRequestVariables} from 'rescape-apollo';
 
 const log = loggers.get('rescapeDefault');
 
-/**
- *
- * Use given props to call the function at requests.arg.options, and then get the .variables of the returned value
- * @param {Function} apolloComponent Expects props and returns an Apollo Component
- * @param {Object} props
- * @returns {Object} variables to use for the query
- */
-const createRequestVariables = (apolloComponent, props) => {
-  return reqStrPathThrowing('props.variables', apolloComponent(props));
-};
+
 
 
 /**
@@ -54,11 +46,11 @@ const createRequestVariables = (apolloComponent, props) => {
  * samplePropsResultTask returns and Result so that the an error
  * in the query can be processed by detected a Result.Error value, but here
  * we only accept a Result.Ok
- * @param {function} schemaToPropsResultTask Expects a schema and returns a Task Result.Ok|Result.Error
- * @param schemaTask
+ * @param {function} apolloConfigTaskToPropsResultTask Expects a schema task and returns a Task Result.Ok|Result.Error
+ * @param {Task} apolloConfigTask Resolves to a {schema, apollo}
  * @return {*}
  */
-const parentPropsTask = (schemaToPropsResultTask, schemaTask) => {
+const parentPropsTask = (apolloConfigTaskToPropsResultTask, apolloConfigTask) => {
   return composeWithChainMDeep(1, [
     propsResult => {
       return of(propsResult.matchWith({
@@ -80,13 +72,10 @@ const parentPropsTask = (schemaToPropsResultTask, schemaTask) => {
         }
       }));
     },
-    schema => {
-      return schemaToPropsResultTask(schema);
+    apolloConfigTask => {
+      return apolloConfigTaskToPropsResultTask(apolloConfigTask);
     },
-    () => {
-      return schemaTask;
-    }
-  ])();
+  ])(apolloConfigTask);
 };
 
 /**
@@ -162,8 +151,6 @@ export const apolloContainerTests = v((context, container, schemaToPropsResultTa
       },
       apolloContext: {
         apolloConfigTask,
-        // TODO probably not needed because of apolloConfigTask -> apolloClient
-        schemaTask,
         apolloContainers
       },
       testContext: {
@@ -182,8 +169,8 @@ export const apolloContainerTests = v((context, container, schemaToPropsResultTa
       },
       R.ifElse(
         R.identity,
-        schemaToPropsResultTask => {
-          return parentPropsTask(schemaToPropsResultTask, schemaTask);
+        apolloConfigTaskToPropsResultTask => {
+          return parentPropsTask(apolloConfigTaskToPropsResultTask, apolloConfigTask);
         },
         () => of({})
       )(schemaToPropsResultTask)
@@ -214,7 +201,7 @@ export const apolloContainerTests = v((context, container, schemaToPropsResultTa
       composeWithChain([
         mapToMergedResponseAndInputs(
           // Resolves to {schema, apolloClient}
-          () => schemaTask
+          () => apolloConfigTask
         ),
         mapToNamedResponseAndInputs('props',
           () => resolvedPropsTask
@@ -238,7 +225,7 @@ export const apolloContainerTests = v((context, container, schemaToPropsResultTa
      */
     const testQueries = done => _testQueries(
       {
-        schemaTask,
+        apolloConfigTask,
         resolvedPropsTask,
         omitKeysFromSnapshots
       },
@@ -251,7 +238,7 @@ export const apolloContainerTests = v((context, container, schemaToPropsResultTa
      */
     const testMutations = done => _testMutations(
       {
-        schemaTask,
+        apolloConfigTask,
         resolvedPropsTask,
         omitKeysFromSnapshots
       },
@@ -267,7 +254,7 @@ export const apolloContainerTests = v((context, container, schemaToPropsResultTa
     const testRender = done => {
       _testRender(
         {
-          schemaTask,
+          apolloConfigTask,
           resolvedPropsTask,
           componentName,
           childClassDataName,
@@ -287,7 +274,7 @@ export const apolloContainerTests = v((context, container, schemaToPropsResultTa
      */
     const testRenderError = done => {
       _testRenderError({
-        schemaTask,
+        apolloConfigTask,
         resolvedPropsTask,
         componentName,
         childClassDataName,
@@ -316,7 +303,7 @@ export const apolloContainerTests = v((context, container, schemaToPropsResultTa
           })
         }),
         apolloContext: PropTypes.shape({
-          schemaTask: PropTypes.shape().isRequired,
+          apolloConfigTask: PropTypes.shape().isRequired,
           requests: PropTypes.shape()
         }),
         testContext: PropTypes.shape({
@@ -403,70 +390,10 @@ export const makeApolloTestPropsTaskFunction = R.curry((schemaOrTask, sampleConf
   )({schemaOrTask, props});
 });
 
-/**
- * Runs the apollo queries in queryComponents
- * @param schemaTask
- * @param resolvedPropsTask
- * @param {Function} queryComponents
- * @return {*}
- * @private
- */
-const _apolloQueryResponsesTask = ({schemaTask, resolvedPropsTask}, queryComponents) => {
-  // Task Object -> Task
-  return composeWithChainMDeep(1, [
-    // Wait for all the queries to finish
-    ({queryComponents, mappedProps, apolloClient}) => {
-      return waitAll(
-        mapObjToValues(
-          query => {
-            // Create variables for the current graphqlQueryObj by sending props to its configuration
-            // Add a render function that returns null to prevent react from complaining
-            // Normally the render function creates the child components, passing the Apollo request results as props
-            const props = R.merge(mappedProps, {render: props => null});
-            const queryVariables = createRequestVariables(query, props);
-            log.debug(JSON.stringify(queryVariables));
-            const task = fromPromised(
-              () => {
-                return apolloClient.query({
-                  // pass props the query so we can get the Query component and extract the query string
-                  query: reqStrPathThrowing('props.query', query(props)),
-                  // queryVariables are called with props to give us the variables for our query. This is just like Apollo
-                  // does, accepting props to allow the container to form the variables for the query
-                  variables: queryVariables
-                });
-              }
-            )();
-            return task;
-          },
-          queryComponents
-        )
-      );
-    },
-    // Resolve the schemaTask
-    mapToMergedResponseAndInputs(
-      ({}) => {
-        return schemaTask;
-      }
-    ),
-    // Resolve the parent props and map using initialState
-    // TODO this used to be here for Redux
-    mapToNamedResponseAndInputs('mappedProps',
-      ({props}) => {
-        return of(props);
-      }
-    ),
-    // Resolve the props from the task
-    mapToNamedResponseAndInputs('props',
-      () => {
-        return resolvedPropsTask;
-      }
-    )
-  ])({schemaTask, resolvedPropsTask, queryComponents});
-};
 
 /**
  * Runs an apollo queries test and asserts results
- * @param schemaTask
+ * @param apolloConfigTask
  * @param resolvedPropsTask
  * @param mapStateToProps
  * @param queryComponents
@@ -476,7 +403,7 @@ const _apolloQueryResponsesTask = ({schemaTask, resolvedPropsTask}, queryCompone
  */
 const _testQueries = (
   {
-    schemaTask,
+    apolloConfigTask,
     resolvedPropsTask,
     omitKeysFromSnapshots
   },
@@ -489,26 +416,25 @@ const _testQueries = (
     console.warn("Attempt to run testQuery when query or queryVariables was not specified. Does your component actually need this test?");
     return;
   }
-  const apolloQueryResponsesTask = _apolloQueryResponsesTask({
-    schemaTask,
+  apolloQueryResponsesTask({
+    apolloConfigTask,
     resolvedPropsTask
-  }, queryComponents);
-  apolloQueryResponsesTask.run().listen(
+  }, queryComponents).run().listen(
     defaultRunConfig({
-      onResolved: dataSets => {
+      onResolved: responsesByKey => {
         // If we resolve the task, make sure there is no data.error
         R.forEach(
           data => {
             if (data.error)
               errors.push(data.error);
           },
-          dataSets
+          responsesByKey
         );
         expect(R.map(
           dataSet => {
             return omitDeep(omitKeysFromSnapshots, dataSet);
           },
-          dataSets
+          R.values(responsesByKey)
         )).toMatchSnapshot();
       }
     }, errors, done)
@@ -518,13 +444,13 @@ const _testQueries = (
 
 /**
  * Runs the apollo mutations in mutationComponents
- * @param schemaTask
+ * @param apolloConfigTask
  * @param resolvedPropsTask
  * @param mutationComponents
  * @return {*}
  * @private
  */
-const _apolloMutationResponsesTask = ({schemaTask, resolvedPropsTask}, mutationComponents) => {
+const _apolloMutationResponsesTask = ({apolloConfigTask, resolvedPropsTask}, mutationComponents) => {
   // Task Object -> Task
   return R.composeK(
     // Wait for all the mutations to finish
@@ -558,10 +484,10 @@ const _apolloMutationResponsesTask = ({schemaTask, resolvedPropsTask}, mutationC
         )
       );
     },
-    // Resolve the schemaTask
+    // Resolve the apolloConfigTask
     mapToMergedResponseAndInputs(
       ({}) => {
-        return schemaTask;
+        return apolloConfigTask;
       }
     ),
     // Resolve the props from the task
@@ -570,7 +496,7 @@ const _apolloMutationResponsesTask = ({schemaTask, resolvedPropsTask}, mutationC
         return resolvedPropsTask;
       }
     )
-  )({schemaTask, resolvedPropsTask, mutationComponents});
+  )({apolloConfigTask, resolvedPropsTask, mutationComponents});
 };
 
 
@@ -579,7 +505,7 @@ const _apolloMutationResponsesTask = ({schemaTask, resolvedPropsTask}, mutationC
  * in _testRender by grabbing the render methods apollo component result props mutate functions,
  * so this is a bit redundant
  * @param config
- * @param config.schemaTask
+ * @param config.apolloConfigTask
  * @param config.resolvedPropsTask
  * @param config.omitKeysFromSnapshots List of keys to remove before doing a snapshot test
  * @param mutationComponents
@@ -589,7 +515,7 @@ const _apolloMutationResponsesTask = ({schemaTask, resolvedPropsTask}, mutationC
  */
 const _testMutations = (
   {
-    schemaTask,
+    apolloConfigTask,
     resolvedPropsTask,
     omitKeysFromSnapshots
   },
@@ -605,7 +531,7 @@ const _testMutations = (
   // TODO Fix to work with mutationComponents and use Enzyme
   const apolloQueryResponsesTask = _apolloMutationResponsesTask(
     {
-      schemaTask,
+      apolloConfigTask,
       resolvedPropsTask
     },
     mutationComponents
@@ -632,7 +558,7 @@ const _testMutations = (
  * after queries have run, finally all mutationComponents' mutate function is called and we check
  * that values were updated
  * @param {Object} config
- * @param {Task} config.schemaTask Resolves to a schema and apolloClient. The schema isn't needed but the apolloClient
+ * @param {Task} config.apolloConfigTask Resolves to a schema and apolloClient. The schema isn't needed but the apolloClient
  * is used to create an Apollo Provider component
  * @param {Task} config.resolvedPropsTask Task that resolves to test props to pass to the container. These
  * are in turned passed to the composed Apollo components and reach the component itself
@@ -660,7 +586,7 @@ const _testMutations = (
  */
 const _testRender = (
   {
-    schemaTask,
+    apolloConfigTask,
     resolvedPropsTask,
     componentName,
     childClassDataName,
@@ -749,14 +675,14 @@ const _testRender = (
           return {containerInstance, component, childComponent};
         });
       }),
-    // Resolve the schemaTask. This resolves to {schema, apolloClient}
+    // Resolve the apolloConfigTask. This resolves to {schema, apolloClient}
     mapToMergedResponseAndInputs(
-      ({schemaTask}) => schemaTask
+      ({apolloConfigTask}) => apolloConfigTask
     ),
     mapToNamedResponseAndInputs('props',
       ({resolvedPropsTask}) => resolvedPropsTask
     )
-  ])({schemaTask, resolvedPropsTask, componentName, childClassDataName}).run().listen(
+  ])({apolloConfigTask, resolvedPropsTask, componentName, childClassDataName}).run().listen(
     defaultRunConfig({
       onResolved: ({
                      props, schema, apolloClient, containerInstance, component, childComponent,
@@ -782,7 +708,7 @@ const _testRender = (
 
 /**
  * Tests render errors results and asserts
- * @param schemaTask
+ * @param apolloConfigTask
  * @param resolvedPropsTask
  * @param componentName
  * @param childClassDataName
@@ -795,7 +721,7 @@ const _testRender = (
  */
 const _testRenderError = (
   {
-    schemaTask, resolvedPropsTask, componentName, childClassDataName, childClassLoadingName, childClassErrorName, errorMaker
+    apolloConfigTask, resolvedPropsTask, componentName, childClassDataName, childClassLoadingName, childClassErrorName, errorMaker
   },
   container,
   done
@@ -821,9 +747,9 @@ const _testRenderError = (
       });
       return tsk;
     },
-    // Resolve the schemaTask. This resolves to {schema, apolloClient}
+    // Resolve the apolloConfigTask. This resolves to {schema, apolloClient}
     mapToMergedResponseAndInputs(
-      ({schemaTask}) => schemaTask
+      ({apolloConfigTask}) => apolloConfigTask
     ),
     mapToNamedResponseAndInputs('props',
       ({resolvedPropsTask}) => R.map(
@@ -831,7 +757,7 @@ const _testRenderError = (
         resolvedPropsTask
       )
     )
-  )({schemaTask, resolvedPropsTask, componentName, childClassDataName}).run().listen(
+  )({apolloConfigTask, resolvedPropsTask, componentName, childClassDataName}).run().listen(
     defaultRunConfig({
       // The error component should have an error message as props.children
       onResolved: childComponent => {

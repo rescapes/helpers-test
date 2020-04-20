@@ -87,7 +87,8 @@ Sample.views = composeViews(
 );
 
 /**
- * Loading, Error, or Data based on the props
+ * Loading, Error, or Data based on the props.
+ * Our propConfig instructs renderChoicepoint to evaluate the loading state of the query and mutation
  */
 Sample.choicepoint = renderChoicepoint(
   {

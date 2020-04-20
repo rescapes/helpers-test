@@ -2,7 +2,7 @@ import * as R from 'ramda';
 import Sample, {c} from './SampleComponent';
 import SampleContainer, {apolloContainers} from './SampleContainer';
 import {schemaToPropsResultTask} from './SampleContainer.sample';
-import {remoteSchemaTask, localTestConfig, localTestAuthTask} from 'rescape-apollo';
+import {localTestAuthTask} from 'rescape-apollo';
 import {apolloContainerTests} from '../apolloContainerTestHelpers';
 
 // Test this container
@@ -34,10 +34,7 @@ describe('SampleContainer', () => {
       },
       apolloContext: {
         state: {},
-        apolloConfigTask: localTestAuthTask,
-        // Use the rescape-apollo localTestConfig, since this module doesn't need it's own configuration
-        // TODO I'm guessing I no longer need this if I pass the apolloContainerTask
-        schemaTask: remoteSchemaTask(localTestConfig),
+        apolloConfigTask: localTestAuthTask(),
         apolloContainers
       },
       reduxContext: {},
@@ -58,19 +55,4 @@ describe('SampleContainer', () => {
   test('testRender', testRender, 10000);
   test('testRenderError', testRenderError, 100000);
 });
-
-/*
-const ContainerWithData = child => R.composeK(
-  child,
-  mapToNamedResponseAndInputs(
-    'queryTwo',
-    ({props, value: queryOne}) => query({query: queryTwo}),
-  ),
-  mapToNamedResponseAndInputs(
-    'queryOne',
-    props => query({query: queryOne})
-
-);
-ContainerWithData(Sample);
-*/
 
