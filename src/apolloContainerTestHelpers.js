@@ -605,8 +605,9 @@ const _testRender = (
       // We don't actually change the values explicitly when we mutate here, so we assert it worked
       // by checking the object's update timestamp at the end of the test
       ({props, component}) => {
-        // Access the special field we set for testing. This field is set by our HOC render function
-        // that receive the apollo requests results and renders the childComponent. We can't
+        // Access the special field we set for testing. This field is set by our the render function
+        // given to the AdoptedApolloContainer
+        // that receives the apollo requests results and renders the childComponent. We can't
         // access the values in the childComponent because they are passed to it's render function
         const apolloRenderProps = component.instance()._apolloRenderProps;
         return R.map(

@@ -11,6 +11,13 @@
 import {of} from 'folktale/concurrency/task';
 import {Ok} from 'folktale/result';
 import {parentPropsForContainerResultTask} from '../componentTestHelpers';
+import {composeWithChain, composeWithMap, mapToNamedPathAndInputs, mapToNamedResponseAndInputs} from 'rescape-ramda';
+import {
+  makeCurrentUserStateQueryContainer,
+  userRegionsOutputParamsFragmentDefaultOnlyIds,
+  userStateOutputParamsCreator
+} from './sampleStores/userStateStore';
+import {regionOutputParams} from './sampleStores/regionStore';
 
 /**
  * @file Normally links sample props from a parent component to a Region component. In this case
@@ -25,36 +32,53 @@ import {parentPropsForContainerResultTask} from '../componentTestHelpers';
 
 /**
  * Task returning sample parent props from all the way up the view hierarchy
- * @param {Object} schema. The schema allows us to get props from a theoretical parent component.
+ * @param {Object} apolloConfigTask. The apolloConfigTask allows us to get props from a theoretical parent component.
  * We fake the parent here, pretending that our Region component is named 'currentRegion' in the parent component
  * TODO put in a real parent to demonstrate this
  */
-export const schemaToPropsResultTask = schema => {
+export const schemaToPropsResultTask = apolloConfigTask => {
   return parentPropsForContainerResultTask(
-    {schema},
+    {apolloConfigTask},
     // Fake this for now until we have a parent
-    schema => of(Ok({
-      currentRegion: {
-        // Some props
-        style: {
-          width: 500,
-          height: 500
-        },
-        region: {
-          // This matches a testConfig Region
-          id: 1,
-          key: 'MyBuddy',
-          name: 'My Buddy',
-          data: {
-            mapbox: {
-              viewport: {
-                zoom: 10
+    apolloConfigTask => composeWithChain([
+      ({userState}) => of(Ok({
+        // currentRegion corresponds to the parent view name we are giving props to
+        currentRegion: {
+          // Some props
+          style: {
+            width: 500,
+            height: 500
+          },
+          region: {
+            // This matches a testConfig Region
+            id: 1,
+            key: 'MyBuddy',
+            name: 'My Buddy',
+            data: {
+              mapbox: {
+                viewport: {
+                  zoom: 10
+                }
               }
             }
-          }
-        }
-      }
-    })),
+          },
+          userState
+        },
+      })),
+      mapToNamedPathAndInputs('userState', 'data.userStates.0',
+      (apolloConfig) => {
+        return makeCurrentUserStateQueryContainer(
+          apolloConfig,
+          {
+            outputParams: userStateOutputParamsCreator(
+              userRegionsOutputParamsFragmentDefaultOnlyIds(regionOutputParams)
+            )
+          },
+          {}
+        );
+      }),
+      () => apolloConfigTask
+    ])({}),
     // Normally this is the parent views function
     props => ({views: props}),
     'currentRegion'

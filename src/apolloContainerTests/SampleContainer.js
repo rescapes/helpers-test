@@ -3,6 +3,8 @@ import Sample from './SampleComponent';
 import {adopt} from 'react-adopt';
 import {apolloHOC, makeMutationRequestContainer, makeQueryContainer} from 'rescape-apollo';
 import * as R from 'ramda';
+import {userRegionsQueryContainer} from './sampleStores/userRegionStore';
+import {regionOutputParamsMinimum} from './sampleStores/regionStore';
 
 // The __typename that represent the fields of the Region type. We need these to query by object types rather than
 // just by primitives, e.g. to query by geojson: {feature: {type: 'FeatureCollection'}} to get objects whose
@@ -53,7 +55,30 @@ export const apolloContainers = {
       outputParams: regionOutputParams
     }
   ),
-  mutateRegion: _makeRegionMutationContainer(
+  // Test sequential queries
+  queryUserRegions: propSets => {
+    return userRegionsQueryContainer(
+      {
+        options: {
+          variables: props => {
+            // The props given to this are the userState id and user
+            // Pick the id of the UserState
+            return R.pick(['id'], props); //R.map(R.pick(['id']), R.pick(['userState'], props));
+          },
+          // Pass through error so we can handle it in the component
+          errorPolicy: 'all'
+        }
+      },
+      {
+        // We currently query for the region id, key, and name
+        // We might want the geojson too so we can display it to the user on a map
+        regionOutputParams: regionOutputParamsMinimum
+      },
+      // We just need the userState
+      R.pick(['userState'], propSets)
+    );
+  },
+  mutateRegion: props => _makeRegionMutationContainer(
     {
       options: {
         variables: (props) => {
@@ -65,7 +90,7 @@ export const apolloContainers = {
     {
       outputParams: regionOutputParams
     }
-  )
+  )(props)
 };
 
 // This produces a component class that expects a props object keyed by the keys in apolloContainers
