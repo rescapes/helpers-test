@@ -27,7 +27,6 @@ import {of, task} from 'folktale/concurrency/task';
 import * as Result from 'folktale/result';
 import {v} from 'rescape-validate';
 import * as R from 'ramda';
-import {Provider as ReduxProvider} from 'react-redux';
 import {e} from 'rescape-helpers-component';
 import {ApolloProvider} from '@apollo/react-hooks';
 
@@ -143,18 +142,18 @@ export const mountWithReduxProvider = (store, component, opts) => {
  * Wraps a component in an Apollo Provider for testing
  * @param apolloConfig
  * @param apolloConfig.apolloClient
- * @param component
+ * @param componentElement A React component element
  * @param props for the component
  * @return {*}
  */
-export const mountWithApolloClient = v((apolloConfig, component) => {
+export const mountWithApolloClient = v((apolloConfig, compoenntElement) => {
   let c;
   act(() => {
     c = mount(
       e(
         ApolloProvider,
         {client: reqStrPathThrowing('apolloClient', apolloConfig)},
-        component
+        compoenntElement
       )
     );
   });
@@ -231,17 +230,18 @@ export const waitForChildComponentRenderTask = (wrapper, componentName, childCla
   return task(resolver => {
     waitForChild(component)
       .then(component => {
-        return resolver.resolve(component.find(childClassNameStr).first());
+        return resolver.resolve({wrapper, childComponent: component.find(childClassNameStr)});
       })
       .catch(error => {
           const comp = wrapper.find(componentName);
           if (comp.length) {
-            return resolver.reject(new Error(`${error.message}
+            const errorMessage = `${error.message}
         \n${error.stack}
         \n${comp.debug()}
         \n${inspect(comp.props().data, {depth: 3})}
-      `
-            ));
+      `;
+            console.log(errorMessage)
+            return resolver.reject(new Error(errorMessage));
           } else {
             throw resolver.reject(error);
           }

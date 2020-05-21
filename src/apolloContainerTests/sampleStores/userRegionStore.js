@@ -44,7 +44,7 @@ export const userRegionsQueryContainer = v(R.curry(
     return makeUserStateScopeObjsQueryContainer(
       apolloConfig,
       {
-        scopeQueryTask: makeRegionsQueryContainer,
+        scopeQueryContainer: makeRegionsQueryContainer,
         scopeName: 'region',
         readInputTypeMapper: userStateReadInputTypeMapper,
         userStateOutputParamsCreator: scopeOutputParams => {
@@ -55,7 +55,7 @@ export const userRegionsQueryContainer = v(R.curry(
         },
         scopeOutputParams: regionOutputParams || defaultRegionOutputParams
       },
-      {userState: reqStrPathThrowing('userState', propSets), scope: strPathOr(null, 'region', propSets)}
+      propSets
     )
   }),
   [

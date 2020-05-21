@@ -4,9 +4,13 @@ import SampleContainer, {apolloContainers} from './SampleContainer';
 import {schemaToPropsResultTask} from './SampleContainer.sample';
 import {localTestAuthTask} from 'rescape-apollo';
 import {apolloContainerTests} from '../apolloContainerTestHelpers';
+import AdoptedApolloContainer from './SampleContainer';
 
 // Test this container
 const container = SampleContainer;
+// Test container with this render component
+const component = Sample
+
 // Find this React component
 const componentName = 'Sample';
 // Find this class in the data renderer
@@ -18,7 +22,7 @@ const childClassErrorName = c.sampleError;
 // Error maker creates an unknown id that can't be queried
 const errorMaker = parentProps => R.set(R.lensPath(['region', 'id']), 'foo', parentProps);
 const omitKeysFromSnapshots = ['id', 'createdAt', 'updatedAt'];
-const updatedPaths = ['queryRegions.data.regions.0.updatedAt'];
+const updatedPaths = ['mutateRegion.data.regions.0.updatedAt'];
 
 describe('SampleContainer', () => {
 
@@ -47,12 +51,13 @@ describe('SampleContainer', () => {
       }
     },
     container,
+    component,
     schemaToPropsResultTask
   );
-  test('testComposeRequests', testComposeRequests, 10000);
-  test('testQueries', testQueries, 10000);
+  test('testComposeRequests', testComposeRequests, 1000000);
+  test('testQueries', testQueries, 1000000);
   test('testMutations', testMutations, 1000000);
-  test('testRender', testRender, 10000);
+  test('testRender', testRender, 1000000);
   test('testRenderError', testRenderError, 100000);
 });
 

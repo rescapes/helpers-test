@@ -50,7 +50,7 @@ export const schemaToPropsResultTask = apolloConfigTask => {
             height: 500
           },
           region: {
-            // This matches a testConfig Region
+            // This matches a testConfig Region (TODO, it does?)
             id: 1,
             key: 'MyBuddy',
             name: 'My Buddy',
@@ -62,7 +62,9 @@ export const schemaToPropsResultTask = apolloConfigTask => {
               }
             }
           },
-          userState
+          userState,
+          // scope limits queryUserRegions to these params
+          scope: {name: 'Earth'}
         },
       })),
       mapToNamedPathAndInputs('userState', 'data.userStates.0',

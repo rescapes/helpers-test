@@ -35,11 +35,17 @@ export const _makeRegionMutationContainer = R.curry((apolloConfig, {outputParams
     props
   );
 });
+const optionalApolloClient = (propSets, obj) => {
+  return R.merge(
+    R.ifElse(R.prop('apolloClient'), apolloClient => ({apolloClient}), () => {})(propSets),
+    obj
+  );
+};
 
 // Each query and mutation expects a container to compose then props
 export const apolloContainers = {
   // Creates a function expecting a component to wrap and props
-  queryRegions: _makeRegionsQueryContainer(
+  queryRegions: props => _makeRegionsQueryContainer(
     {
       options: {
         variables: (props) => {
@@ -53,12 +59,14 @@ export const apolloContainers = {
     },
     {
       outputParams: regionOutputParams
-    }
+    },
+    props
   ),
+
   // Test sequential queries
-  queryUserRegions: propSets => {
+  queryUserRegions: props => {
     return userRegionsQueryContainer(
-      {
+      optionalApolloClient(props, {
         options: {
           variables: props => {
             // The props given to this are the userState id and user
@@ -68,16 +76,17 @@ export const apolloContainers = {
           // Pass through error so we can handle it in the component
           errorPolicy: 'all'
         }
-      },
+      }),
       {
         // We currently query for the region id, key, and name
         // We might want the geojson too so we can display it to the user on a map
         regionOutputParams: regionOutputParamsMinimum
       },
-      // We just need the userState
-      R.pick(['userState'], propSets)
+      // We just need the userState and scope
+      R.pick(['_testApolloRenderProps', 'render', 'children', 'userState', 'scope'], props)
     );
   },
+
   mutateRegion: props => _makeRegionMutationContainer(
     {
       options: {
@@ -98,7 +107,5 @@ export const apolloContainers = {
 // mutation container
 const AdoptedApolloContainer = adopt(apolloContainers);
 // Wrap AdoptedApolloContainer in
-const apolloHoc = apolloHOC(AdoptedApolloContainer);
-export default apolloHoc(Sample);
-// No apolloHOC would be needed if Sample is just a render function:
-//e(apolloContainerComposed, {}, Sample)
+//const apolloHoc = apolloHOC(AdoptedApolloContainer);
+export default AdoptedApolloContainer

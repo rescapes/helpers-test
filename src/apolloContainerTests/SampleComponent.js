@@ -98,7 +98,8 @@ Sample.choicepoint = renderChoicepoint(
   },
   {
     queryRegions: true,
-    mutateRegions: true
+    queryUserRegions: true,
+    mutateRegion: true
   }
 );
 
@@ -108,8 +109,8 @@ Sample.propTypes = {
 };
 
 Sample.propTypes = {
-  queryRegions: PropTypes.shape({}).isRequired,
-  mutateRegion: PropTypes.func.isRequired
+  //queryRegions: PropTypes.shape({}).isRequired,
+  //mutateRegion: PropTypes.func.isRequired
 };
 
 export default Sample;
