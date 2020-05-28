@@ -13,31 +13,22 @@ import * as R from 'ramda';
 import {v} from 'rescape-validate';
 import {
   capitalize,
-  compact, composeWithChain,
-  composeWithChainMDeep, mapOrObjToNamedResponseAndInputs,
-  mapToNamedPathAndInputs, mapToNamedResponseAndInputs,
+  compact,
+  composeWithChainMDeep,
+  mapToNamedPathAndInputs,
   pickDeepPaths,
-  reqPathThrowing, strPathOr,
-  strPathOrNullOk, toNamedResponseAndInputs
+  reqPathThrowing,
+  strPathOr
 } from 'rescape-ramda';
-import {of} from 'folktale/concurrency/task';
 import {
-  apolloHOC, componentRenderedWithChildrenRenderProp, composeWithComponentMaybeOrTaskChain,
-  containerForApolloType, getRenderPropFunction,
+  composeWithComponentMaybeOrTaskChain,
+  containerForApolloType,
+  getRenderPropFunction,
   makeQueryContainer,
-  mapQueryContainerToNamedResultAndInputs, nameComponent
+  nameComponent
 } from 'rescape-apollo';
 import PropTypes from 'prop-types';
 import {makeUserStateMutationContainer} from './userStateStore';
-import * as Maybe from 'folktale/maybe';
-import {adopt} from 'react-adopt';
-import Result from 'folktale/result';
-import {componentAndChildRenderedWithRenderProp} from 'rescape-apollo';
-import renderProps from 'render-props';
-import {composeForComponentOrTask, maybeForComponent} from '../../testHelpers';
-import {chainMDeep} from 'rescape-ramda';
-import {mapMonadByConfig} from 'rescape-ramda/lib/monadHelpers';
-import {getRenderProp} from 'rescape-apollo';
 
 /**
  * returns userState.data.user[Project|Region]` based on scopeName = 'project' \ 'region'
