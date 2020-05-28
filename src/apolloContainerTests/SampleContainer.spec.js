@@ -22,7 +22,8 @@ const childClassErrorName = c.sampleError;
 // Error maker creates an unknown id that can't be queried
 const errorMaker = parentProps => R.set(R.lensPath(['region', 'id']), 'foo', parentProps);
 const omitKeysFromSnapshots = ['id', 'createdAt', 'updatedAt'];
-const updatedPaths = ['mutateRegion.data.regions.0.updatedAt'];
+// We expect calling mutateRegion to update the updatedAt of the queryRegions response
+const updatedPaths = {mutateRegion: ['queryRegions.data.regions.0.updatedAt']};
 
 describe('SampleContainer', () => {
 
