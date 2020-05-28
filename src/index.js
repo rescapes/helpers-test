@@ -5,4 +5,3 @@ export {
 } from './componentTestHelpers';
 
 export { apolloContainerTests, makeApolloTestPropsTaskFunction, propsFromParentPropsTask } from './apolloContainerTestHelpers'
-export {expectKeys, expectKeysAtPath} from './testHelpers'

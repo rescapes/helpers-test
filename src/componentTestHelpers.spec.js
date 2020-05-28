@@ -11,7 +11,6 @@
 
 import {gql} from 'apollo-client-preset';
 import {graphql} from 'react-apollo';
-import {connect} from 'react-redux';
 import * as R from 'ramda';
 import {e} from 'rescape-helpers-component';
 import React from 'react';
@@ -22,8 +21,6 @@ import {
   propsFromSampleStateAndContainer,
   testState
 } from './componentTestHelpers';
-import {remoteApolloClientTask, resolvedRemoteSchemaTask} from './schemaHelpers';
-import {remoteConfig} from './remoteConfig';
 import {localTestConfig, remoteSchemaTask} from 'rescape-apollo';
 
 const createInitialState = config => R.merge({
