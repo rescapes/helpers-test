@@ -1,10 +1,7 @@
-import {regionOutputParams} from 'rescape-place';
-import Sample from './SampleComponent';
+import {regionOutputParams, regionOutputParamsMinimum, userRegionsQueryContainer} from 'rescape-place';
 import {adopt} from 'react-adopt';
-import {apolloHOC, makeMutationRequestContainer, makeQueryContainer} from 'rescape-apollo';
 import * as R from 'ramda';
-import {userRegionsQueryContainer} from './sampleStores/userRegionStore';
-import {regionOutputParamsMinimum} from './sampleStores/regionStore';
+import {makeMutationRequestContainer, makeQueryContainer} from 'rescape-apollo';
 
 // The __typename that represent the fields of the Region type. We need these to query by object types rather than
 // just by primitives, e.g. to query by geojson: {feature: {type: 'FeatureCollection'}} to get objects whose

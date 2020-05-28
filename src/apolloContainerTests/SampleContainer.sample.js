@@ -11,13 +11,13 @@
 import {of} from 'folktale/concurrency/task';
 import {Ok} from 'folktale/result';
 import {parentPropsForContainerResultTask} from '../componentTestHelpers';
-import {composeWithChain, composeWithMap, mapToNamedPathAndInputs, mapToNamedResponseAndInputs} from 'rescape-ramda';
+import {composeWithChain, mapToNamedPathAndInputs} from 'rescape-ramda';
 import {
   makeCurrentUserStateQueryContainer,
+  regionOutputParams,
   userRegionsOutputParamsFragmentDefaultOnlyIds,
   userStateOutputParamsCreator
-} from './sampleStores/userStateStore';
-import {regionOutputParams} from './sampleStores/regionStore';
+} from 'rescape-place';
 
 /**
  * @file Normally links sample props from a parent component to a Region component. In this case

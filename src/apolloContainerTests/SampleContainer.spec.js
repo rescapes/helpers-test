@@ -4,7 +4,6 @@ import SampleContainer, {apolloContainers} from './SampleContainer';
 import {schemaToPropsResultTask} from './SampleContainer.sample';
 import {localTestAuthTask} from 'rescape-apollo';
 import {apolloContainerTests} from '../apolloContainerTestHelpers';
-import AdoptedApolloContainer from './SampleContainer';
 
 // Test this container
 const container = SampleContainer;
