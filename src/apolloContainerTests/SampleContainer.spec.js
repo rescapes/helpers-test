@@ -1,7 +1,7 @@
 import * as R from 'ramda';
 import Sample, {c} from './SampleComponent';
 import SampleContainer, {apolloContainers} from './SampleContainer';
-import {schemaToPropsResultTask} from './SampleContainer.sample';
+import {apolloConfigToPropsResultTask} from './SampleContainer.sample';
 import {localTestAuthTask} from 'rescape-apollo';
 import {apolloContainerTests} from '../apolloContainerTestHelpers';
 
@@ -20,9 +20,9 @@ const childClassLoadingName = c.sampleLoading;
 const childClassErrorName = c.sampleError;
 // Error maker creates an unknown id that can't be queried
 const errorMaker = parentProps => R.set(R.lensPath(['region', 'id']), 'foo', parentProps);
-const omitKeysFromSnapshots = ['id', 'createdAt', 'updatedAt'];
+const omitKeysFromSnapshots = ['id', 'key', 'createdAt', 'updatedAt'];
 // We expect calling mutateRegion to update the updatedAt of the queryRegions response
-const updatedPaths = {mutateRegion: ['queryRegions.data.regions.0.updatedAt']};
+const updatedPaths = {mutateRegion: {component: ['queryRegions.data.regions.0.updatedAt'], client: ['data.mutate.region']}};
 
 describe('SampleContainer', () => {
 
@@ -39,6 +39,7 @@ describe('SampleContainer', () => {
       apolloContext: {
         state: {},
         apolloConfigTask: localTestAuthTask(),
+        // This is called with one argument, null or and apolloConfig to return the containers
         apolloContainers
       },
       reduxContext: {},
@@ -52,7 +53,7 @@ describe('SampleContainer', () => {
     },
     container,
     component,
-    schemaToPropsResultTask
+    apolloConfigToPropsResultTask
   );
   test('testComposeRequests', testComposeRequests, 1000000);
   test('testQueries', testQueries, 1000000);

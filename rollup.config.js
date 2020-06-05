@@ -8,8 +8,7 @@ const config = {
   input: [
     'src/index.js',
     'src/apolloContainerTestHelpers.js',
-    'src/componentTestHelpers.js',
-    'src/testHelpers.js'
+    'src/componentTestHelpers.js'
   ],
   plugins: []
 };

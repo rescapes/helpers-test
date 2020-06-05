@@ -32,77 +32,84 @@ export const _makeRegionMutationContainer = R.curry((apolloConfig, {outputParams
     props
   );
 });
-const optionalApolloClient = (propSets, obj) => {
-  return R.merge(
-    R.ifElse(R.prop('apolloClient'), apolloClient => ({apolloClient}), () => {})(propSets),
-    obj
-  );
-};
 
-// Each query and mutation expects a container to compose then props
-export const apolloContainers = {
-  // Creates a function expecting a component to wrap and props
-  queryRegions: props => _makeRegionsQueryContainer(
-    {
-      options: {
-        variables: (props) => {
-          return {
-            id: parseInt(props.region.id)
-          };
+/**
+ * Each query and mutation expects a container to compose then props
+ * @param {Object} apolloConfig Optionally supply {apolloClient} to run requests as tasks instead of components
+ * @return {{queryRegions: (function(*=): *), mutateRegion: (function(*=): *), queryUserRegions: (function(*=): *)}}
+ */
+export const apolloContainers = (apolloConfig = {}) => {
+  return {
+    // Creates a function expecting a component to wrap and props
+    queryRegions: props => {
+      return _makeRegionsQueryContainer(
+        R.merge(apolloConfig,
+          {
+            options: {
+              variables: (props) => {
+                return {
+                  id: parseInt(props.region.id)
+                };
+              },
+              // Pass through error so we can handle it in the component
+              errorPolicy: 'all'
+            }
+          }
+        ),
+        {
+          outputParams: regionOutputParams
         },
-        // Pass through error so we can handle it in the component
-        errorPolicy: 'all'
-      }
+        props
+      );
     },
-    {
-      outputParams: regionOutputParams
-    },
-    props
-  ),
 
-  // Test sequential queries
-  queryUserRegions: props => {
-    return userRegionsQueryContainer(
-      optionalApolloClient(props, {
-        options: {
-          variables: props => {
-            // The props given to this are the userState id and user
-            // Pick the id of the UserState
-            return R.pick(['id'], props); //R.map(R.pick(['id']), R.pick(['userState'], props));
-          },
-          // Pass through error so we can handle it in the component
-          errorPolicy: 'all'
+    // Test sequential queries
+    queryUserRegions: props => {
+      return userRegionsQueryContainer(
+        R.merge(apolloConfig,
+          {
+            options: {
+              variables: props => {
+                // The props given to this are the userState id and user
+                // Pick the id of the UserState
+                return R.pick(['id'], props); //R.map(R.pick(['id']), R.pick(['userState'], props));
+              },
+              // Pass through error so we can handle it in the component
+              errorPolicy: 'all'
+            }
+          }),
+        {
+          // We currently query for the region id, key, and name
+          // We might want the geojson too so we can display it to the user on a map
+          regionOutputParams: regionOutputParamsMinimum
+        },
+        // We just need the userState and scope
+        R.pick(['render', 'children', 'userState', 'scope'], props)
+      );
+    },
+
+    mutateRegion: props => {
+      return _makeRegionMutationContainer(
+        R.merge(apolloConfig, {
+          options: {
+            variables: (props) => {
+              return R.propOr({}, 'region', props);
+            },
+            errorPolicy: 'all'
+          }
+        }),
+        {
+          outputParams: regionOutputParams
         }
-      }),
-      {
-        // We currently query for the region id, key, and name
-        // We might want the geojson too so we can display it to the user on a map
-        regionOutputParams: regionOutputParamsMinimum
-      },
-      // We just need the userState and scope
-      R.pick(['_testApolloRenderProps', 'render', 'children', 'userState', 'scope'], props)
-    );
-  },
-
-  mutateRegion: props => _makeRegionMutationContainer(
-    {
-      options: {
-        variables: (props) => {
-          return R.propOr({}, 'region', props);
-        },
-        errorPolicy: 'all'
-      }
-    },
-    {
-      outputParams: regionOutputParams
+      )(props);
     }
-  )(props)
+  };
 };
 
 // This produces a component class that expects a props object keyed by the keys in apolloContainers
 // The value at each key is the result of the corresponding query container or the mutate function of the corresponding
 // mutation container
-const AdoptedApolloContainer = adopt(apolloContainers);
+const AdoptedApolloContainer = adopt(apolloContainers());
 // Wrap AdoptedApolloContainer in
 //const apolloHoc = apolloHOC(AdoptedApolloContainer);
-export default AdoptedApolloContainer
+export default AdoptedApolloContainer;

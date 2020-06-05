@@ -146,14 +146,14 @@ export const mountWithReduxProvider = (store, component, opts) => {
  * @param props for the component
  * @return {*}
  */
-export const mountWithApolloClient = v((apolloConfig, compoenntElement) => {
+export const mountWithApolloClient = v((apolloConfig, componentElement) => {
   let c;
   act(() => {
     c = mount(
       e(
         ApolloProvider,
         {client: reqStrPathThrowing('apolloClient', apolloConfig)},
-        compoenntElement
+        componentElement
       )
     );
   });
@@ -213,7 +213,7 @@ export const waitForChildComponentRenderTask = (wrapper, componentName, childCla
   const component = wrapper.find(componentName);
   const childClassNameStr = `.${getClass(childClassName)}`;
   // Wait for the child component to render, which indicates that data loading completed
-  const waitForChild = createWaitForElement(childClassNameStr);
+  const waitForChild = createWaitForElement(childClassNameStr, 10000);
   const find = component.find;
   // Override find to call update each time we poll for an update
   // Enzyme 3 doesn't stay synced with React DOM changes without update

@@ -11,12 +11,11 @@
 import {of} from 'folktale/concurrency/task';
 import {Ok} from 'folktale/result';
 import {parentPropsForContainerResultTask} from '../componentTestHelpers';
-import {composeWithChain, mapToNamedPathAndInputs} from 'rescape-ramda';
+import {composeWithChain, mapMonadByConfig} from 'rescape-ramda';
 import {
-  makeCurrentUserStateQueryContainer,
-  regionOutputParams,
-  userRegionsOutputParamsFragmentDefaultOnlyIds,
-  userStateOutputParamsCreator
+  makeCurrentUserQueryContainer,
+  mutateSampleUserStateWithProjectAndRegionTask,
+  userOutputParams
 } from 'rescape-place';
 
 /**
@@ -36,12 +35,12 @@ import {
  * We fake the parent here, pretending that our Region component is named 'currentRegion' in the parent component
  * TODO put in a real parent to demonstrate this
  */
-export const schemaToPropsResultTask = apolloConfigTask => {
+export const apolloConfigToPropsResultTask = apolloConfigTask => {
   return parentPropsForContainerResultTask(
     {apolloConfigTask},
     // Fake this for now until we have a parent
     apolloConfigTask => composeWithChain([
-      ({userState}) => of(Ok({
+      ({userState, region, project}) => of(Ok({
         // currentRegion corresponds to the parent view name we are giving props to
         currentRegion: {
           // Some props
@@ -49,36 +48,29 @@ export const schemaToPropsResultTask = apolloConfigTask => {
             width: 500,
             height: 500
           },
-          region: {
-            // This matches a testConfig Region (TODO, it does?)
-            id: 1,
-            key: 'MyBuddy',
-            name: 'My Buddy',
-            data: {
-              mapbox: {
-                viewport: {
-                  zoom: 10
-                }
-              }
-            }
-          },
           userState,
+          region,
+          project,
           // scope limits queryUserRegions to these params
           scope: {name: 'Earth'}
-        },
+        }
       })),
-      mapToNamedPathAndInputs('userState', 'data.userStates.0',
-      (apolloConfig) => {
-        return makeCurrentUserStateQueryContainer(
-          apolloConfig,
-          {
-            outputParams: userStateOutputParamsCreator(
-              userRegionsOutputParamsFragmentDefaultOnlyIds(regionOutputParams)
-            )
-          },
-          {}
-        );
-      }),
+      // Mutate the UserState to get cache-only data stored
+      mapMonadByConfig({},
+        ({apolloClient, user}) => {
+          return mutateSampleUserStateWithProjectAndRegionTask({
+              apolloConfig: {apolloClient},
+              user,
+              regionKey: 'earth',
+              projectKey: 'shrangrila'
+            });
+        }
+      ),
+      mapMonadByConfig({name: 'user', strPath: 'data.currentUser'},
+        ({apolloClient}) => {
+          return makeCurrentUserQueryContainer({apolloClient}, userOutputParams, {});
+        }
+      ),
       () => apolloConfigTask
     ])({}),
     // Normally this is the parent views function
@@ -89,5 +81,6 @@ export const schemaToPropsResultTask = apolloConfigTask => {
 
 /**
  * Task returning sample props from all the way up the view hierarchy
+ * Not relevant for us since this is just a sample component and there is no hierarchy
  */
-//export const chainedSamplePropsTask = propsFromParentPropsHelperTask(schemaToPropsResultTask, samplePropsTaskMaker);
+//export const chainedSamplePropsTask = propsFromParentPropsHelperTask(apolloConfigToPropsResultTask, samplePropsTaskMaker);
