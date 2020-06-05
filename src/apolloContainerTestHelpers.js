@@ -42,11 +42,12 @@ const log = loggers.get('rescapeDefault');
  * samplePropsResultTask returns and Result so that the an error
  * in the query can be processed by detected a Result.Error value, but here
  * we only accept a Result.Ok
- * @param {function} apolloConfigTaskToPropsResultTask Expects a schema task and returns a Task Result.Ok|Result.Error
+ * @param {function} apolloConfigToPropsResultTask Expects the apolloConfig that is resolved from apolloConfig
+ * task and returns a Task that resolves to a Result.Ok containing the props
  * @param {Task} apolloConfigTask Resolves to a {schema, apollo}
  * @return {*}
  */
-const parentPropsTask = (apolloConfigTaskToPropsResultTask, apolloConfigTask) => {
+const parentPropsTask = (apolloConfigToPropsResultTask, apolloConfigTask) => {
   return composeWithChainMDeep(1, [
     propsResult => {
       return of(propsResult.matchWith({
@@ -68,9 +69,11 @@ const parentPropsTask = (apolloConfigTaskToPropsResultTask, apolloConfigTask) =>
         }
       }));
     },
-    apolloConfigTask => {
-      return apolloConfigTaskToPropsResultTask(apolloConfigTask);
-    }
+    apolloConfig => {
+      return apolloConfigToPropsResultTask(apolloConfig);
+    },
+    // Resolve the apolloConfig (typically by authenticating)
+    apolloConfigTask => apolloConfigTask
   ])(apolloConfigTask);
 };
 
@@ -145,7 +148,7 @@ export const filterForMutationContainers = apolloContainers => {
  * @param {Object} HOC Apollo container created by calling react-adopt or similar
  * @param {Object} component. The child component to container having a render function that receives
  * the results of the apollo requests from container
- * @param {Function} apolloConfigTaskToPropsResultTask A function expecting the schema and resolving to the props in a Task<Result.Ok>
+ * @param {Function} apolloConfigToPropsResultTask A function expecting the apolloConfig and resolving to the props in a Task<Result.Ok>
  * parentProps and mutates something used by the queryVariables to make the query fail. This
  * is for testing the renderError part of the component. Only containers with queries should have an expected error state
  *    {
@@ -181,8 +184,8 @@ export const apolloContainerTests = v((context, container, component, apolloConf
     // container based on the ancestor Containers/Components
     const resolvedPropsTask = R.ifElse(
       R.identity,
-      apolloConfigTaskToPropsResultTask => {
-        return parentPropsTask(apolloConfigTaskToPropsResultTask, apolloConfigTask);
+      apolloConfigToPropsResultTask => {
+        return parentPropsTask(apolloConfigToPropsResultTask, apolloConfigTask);
       },
       () => of({})
     )(apolloConfigToPropsResultTask);

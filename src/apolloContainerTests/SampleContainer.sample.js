@@ -31,15 +31,15 @@ import {
 
 /**
  * Task returning sample parent props from all the way up the view hierarchy
- * @param {Object} apolloConfigTask. The apolloConfigTask allows us to get props from a theoretical parent component.
+ * @param {Object} apolloConfig. The apolloConfig allows us to get props from a theoretical parent component.
  * We fake the parent here, pretending that our Region component is named 'currentRegion' in the parent component
  * TODO put in a real parent to demonstrate this
  */
-export const apolloConfigToPropsResultTask = apolloConfigTask => {
+export const apolloConfigToPropsResultTask = apolloConfig => {
   return parentPropsForContainerResultTask(
-    {apolloConfigTask},
+    apolloConfig,
     // Fake this for now until we have a parent
-    apolloConfigTask => composeWithChain([
+    apolloConfig => composeWithChain([
       ({userState, region, project}) => of(Ok({
         // currentRegion corresponds to the parent view name we are giving props to
         currentRegion: {
@@ -57,9 +57,9 @@ export const apolloConfigToPropsResultTask = apolloConfigTask => {
       })),
       // Mutate the UserState to get cache-only data stored
       mapMonadByConfig({},
-        ({apolloClient, user}) => {
+        ({apolloConfig, user}) => {
           return mutateSampleUserStateWithProjectAndRegionTask({
-              apolloConfig: {apolloClient},
+              apolloConfig,
               user,
               regionKey: 'earth',
               projectKey: 'shrangrila'
@@ -67,12 +67,11 @@ export const apolloConfigToPropsResultTask = apolloConfigTask => {
         }
       ),
       mapMonadByConfig({name: 'user', strPath: 'data.currentUser'},
-        ({apolloClient}) => {
-          return makeCurrentUserQueryContainer({apolloClient}, userOutputParams, {});
+        ({apolloConfig}) => {
+          return makeCurrentUserQueryContainer(apolloConfig, userOutputParams, {});
         }
       ),
-      () => apolloConfigTask
-    ])({}),
+    ])({apolloConfig}),
     // Normally this is the parent views function
     props => ({views: props}),
     'currentRegion'
