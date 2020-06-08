@@ -30,7 +30,7 @@ import {
 import * as R from 'ramda';
 import Result from 'folktale/result';
 import {loggers} from 'rescape-log';
-import {apolloQueryResponsesTask, createRequestVariables} from 'rescape-apollo';
+import {apolloQueryResponsesResultTask, createRequestVariables} from 'rescape-apollo';
 import {adopt} from 'react-adopt';
 
 const log = loggers.get('rescapeDefault');
@@ -283,7 +283,7 @@ export const apolloContainerTests = v((context, container, component, apolloConf
           resolvedPropsTask,
           componentName,
           childClassErrorName,
-          childClassLoadingName,
+          childClassLoadingName
         },
         container,
         component,
@@ -349,10 +349,10 @@ const _testQueries = (
     console.warn("Attempt to run testQuery when query or queryVariables was not specified. Does your component actually need this test?");
     return;
   }
-  apolloQueryResponsesTask({
-    apolloConfigTask,
-    resolvedPropsTask
-  }, apolloConfigToQueryTasks).run().listen(
+  composeWithChain([
+    apolloConfig => apolloQueryResponsesResultTask(resolvedPropsTask, apolloConfigToQueryTasks(apolloConfig)),
+    apolloConfigTask => apolloConfigTask
+  ])(apolloConfigTask).run().listen(
     defaultRunConfig({
       onResolved: responsesByKey => {
         // If we resolve the task, make sure there is no data.error
@@ -407,14 +407,14 @@ const _testMutations = (
     return;
   }
   // TODO Fix to work with mutationComponents and use Enzyme
-  const apolloQueryResponsesTask = apolloMutationResponsesTask(
+  const apolloQueryResponsesResultTask = apolloMutationResponsesTask(
     {
       apolloConfigTask,
       resolvedPropsTask
     },
     apolloConfigToMutationTasks
   );
-  apolloQueryResponsesTask.run().listen(
+  apolloQueryResponsesResultTask.run().listen(
     defaultRunConfig({
       onResolved: prePostMutationComparisons => {
         testMutationChanges('client', updatedPaths, prePostMutationComparisons);
@@ -556,7 +556,11 @@ const _testRender = (
       // We don't actually change the values explicitly when we mutate here, so we assert it worked
       // by checking the object's update timestamp at the end of the test
       ({mutationComponents, wrapper, component, componentName, childClassDataName, props}) => {
-        return _testRenderComponentMutations({mutationComponents, componentName, childClassDataName}, wrapper, component, props);
+        return _testRenderComponentMutations({
+          mutationComponents,
+          componentName,
+          childClassDataName
+        }, wrapper, component, props);
       }
     ),
     // Render component, calling queries
@@ -791,7 +795,7 @@ const _testRenderError = (
     resolvedPropsTask,
     componentName,
     childClassLoadingName,
-    childClassErrorName,
+    childClassErrorName
   }).run().listen(
     defaultRunConfig({
       onResolved: ({childComponent}) => {
