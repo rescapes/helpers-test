@@ -11,7 +11,7 @@ export {
   mountWithApolloClient,
   enzymeMountWithMockStore,
   testPropsTaskMaker,
-  parentPropsForContainerResultTask,
+  parentPropsForContainerTask,
   makeTestPropsFunction
 } from './componentTestHelpers';
 

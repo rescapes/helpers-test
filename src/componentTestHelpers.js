@@ -271,19 +271,18 @@ export const testPropsTaskMaker = (mapStateToProps, mapDispatchToProps) =>
  * receive {foo: 1}
  * @param {Object} apolloConfig
  * @param {Object} apolloConfig.apolloClient Client for requests
- * @param {Function} apolloConfigToSamplePropsResultTask Function expecting the Apollo config as the unary argument.
+ * @param {Function} apolloConfigToSamplePropsTask Function expecting the Apollo config as the unary argument.
  * Returns a task that resolves to the parent container props in a Result.Ok for success or Result.Error if
  * and error occurs
  * @param parentComponentViews A function expecting props that returns an object keyed by view names
  * and valued by view props, where views are the child containers/components of the component
  * @param viewName The viewName in the parent component of the target container
  * @returns {Task} A Task to resolve the parentContainer props passed to the given viewName
- * in an Result.Ok. If anything goes wrong the task resolves with a Result.Error
  */
-export const parentPropsForContainerResultTask = v((apolloConfig, apolloConfigToSamplePropsResultTask, parentComponentViews, viewName) => {
-    return mapMDeep(2,
+export const parentPropsForContainerTask = v((apolloConfig, apolloConfigToSamplePropsTask, parentComponentViews, viewName) => {
+    return R.map(
       props => reqPathThrowing(['views', viewName], parentComponentViews(props)),
-      apolloConfigToSamplePropsResultTask(apolloConfig).map(x => x)
+      apolloConfigToSamplePropsTask(apolloConfig).map(x => x)
     );
   },
   [
@@ -294,7 +293,7 @@ export const parentPropsForContainerResultTask = v((apolloConfig, apolloConfigTo
     ['parentComponentViews', PropTypes.func.isRequired],
     ['viewName', PropTypes.string.isRequired]
   ],
-  'parentPropsForContainerResultTask');
+  'parentPropsForContainerTask');
 
 /**
  * Given a container's mapStateToProps and mapDispatchToProps, returns a function that accepts a sample state

@@ -10,7 +10,7 @@
  */
 import {of} from 'folktale/concurrency/task';
 import {Ok} from 'folktale/result';
-import {parentPropsForContainerResultTask} from '../componentTestHelpers';
+import {parentPropsForContainerTask} from '../componentTestHelpers';
 import {composeWithChain, mapMonadByConfig} from 'rescape-ramda';
 import {
   makeCurrentUserQueryContainer,
@@ -36,7 +36,7 @@ import {
  * TODO put in a real parent to demonstrate this
  */
 export const apolloConfigToPropsResultTask = apolloConfig => {
-  return parentPropsForContainerResultTask(
+  return parentPropsForContainerTask(
     apolloConfig,
     // Fake this for now until we have a parent
     apolloConfig => composeWithChain([

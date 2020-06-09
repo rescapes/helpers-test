@@ -351,7 +351,8 @@ const _testQueries = (
   }
   composeWithChain([
     apolloConfig => apolloQueryResponsesResultTask(resolvedPropsTask, apolloConfigToQueryTasks(apolloConfig)),
-    apolloConfigTask => apolloConfigTask
+    apolloConfigTask => apolloConfigTask,
+    resolvedPropsTask => resolvedPropsTask.map(x => of(apolloConfigTask))
   ])(apolloConfigTask).run().listen(
     defaultRunConfig({
       onResolved: responsesByKey => {
