@@ -30,6 +30,7 @@ import * as R from 'ramda';
 import Result from 'folktale/result';
 import {loggers} from 'rescape-log';
 import {apolloQueryResponsesTask, createRequestVariables} from 'rescape-apollo';
+import {configToChainedPropsForSampleTask} from './apolloContainerTests/SampleContainer.sample';
 
 const log = loggers.get('rescapeDefault');
 
@@ -43,12 +44,15 @@ const log = loggers.get('rescapeDefault');
  * @param {function} apolloConfigToPropsTask Expects the apolloConfig that is resolved from apolloConfig
  * task and returns a Task that resolves to the props
  * @param {Task} apolloConfigTask Resolves to a {schema, apollo}
+ * @param {boolean} runParentContainerQueries Default false. Runs container queries for parent containers
+ * so they can provide the expected props. We don't need this when testing rendering since the parent components
+ * will automatically run their queries
  * @return {*}
  */
-const parentPropsTask = (apolloConfigToPropsTask, apolloConfigTask) => {
+const parentPropsTask = (apolloConfigToPropsTask, apolloConfigTask, runParentContainerQueries = false) => {
   return composeWithChain([
     apolloConfig => {
-      return apolloConfigToPropsTask(apolloConfig);
+      return apolloConfigToPropsTask(apolloConfig, runParentContainerQueries);
     },
     // Resolve the apolloConfig (typically by authenticating)
     apolloConfigTask => apolloConfigTask
@@ -126,18 +130,13 @@ export const filterForMutationContainers = apolloContainers => {
  * @param {Object} HOC Apollo container created by calling react-adopt or similar
  * @param {Object} component. The child component to container having a render function that receives
  * the results of the apollo requests from container
- * @param {Function} apolloConfigToPropsResultTask A function expecting the apolloConfig and resolving to the props in a Task<Result.Ok>
- * parentProps and mutates something used by the queryVariables to make the query fail. This
- * is for testing the renderError part of the component. Only containers with queries should have an expected error state
- *    {
-      testMapStateToProps,
-      testQueries,
-      testMutations,
-      testRenderError,
-      testRender
-    };
+ * @param {Function} configToChainedPropsForSampleTask A function expecting the apolloConfig and possible a boolean flag (default true)
+ * and resolving to the props in a Task. The flag set false is used to configToChainedPropsForSampleTask
+ * not to call the containers apollo queries with the parent props and return the results. When we test rendering
+ * we don't want to query ahead of time because the rendering process will invoke the queries.
+ * If a container has no Apollo requests this function should return {}
  */
-export const apolloContainerTests = v((context, container, component, apolloConfigToPropsResultTask) => {
+export const apolloContainerTests = v((context, container, component, configToChainedPropsForSampleTask) => {
     const {
       componentContext: {
         name: componentName,
@@ -158,15 +157,22 @@ export const apolloContainerTests = v((context, container, component, apolloConf
       }
     } = context;
 
-    // Optional, A Task that resolves props all the way up the hierarchy chain, ending with props for this
+    // A Task that resolves props all the way up the hierarchy chain, ending with props for this
     // container based on the ancestor Containers/Components
-    const resolvedPropsTask = R.ifElse(
-      R.identity,
-      apolloConfigToPropsResultTask => {
-        return parentPropsTask(apolloConfigToPropsResultTask, apolloConfigTask);
-      },
-      () => of({})
-    )(apolloConfigToPropsResultTask);
+    const resolvedPropsTask = R.chain(
+      apolloConfig => configToChainedPropsForSampleTask(
+        apolloConfig,
+        {runParentContainerQueries: true}
+      ),
+      apolloConfigTask
+    );
+    const resolvedPropsTaskForRendering = R.chain(
+      apolloConfig => configToChainedPropsForSampleTask(
+        apolloConfig,
+        {}
+      ),
+      apolloConfigTask
+    );
 
     /**
      * Tests that we can mount the composed request container
@@ -234,7 +240,7 @@ export const apolloContainerTests = v((context, container, component, apolloConf
       _testRender(
         {
           apolloConfigTask,
-          resolvedPropsTask,
+          resolvedPropsTask: resolvedPropsTaskForRendering,
           componentName,
           childClassDataName,
           childClassLoadingName,
@@ -258,7 +264,7 @@ export const apolloContainerTests = v((context, container, component, apolloConf
         {
           errorMaker,
           apolloConfigTask,
-          resolvedPropsTask,
+          resolvedPropsTask: resolvedPropsTaskForRendering,
           componentName,
           childClassErrorName,
           childClassLoadingName
@@ -329,7 +335,7 @@ const _testQueries = (
   }
   composeWithChain([
     apolloConfig => apolloQueryResponsesTask(resolvedPropsTask, apolloConfigToQueryTasks(apolloConfig)),
-    apolloConfigTask => apolloConfigTask.map(x => x),
+    apolloConfigTask => apolloConfigTask.map(x => x)
   ])(apolloConfigTask).run().listen(
     defaultRunConfig({
       onResolved: responsesByKey => {
@@ -601,7 +607,8 @@ const _testRenderComponent = ({apolloClient, componentName, childClassLoadingNam
     container,
     props,
     // These props contains the results of the Apollo queries and the mutation functions
-    props => e(component, props)
+    // Merge them with the original props, which can return values unrelated to the apollo requests
+    responseProps => e(component, R.merge(props, responseProps))
   );
   // Wrap the componentInstance in mock Apollo providers.
   // If the componentInstance doesn't use Apollo it just means that it will render its children synchronously,

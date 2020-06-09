@@ -1,7 +1,7 @@
 import * as R from 'ramda';
 import Sample, {c} from './SampleComponent';
 import SampleContainer, {apolloContainers} from './SampleContainer';
-import {apolloConfigToPropsResultTask} from './SampleContainer.sample';
+import {configToChainedPropsForSampleTask} from './SampleContainer.sample';
 import {localTestAuthTask} from 'rescape-apollo';
 import {apolloContainerTests} from '../apolloContainerTestHelpers';
 
@@ -53,7 +53,7 @@ describe('SampleContainer', () => {
     },
     container,
     component,
-    apolloConfigToPropsResultTask
+    configToChainedPropsForSampleTask
   );
   test('testComposeRequests', testComposeRequests, 1000000);
   test('testQueries', testQueries, 1000000);
