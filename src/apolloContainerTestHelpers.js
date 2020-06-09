@@ -16,7 +16,6 @@ import PropTypes from 'prop-types';
 import {v} from 'rescape-validate';
 import {fromPromised, of, waitAll} from 'folktale/concurrency/task';
 import {
-  chainMDeep,
   composeWithChain,
   composeWithChainMDeep,
   defaultRunConfig,
@@ -30,8 +29,7 @@ import {
 import * as R from 'ramda';
 import Result from 'folktale/result';
 import {loggers} from 'rescape-log';
-import {apolloQueryResponsesResultTask, createRequestVariables} from 'rescape-apollo';
-import {adopt} from 'react-adopt';
+import {apolloQueryResponsesTask, createRequestVariables} from 'rescape-apollo';
 
 const log = loggers.get('rescapeDefault');
 
@@ -42,35 +40,15 @@ const log = loggers.get('rescapeDefault');
  * samplePropsResultTask returns and Result so that the an error
  * in the query can be processed by detected a Result.Error value, but here
  * we only accept a Result.Ok
- * @param {function} apolloConfigToPropsResultTask Expects the apolloConfig that is resolved from apolloConfig
- * task and returns a Task that resolves to a Result.Ok containing the props
+ * @param {function} apolloConfigToPropsTask Expects the apolloConfig that is resolved from apolloConfig
+ * task and returns a Task that resolves to the props
  * @param {Task} apolloConfigTask Resolves to a {schema, apollo}
  * @return {*}
  */
-const parentPropsTask = (apolloConfigToPropsResultTask, apolloConfigTask) => {
-  return composeWithChainMDeep(1, [
-    propsResult => {
-      return of(propsResult.matchWith({
-        Ok: ({value}) => value,
-        Error: ({value: error}) => {
-          // Unacceptable!
-          if (R.is(Object, error)) {
-            // GraphQL error(s)
-            const errors = R.propOr([], 'error', error);
-            R.forEach(error => {
-              log.error(error);
-              if (R.equals(error, R.last(errors)))
-                // throw the last error to quit, at least we logged all of them first
-                throw error;
-            }, errors);
-
-          }
-          throw error;
-        }
-      }));
-    },
+const parentPropsTask = (apolloConfigToPropsTask, apolloConfigTask) => {
+  return composeWithChain([
     apolloConfig => {
-      return apolloConfigToPropsResultTask(apolloConfig);
+      return apolloConfigToPropsTask(apolloConfig);
     },
     // Resolve the apolloConfig (typically by authenticating)
     apolloConfigTask => apolloConfigTask
@@ -350,9 +328,8 @@ const _testQueries = (
     return;
   }
   composeWithChain([
-    apolloConfig => apolloQueryResponsesResultTask(resolvedPropsTask, apolloConfigToQueryTasks(apolloConfig)),
-    apolloConfigTask => apolloConfigTask,
-    resolvedPropsTask => resolvedPropsTask.map(x => of(apolloConfigTask))
+    apolloConfig => apolloQueryResponsesTask(resolvedPropsTask, apolloConfigToQueryTasks(apolloConfig)),
+    apolloConfigTask => apolloConfigTask.map(x => x),
   ])(apolloConfigTask).run().listen(
     defaultRunConfig({
       onResolved: responsesByKey => {
@@ -407,15 +384,14 @@ const _testMutations = (
     console.warn("Attempt to run testMutation when apolloConfigToMutationTasks was not specified. Does your component actually need this test?");
     return;
   }
-  // TODO Fix to work with mutationComponents and use Enzyme
-  const apolloQueryResponsesResultTask = apolloMutationResponsesTask(
+  const mutationResponseTask = apolloMutationResponsesTask(
     {
       apolloConfigTask,
       resolvedPropsTask
     },
     apolloConfigToMutationTasks
   );
-  apolloQueryResponsesResultTask.run().listen(
+  mutationResponseTask.run().listen(
     defaultRunConfig({
       onResolved: prePostMutationComparisons => {
         testMutationChanges('client', updatedPaths, prePostMutationComparisons);
@@ -815,14 +791,13 @@ const _testRenderError = (
  * @param {Function} samplePropsTaskMaker 2 arity function expecting parent props.
  * Returns a Task from a container that expects sampleOwnProps resolves to Result.Ok
  * @returns {Task} A Task to asynchronously return the parentContainer props merged with sampleOwnProps
- * in an Result.Ok. If anything goes wrong an Result.Error is returned
  */
-export const propsFromParentPropsTask = v((chainedParentPropsResultTask, samplePropsTaskMaker) =>
-    chainMDeep(2,
+export const propsFromParentPropsTask = v((chainedParentPropsTask, samplePropsTaskMaker) =>
+    R.chain(
       // Chain the Result.Ok value to a Task combine the parent props with the props maker
-      // Task Result.Ok -> Task Object
+      // Task Object -> Task Object
       parentContainerSampleProps => samplePropsTaskMaker(parentContainerSampleProps),
-      chainedParentPropsResultTask
+      chainedParentPropsTask
     ),
   [
     ['initialState', PropTypes.shape().isRequired],

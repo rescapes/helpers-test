@@ -281,7 +281,12 @@ export const testPropsTaskMaker = (mapStateToProps, mapDispatchToProps) =>
  */
 export const parentPropsForContainerTask = v((apolloConfig, apolloConfigToSamplePropsTask, parentComponentViews, viewName) => {
     return R.map(
-      props => reqPathThrowing(['views', viewName], parentComponentViews(props)),
+      props => reqPathThrowing(
+        // Get the the parent component's view that renders the calling container
+        ['views', viewName],
+        // Leave out the parent component's key property, it was only used to key the component
+        parentComponentViews(R.omit(['key'], props))
+      ),
       apolloConfigToSamplePropsTask(apolloConfig).map(x => x)
     );
   },

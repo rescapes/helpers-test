@@ -2,6 +2,7 @@ import {regionOutputParams, regionOutputParamsMinimum, userRegionsQueryContainer
 import {adopt} from 'react-adopt';
 import * as R from 'ramda';
 import {makeMutationRequestContainer, makeQueryContainer} from 'rescape-apollo';
+import {reqStrPathThrowing} from 'rescape-ramda';
 
 // The __typename that represent the fields of the Region type. We need these to query by object types rather than
 // just by primitives, e.g. to query by geojson: {feature: {type: 'FeatureCollection'}} to get objects whose
@@ -46,9 +47,9 @@ export const apolloContainers = (apolloConfig = {}) => {
         R.merge(apolloConfig,
           {
             options: {
-              variables: (props) => {
+              variables: props => {
                 return {
-                  id: parseInt(props.region.id)
+                  id: parseInt(reqStrPathThrowing('region.id', props))
                 };
               },
               // Pass through error so we can handle it in the component
