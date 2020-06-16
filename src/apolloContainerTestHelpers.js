@@ -334,9 +334,29 @@ const _testQueries = (
     return;
   }
   composeWithChain([
-    apolloConfig => apolloQueryResponsesTask(resolvedPropsTask, apolloConfigToQueryTasks(apolloConfig)),
-    apolloConfigTask => apolloConfigTask.map(x => x)
-  ])(apolloConfigTask).run().listen(
+    ({keyToQueryTask, responses}) => {
+      // Limit to <key, response> without all the props
+      return of(R.pick(R.keys(keyToQueryTask), responses));
+    },
+    mapToNamedResponseAndInputs('responses',
+      ({keyToQueryTask}) => {
+        // Resolves to <key, response> plus all the props
+        return apolloQueryResponsesTask(
+          resolvedPropsTask,
+          keyToQueryTask
+        );
+      }
+    ),
+    mapToNamedResponseAndInputs('keyToQueryTask',
+      ({apolloConfig, apolloConfigToQueryTasks}) => {
+        // Resolves to <key, Task>
+        return of(apolloConfigToQueryTasks(apolloConfig));
+      }
+    ),
+    mapToNamedResponseAndInputs('apolloConfig',
+      ({apolloConfigTask}) => apolloConfigTask
+    )
+  ])({apolloConfigTask, apolloConfigToQueryTasks}).run().listen(
     defaultRunConfig({
       onResolved: responsesByKey => {
         // If we resolve the task, make sure there is no data.error
@@ -383,7 +403,8 @@ const _testMutations = (
   apolloConfigToMutationTasks,
   done
 ) => {
-  expect.assertions(1 + R.length(R.chain(R.prop('client'), R.values(updatedPaths))));
+  const assertions = R.length(R.values(updatedPaths)) + R.length(R.chain(R.prop('client'), R.values(updatedPaths)));
+  expect.assertions(assertions);
 
   const errors = [];
   if (!apolloConfigToMutationTasks) {
@@ -426,7 +447,7 @@ export const apolloMutationResponsesTask = ({apolloConfigTask, resolvedPropsTask
         props, {
           // Normally render is a container's render function that receives the apollo request results
           // and pass is as props to a child container
-          render: props => null
+          //render: props => null
         }
       );
       log.debug(JSON.stringify(propsWithRender));
@@ -658,20 +679,10 @@ const _testRenderComponentMutations = ({mutationComponents, componentName, child
     },
     waitAll(mapObjToValues(
       (mutationComponent, mutationName) => {
-        // Create mutation variables by passing the props to the component and then accessing
-        // it's variables prop, which is the result of the component's options.variables function
-        // if defined
-        const mutationVariables = createRequestVariables(
-          mutationComponent,
-          R.merge(
-            {render: props => null},
-            props
-          )
-        );
         // Get the mutate function that was returned in the props sent to the component's render function
         // This mutate function is what HOC passes via render to the component for each composed
         // mutation component
-        const mutate = reqStrPathThrowing(mutationName, apolloRenderProps);
+        const {mutation, result, skip} = reqStrPathThrowing(mutationName, apolloRenderProps);
         // Call the mutate function, this will call the Apollo mutate function and give new results
         // to our component
         return composeWithChain([
@@ -688,7 +699,11 @@ const _testRenderComponentMutations = ({mutationComponents, componentName, child
                 let m = null;
                 // TODO act doesn't suppress the warning as it should
                 act(() => {
-                  m = mutate({variables: mutationVariables});
+                  // We don't need to pass mutation variables because they are already set in the request
+                  if (skip) {
+                    throw Error('Attempt to run a skipped mutation, meaning its variables are not ready. This occurs when the component is ready before the mutation component is. Check the component renderChoicepoint settings to make sure the mutation component is awaited');
+                  }
+                  m = mutation();
                 });
                 return m;
               })()

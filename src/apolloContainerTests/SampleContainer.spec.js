@@ -22,7 +22,10 @@ const childClassErrorName = c.sampleError;
 const errorMaker = parentProps => R.set(R.lensPath(['region', 'id']), 'foo', parentProps);
 const omitKeysFromSnapshots = ['id', 'name', 'key', 'createdAt', 'updatedAt'];
 // We expect calling mutateRegion to update the updatedAt of the queryRegions response
-const updatedPaths = {mutateRegion: {component: ['queryRegions.data.regions.0.updatedAt'], client: ['data.mutate.region']}};
+const updatedPaths = {
+  mutateRegion: {component: ['queryRegions.data.regions.0.updatedAt'], client: ['data.mutate.region']},
+  mutateUserRegion: {component: ['data.mutate.userState.updatedAt'], client: ['data.mutate.userState']}
+};
 
 describe('SampleContainer', () => {
 
