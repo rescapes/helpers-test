@@ -1,13 +1,12 @@
 import {
   regionOutputParams,
-  regionOutputParamsMinimum, userRegionOutputParams,
-  userRegionsQueryContainer,
-  userStateRegionMutationContainer
+  userStateRegionMutationContainer, userStateRegionsQueryContainer
 } from 'rescape-place';
 import {adopt} from 'react-adopt';
 import * as R from 'ramda';
 import {makeMutationRequestContainer, makeQueryContainer} from 'rescape-apollo';
 import {reqStrPathThrowing, strPathOr, toNamedResponseAndInputs} from 'rescape-ramda';
+import {userStateRegionOutputParams} from 'rescape-place';
 
 // The __typename that represent the fields of the Region type. We need these to query by object types rather than
 // just by primitives, e.g. to query by geojson: {feature: {type: 'FeatureCollection'}} to get objects whose
@@ -71,7 +70,7 @@ export const apolloContainers = (apolloConfig = {}) => {
 
     // Test sequential queries
     queryUserRegions: props => {
-      return userRegionsQueryContainer(
+      return userStateRegionsQueryContainer(
         R.merge(apolloConfig,
           {
             options: {
@@ -85,9 +84,7 @@ export const apolloContainers = (apolloConfig = {}) => {
             }
           }),
         {
-          // We currently query for the region id, key, and name
-          // We might want the geojson too so we can display it to the user on a map
-          regionOutputParams: regionOutputParamsMinimum
+          userRegionOutputParams: userStateRegionOutputParams()
         },
         // We just need the userState and scope
         R.pick(['render', 'children', 'userState', 'scope'], props)
@@ -122,7 +119,7 @@ export const apolloContainers = (apolloConfig = {}) => {
           }
         }),
         {
-          outputParams: userRegionOutputParams()
+          userRegionOutputParams: userStateRegionOutputParams()
         }
       )(
         R.merge(

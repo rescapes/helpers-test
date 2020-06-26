@@ -17,20 +17,19 @@ import {v} from 'rescape-validate';
 import {fromPromised, of, waitAll} from 'folktale/concurrency/task';
 import {
   composeWithChain,
-  composeWithChainMDeep,
   defaultRunConfig,
   filterWithKeys,
   mapObjToValues,
   mapToMergedResponseAndInputs,
   mapToNamedResponseAndInputs,
   omitDeep,
-  reqStrPathThrowing
+  reqStrPathThrowing,
+  strPathOr
 } from 'rescape-ramda';
 import * as R from 'ramda';
 import Result from 'folktale/result';
 import {loggers} from 'rescape-log';
-import {apolloQueryResponsesTask, createRequestVariables} from 'rescape-apollo';
-import {configToChainedPropsForSampleTask} from './apolloContainerTests/SampleContainer.sample';
+import {apolloQueryResponsesTask} from 'rescape-apollo';
 
 const log = loggers.get('rescapeDefault');
 
@@ -266,6 +265,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
           apolloConfigTask,
           resolvedPropsTask: resolvedPropsTaskForRendering,
           componentName,
+          childClassDataName,
           childClassErrorName,
           childClassLoadingName
         },
@@ -536,6 +536,7 @@ const _testRender = (
     resolvedPropsTask,
     componentName,
     childClassDataName,
+    childClassErrorName,
     childClassLoadingName,
     mutationComponents,
     updatedPaths
@@ -569,9 +570,9 @@ const _testRender = (
     ),
     // Render component, calling queries
     mapToMergedResponseAndInputs(
-      ({apolloClient, componentName, childClassLoadingName, childClassDataName, props}) => {
+      ({apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName, props}) => {
         return _testRenderComponent(
-          {apolloClient, componentName, childClassLoadingName, childClassDataOrErrorName: childClassDataName},
+          {apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName},
           container,
           component,
           props
@@ -591,6 +592,7 @@ const _testRender = (
     componentName,
     childClassLoadingName,
     childClassDataName,
+    childClassErrorName,
     mutationComponents
   }).run().listen(
     defaultRunConfig({
@@ -604,22 +606,22 @@ const _testRender = (
 
 /**
  * Tests rendering a component where Apollo query responses must be awaited.
- * We first check for the childClassLoadingName component to be loaded and then childClassDataOrErrorName,
+ * We first check for the childClassLoadingName component to be loaded and then childClassDataName,
  * which is either the data ready or error component, depending on which result we are expeciting
  * @param apolloClient
  * @param componentName
  * @param childClassLoadingName
- * @param childClassDataOrErrorName
+ * @param childClassDataName
  * @param container
  * @param component
  * @param props
  * @return {Task} A Task resolving to {wrapper, childComponent, component},
  * where wrapper is the mounted ApolloProvider->ReadAdopt->Containers->Component
  * and component is the Component within that stack. This result can be used to test mutations.
- * childComponent is the child of component that has the class name of childClassDataOrErrorName
+ * childComponent is the child of component that has the class name of childClassDataName
  * @private
  */
-const _testRenderComponent = ({apolloClient, componentName, childClassLoadingName, childClassDataOrErrorName}, container, component, props) => {
+const _testRenderComponent = ({apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName}, container, component, props) => {
 
   // Create the React element from container, passing the props and component via a render function.
   // The react-adopt container expects to be given a render function so it can pass the results of the
@@ -639,9 +641,11 @@ const _testRenderComponent = ({apolloClient, componentName, childClassLoadingNam
     containerInstance
   );
   // Find the top-level componentInstance. This is always rendered in any Apollo status (loading, error, store data)
-  const componentInstance = wrapper.find(container);
+  const foundContainer = wrapper.find(container);
   // Make sure the componentInstance props are consistent since the last test run
-  expect(componentInstance.length).toEqual(1);
+  expect(foundContainer.length).toEqual(1);
+
+  const foundComponent = wrapper.find(componentName)
 
   // TODO act doesn't suppress the warning as it should
   // If we have an Apollo componentInstance, we use enzyme-wait to await the query to run and the the child
@@ -651,16 +655,16 @@ const _testRenderComponent = ({apolloClient, componentName, childClassLoadingNam
   act(() => {
     // If we have an Apollo componentInstance, our immediate status after mounting the componentInstance is loading. Confirm
     if (childClassLoadingName) {
-      expect(componentInstance.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
+      expect(foundComponent.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
     }
-    tsk = waitForChildComponentRenderTask(wrapper, componentName, childClassDataOrErrorName);
+    tsk = waitForChildComponentRenderTask(wrapper, componentName, childClassDataName);
   });
   return tsk.map(({wrapper, childComponent}) => {
-    return {wrapper, childComponent, component: wrapper.find(componentName)};
+    return {wrapper, childComponent, component: foundComponent};
   });
 };
 
-const _testRenderComponentMutations = ({mutationComponents, componentName, childClassDataName}, wrapper, component, props) => {
+const _testRenderComponentMutations = ({mutationComponents, componentName, childClassDataName, childClassErrorName}, wrapper, component, props) => {
   // Store the state of the component's prop before the mutation
   const apolloRenderProps = component.props();
   return R.map(
@@ -691,7 +695,7 @@ const _testRenderComponentMutations = ({mutationComponents, componentName, child
             ),
             // Wait for render again--this might be immediate
             mapToNamedResponseAndInputs('childRendered',
-              ({}) => waitForChildComponentRenderTask(wrapper, componentName, childClassDataName)
+              ({}) => waitForChildComponentRenderTask(wrapper, componentName, childClassErrorName || childClassDataName)
             ),
             // Call the mutate function
             mapToNamedResponseAndInputs('mutationResponse',
@@ -739,7 +743,10 @@ const testMutationChanges = (clientOrComponent, updatedPaths, prePostMutationCom
       if (updatedPathsForMutaton) {
         R.forEach(
           updatedPath => {
-            expect(reqStrPathThrowing(updatedPath, preMutationApolloRenderProps)).not.toEqual(
+            // compare the pre mutation version to the post mutation.
+            // if we are checking related query data, there should be no undefined values
+            // If we are checking mutation results, the initial value can be undefined
+            expect(strPathOr('undefined', updatedPath, preMutationApolloRenderProps)).not.toEqual(
               reqStrPathThrowing(updatedPath, postMutationApolloRenderProps)
             );
           },
@@ -758,6 +765,7 @@ const _testRenderError = (
     resolvedPropsTask,
     componentName,
     childClassLoadingName,
+    childClassDataName,
     childClassErrorName,
     updatedPaths
   }, container, component, done) => {
@@ -768,11 +776,25 @@ const _testRenderError = (
 
   const errors = [];
   return composeWithChain([
+    mapToNamedResponseAndInputs('prePostMutationComparisons',
+      // Once we are loaded, we've already run queries, so only call mutation functions here.
+      // This will update the component with the mutated data.
+      // We don't actually change the values explicitly when we mutate here, so we assert it worked
+      // by checking the object's update timestamp at the end of the test
+      ({mutationComponents, wrapper, component, componentName, childClassDataName, childClassErrorName, props}) => {
+        return _testRenderComponentMutations({
+          mutationComponents,
+          componentName,
+          childClassDataName,
+          childClassErrorName
+        }, wrapper, component, props);
+      }
+    ),
     // Render component, calling queries
     mapToMergedResponseAndInputs(
       ({apolloClient, componentName, childClassLoadingName, childClassErrorName, props}) => {
         return _testRenderComponent(
-          {apolloClient, componentName, childClassLoadingName, childClassDataOrErrorName: childClassErrorName},
+          {apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName},
           container,
           component,
           props
@@ -794,6 +816,7 @@ const _testRenderError = (
     resolvedPropsTask,
     componentName,
     childClassLoadingName,
+    childClassDataName,
     childClassErrorName
   }).run().listen(
     defaultRunConfig({
