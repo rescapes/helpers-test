@@ -91,33 +91,47 @@ export const filterForMutationContainers = apolloContainers => {
 /**
  * Runs tests on an apollo React container with the * given config.
  * Even if the container being tested does not have an apollo query, this can be used
- * @param {Object} config
- * @param {String} config.componentName The name of the React component that the container wraps
- * @param {String} config.childClassDataName A class used in a React component in the named
- * component's renderData method--or any render code when apollo data is loaded
- * @param {Object|Task} config.schema A graphql schema or Task resolving to a schema that resolves queries to sample
- * values.
- * @param {String} [config.childClassLoadingName] Optional. A class used in a React component in the named
+ * @param {Object} context
+ * {
+      componentContext: {
+        name: componentName,
+        statusClasses: {
+          data: childClassDataName,
+          loading: childClassLoadingName,
+          error: childClassErrorName
+        }
+      },
+      apolloContext: {
+        apolloConfigTask,
+        apolloContainers,
+        waitLength
+      },
+      testContext: {
+        errorMaker,
+        omitKeysFromSnapshots,
+        updatedPaths
+      }
+    }
+ * @param {String} context.componentContext.name The name of the React component that the container wraps
+ * @param {String} context.componentContext.statusClasses.data.childClassDataName A class used in a React component in the named
+ *  * @param {String} [context.componentContext.statusClasses.data..childClassLoadingName] Optional. A class used in a React component in the named
  * component's renderLoading method--or any render code called when apollo loading is true. Normally
  * only needed for components with queries.
- * @param {String} [config.childClassErrorName] Optional. A class used in a React component in the named
+ * @param {String} [context.componentContext.statusClasses.data..childClassErrorName] Optional. A class used in a React component in the named
  * component's renderError method--or any render code called when apollo error is true. Normally only
  * needed for components with queries.
- * @param {Function} [config.apolloConfigToPropsResultTask] A Function that expects the Apollo schema as the unary
- * argument. Returns a task that resolves to all properties needed by the container.
- * The value must be an Result in case errors occur during loading parent data. An Result.Ok contains
- * successful props and Result.Error indicates an error that causes this function to throw
- * This can be done with constants, or as the name suggests by chaining all ancestor Components/Container props,
- * where the ancestor Container props might be Apollo based.
- * of the parentProps used to call propsFromSampleStateAndContainer. Required if the container component receives
- * props from its parent (it usually does)
- * @param {Function} [testContext.apolloContainers] Function expecting an optional apolloConfig and returning
+ * component's renderData method--or any render code when apollo data is loaded
+ * @param {Object} apolloContext
+ * @param {Task} apolloContext.apolloConfigTask Task resolving to the ApolloConfig
+ * @param {[Object|Function|Task]} apolloContext.apolloContainers List of apolloContainers returning an Apollo Query or Mutate component
  * Apollo Containers or Apollo Tasks. The tests below call this function with and empty value and then
  * wrap the result in adopt of react-adopt to make adopted Apollo components that render all of their
- * request results to a single render funcdtion. The tests also call this function with an apolloConfig that
+ * request results to a single render function. The tests also call this function with an apolloConfig that
  * contains an apolloClient to generate tasks out of the apollo containers. This is used for testQueries
  * and testMutations so we can see if the requests work as expected independent of a readct component
+ * @param {Number} apolloContext.waitLength how long to wait in ms for async apollo requests. Defaults to 10000 ms
  * @param {Object} testContext
+ * @param {Function} [testContext.apolloContainers] Function expecting an optional apolloConfig and returning
  * @param {Function} [testContext.errorMaker] Optional unary function that expects the results of the
  * @param {[String]} testContext.omitKeysFromSnapshots Keys to not snapshot test because
  * values aren't deterministic. This must at least include id and should include dates that change.
@@ -147,7 +161,8 @@ export const apolloContainerTests = v((context, container, component, configToCh
       },
       apolloContext: {
         apolloConfigTask,
-        apolloContainers
+        apolloContainers,
+        waitLength
       },
       testContext: {
         errorMaker,
@@ -181,6 +196,10 @@ export const apolloContainerTests = v((context, container, component, configToCh
       expect.assertions(1);
       const errors = [];
       composeWithChain([
+        ({apolloClient, props}) => of(mountWithApolloClient(
+          {apolloClient},
+          e(container, props)
+        )),
         mapToMergedResponseAndInputs(
           // Resolves to {schema, apolloClient}
           () => apolloConfigTask
@@ -190,11 +209,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
         )
       ])({}).run().listen(
         defaultRunConfig({
-          onResolved: ({props, apolloClient}) => {
-            const component = mountWithApolloClient(
-              {apolloClient},
-              e(container, props)
-            );
+          onResolved: component => {
             expect(R.length(component)).toBe(1);
           }
         }, errors, done)
@@ -245,7 +260,8 @@ export const apolloContainerTests = v((context, container, component, configToCh
           childClassLoadingName,
           omitKeysFromSnapshots,
           mutationComponents: filterForMutationContainers(apolloContainers({})),
-          updatedPaths
+          updatedPaths,
+          waitLength
         },
         container,
         component,
@@ -267,7 +283,9 @@ export const apolloContainerTests = v((context, container, component, configToCh
           componentName,
           childClassDataName,
           childClassErrorName,
-          childClassLoadingName
+          childClassLoadingName,
+          mutationComponents: filterForMutationContainers(apolloContainers({})),
+          waitLength
         },
         container,
         component,
@@ -539,7 +557,8 @@ const _testRender = (
     childClassErrorName,
     childClassLoadingName,
     mutationComponents,
-    updatedPaths
+    updatedPaths,
+    waitLength
   }, container, component, done) => {
 
   expect.assertions(
@@ -564,8 +583,9 @@ const _testRender = (
         return _testRenderComponentMutations({
           mutationComponents,
           componentName,
-          childClassDataName
-        }, wrapper, component, props);
+          childClassDataName,
+          waitLength
+        }, wrapper, component);
       }
     ),
     // Render component, calling queries
@@ -608,20 +628,31 @@ const _testRender = (
  * Tests rendering a component where Apollo query responses must be awaited.
  * We first check for the childClassLoadingName component to be loaded and then childClassDataName,
  * which is either the data ready or error component, depending on which result we are expeciting
- * @param apolloClient
- * @param componentName
- * @param childClassLoadingName
- * @param childClassDataName
- * @param container
- * @param component
- * @param props
+ * @param {Object} config
+ * @param config.apolloClient
+ * @param config.componentName
+ * @param {String} config.childClassLoadingName
+ * @param {String} config.childClassDataName
+ * @param {String} config.childClassErrorName Only needed for testing errors
+ * @param {Number} config.waitLength Optional number of milliseconds to wait for asynchronous operations. Defaults to 10000
+ * @param {Object} container The apollo container to test
+ * @param {Object} component The apollo component of the container to test
+ * @param {Object} props The props to pass
  * @return {Task} A Task resolving to {wrapper, childComponent, component},
  * where wrapper is the mounted ApolloProvider->ReadAdopt->Containers->Component
  * and component is the Component within that stack. This result can be used to test mutations.
  * childComponent is the child of component that has the class name of childClassDataName
  * @private
  */
-const _testRenderComponent = ({apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName}, container, component, props) => {
+const _testRenderComponent = (
+  {
+    apolloClient,
+    componentName,
+    childClassLoadingName,
+    childClassDataName,
+    childClassErrorName,
+    waitLength
+  }, container, component, props) => {
 
   // Create the React element from container, passing the props and component via a render function.
   // The react-adopt container expects to be given a render function so it can pass the results of the
@@ -645,7 +676,7 @@ const _testRenderComponent = ({apolloClient, componentName, childClassLoadingNam
   // Make sure the componentInstance props are consistent since the last test run
   expect(foundContainer.length).toEqual(1);
 
-  const foundComponent = wrapper.find(componentName)
+  const foundComponent = wrapper.find(componentName);
 
   // TODO act doesn't suppress the warning as it should
   // If we have an Apollo componentInstance, we use enzyme-wait to await the query to run and the the child
@@ -657,14 +688,14 @@ const _testRenderComponent = ({apolloClient, componentName, childClassLoadingNam
     if (childClassLoadingName) {
       expect(foundComponent.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
     }
-    tsk = waitForChildComponentRenderTask(wrapper, componentName, childClassDataName);
+    tsk = waitForChildComponentRenderTask({componentName, childClassName: childClassDataName, waitLength}, wrapper);
   });
   return tsk.map(({wrapper, childComponent}) => {
     return {wrapper, childComponent, component: foundComponent};
   });
 };
 
-const _testRenderComponentMutations = ({mutationComponents, componentName, childClassDataName, childClassErrorName}, wrapper, component, props) => {
+const _testRenderComponentMutations = ({mutationComponents, componentName, childClassDataName, childClassErrorName, waitLength}, wrapper, component) => {
   // Store the state of the component's prop before the mutation
   const apolloRenderProps = component.props();
   return R.map(
@@ -695,22 +726,33 @@ const _testRenderComponentMutations = ({mutationComponents, componentName, child
             ),
             // Wait for render again--this might be immediate
             mapToNamedResponseAndInputs('childRendered',
-              ({}) => waitForChildComponentRenderTask(wrapper, componentName, childClassErrorName || childClassDataName)
+              ({}) => waitForChildComponentRenderTask({
+                  componentName,
+                  childClassName: childClassErrorName || childClassDataName,
+                  waitLength
+                },
+                wrapper)
             ),
             // Call the mutate function
             mapToNamedResponseAndInputs('mutationResponse',
-              () => fromPromised(() => {
-                let m = null;
-                // TODO act doesn't suppress the warning as it should
-                act(() => {
-                  // We don't need to pass mutation variables because they are already set in the request
-                  if (skip) {
-                    throw Error('Attempt to run a skipped mutation, meaning its variables are not ready. This occurs when the component is ready before the mutation component is. Check the component renderChoicepoint settings to make sure the mutation component is awaited');
-                  }
-                  m = mutation();
+              () => {
+                const task = fromPromised(() => {
+                  let m = null;
+                  // TODO act doesn't suppress the warning as it should
+                  act(() => {
+                    // We don't need to pass mutation variables because they are already set in the request
+                    if (skip) {
+                      throw Error('Attempt to run a skipped mutation, meaning its variables are not ready. This occurs when the component is ready before the mutation component is. Check the component renderChoicepoint settings to make sure the mutation component is awaited');
+                    }
+                    m = mutation();
+                  });
+                  return m;
+                })();
+                return task.orElse(error => {
+                  // If testing error, return the error
+                  return of(error);
                 });
-                return m;
-              })()
+              }
             )
           ]
         )({mutationName});
@@ -767,7 +809,9 @@ const _testRenderError = (
     childClassLoadingName,
     childClassDataName,
     childClassErrorName,
-    updatedPaths
+    mutationComponents,
+    updatedPaths,
+    waitLength
   }, container, component, done) => {
 
   expect.assertions(
@@ -786,8 +830,9 @@ const _testRenderError = (
           mutationComponents,
           componentName,
           childClassDataName,
-          childClassErrorName
-        }, wrapper, component, props);
+          childClassErrorName,
+          waitLength
+        }, wrapper, component);
       }
     ),
     // Render component, calling queries
@@ -817,7 +862,8 @@ const _testRenderError = (
     componentName,
     childClassLoadingName,
     childClassDataName,
-    childClassErrorName
+    childClassErrorName,
+    mutationComponents
   }).run().listen(
     defaultRunConfig({
       onResolved: ({childComponent}) => {

@@ -2,7 +2,7 @@ import * as R from 'ramda';
 import Sample, {c} from './SampleComponent';
 import SampleContainer, {apolloContainers} from './SampleContainer';
 import {configToChainedPropsForSampleTask} from './SampleContainer.sample';
-import {localTestAuthTask} from 'rescape-apollo';
+import {localTestAuthTask, VERSION_PROPS} from 'rescape-apollo';
 import {apolloContainerTests} from '../apolloContainerTestHelpers';
 
 // Test this container
@@ -19,12 +19,26 @@ const childClassLoadingName = c.sampleLoading;
 // Find this class in the error renderer
 const childClassErrorName = c.sampleError;
 // Error maker creates an unknown id that can't be queried
-const errorMaker = parentProps => R.set(R.lensPath(['region', 'id']), 'foo', parentProps);
-const omitKeysFromSnapshots = ['id', 'name', 'key', 'createdAt', 'updatedAt'];
+// Error maker creates an unknown id that can't be queried
+const errorMaker = parentProps => {
+  return R.compose(
+    // Update both the region id and the userRegion's region id
+    parentProps => R.set(R.lensPath(['userState', 'data', 'userRegions', 0, 'region', 'id']), -1, parentProps),
+    parentProps => R.set(R.lensPath(['region', 'id']), -1, parentProps)
+  )(parentProps)
+};
+
+const omitKeysFromSnapshots = R.concat(['id', 'key'], VERSION_PROPS);
 // We expect calling mutateRegion to update the updatedAt of the queryRegions response
 const updatedPaths = {
-  mutateRegion: {component: ['queryRegions.data.regions.0.updatedAt'], client: ['data.mutate.region']},
-  mutateUserRegion: {component: ['data.mutate.userState.updatedAt'], client: ['data.mutate.userState']}
+  mutateRegion: {
+    component: ['queryRegions.data.regions.0.updatedAt'],
+    client: ['data.mutate.region']
+  },
+  mutateUserRegion: {
+    component: ['mutateUserRegion.result.data.updateUserState.userState.updatedAt'],
+    client: ['data.mutate.userState']
+  }
 };
 
 describe('SampleContainer', () => {
@@ -58,8 +72,8 @@ describe('SampleContainer', () => {
     component,
     configToChainedPropsForSampleTask
   );
-  test('testComposeRequests', testComposeRequests, 1000000);
-  test('testQueries', testQueries, 1000000);
+  test('testComposeRequests', testComposeRequests, 10000);
+  test('testQueries', testQueries, 10000);
   test('testMutations', testMutations, 1000000);
   test('testRender', testRender, 1000000);
   test('testRenderError', testRenderError, 100000);

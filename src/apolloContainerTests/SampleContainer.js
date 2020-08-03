@@ -1,10 +1,12 @@
 import {
+  makeRegionMutationContainer,
+  makeRegionsQueryContainer,
   regionOutputParams,
   userStateRegionMutationContainer, userStateRegionsQueryContainer
 } from 'rescape-place';
 import {adopt} from 'react-adopt';
 import * as R from 'ramda';
-import {makeMutationRequestContainer, makeQueryContainer} from 'rescape-apollo';
+import {makeMutationRequestContainer, makeQueryContainer, normalizeSampleRegionPropsForMutating} from 'rescape-apollo';
 import {reqStrPathThrowing, strPathOr, toNamedResponseAndInputs} from 'rescape-ramda';
 import {userStateRegionOutputParams} from 'rescape-place';
 
@@ -17,26 +19,6 @@ export const readInputTypeMapper = {
   'geojson': 'FeatureCollectionDataTypeofRegionTypeRelatedReadInputType'
 };
 
-// Sample query of the region object that is in the rescape-apollo remote schema
-const _makeRegionsQueryContainer = R.curry((apolloConfig, {outputParams}, props) => {
-  return makeQueryContainer(
-    apolloConfig,
-    {name: 'regions', readInputTypeMapper, outputParams},
-    props
-  );
-});
-
-// Sample mutation of the region object that is in the rescape-apollo remote schema
-export const _makeRegionMutationContainer = R.curry((apolloConfig, {outputParams}, props) => {
-  return makeMutationRequestContainer(
-    apolloConfig,
-    {
-      name: 'region',
-      outputParams
-    },
-    props
-  );
-});
 
 /**
  * Each query and mutation expects a container to compose then props
@@ -47,20 +29,22 @@ export const apolloContainers = (apolloConfig = {}) => {
   return {
     // Creates a function expecting a component to wrap and props
     queryRegions: props => {
-      return _makeRegionsQueryContainer(
-        R.merge(apolloConfig,
-          {
-            options: {
-              variables: props => {
-                return {
-                  id: parseInt(reqStrPathThrowing('region.id', props))
-                };
-              },
-              // Pass through error so we can handle it in the component
-              errorPolicy: 'all'
+      return makeRegionsQueryContainer(
+        {
+          apolloConfig: R.merge(apolloConfig,
+            {
+              options: {
+                variables: props => {
+                  return {
+                    id: reqStrPathThrowing('region.id', props)
+                  };
+                },
+                // Pass through error so we can handle it in the component
+                errorPolicy: 'all'
+              }
             }
-          }
-        ),
+          )
+        },
         {
           outputParams: regionOutputParams
         },
@@ -71,18 +55,18 @@ export const apolloContainers = (apolloConfig = {}) => {
     // Test sequential queries
     queryUserRegions: props => {
       return userStateRegionsQueryContainer(
-        R.merge(apolloConfig,
-          {
-            options: {
-              variables: props => {
-                // The props given to this are the userState id and user
-                // Pick the id of the UserState
-                return R.pick(['id'], props); //R.map(R.pick(['id']), R.pick(['userState'], props));
-              },
-              // Pass through error so we can handle it in the component
-              errorPolicy: 'all'
-            }
-          }),
+        {
+          apolloConfig: R.merge(apolloConfig,
+            {
+              options: {
+                variables: props => {
+                  return R.pick(['id'], R.propOr({}, 'region', props));
+                },
+                // Pass through error so we can handle it in the component
+                errorPolicy: 'all'
+              }
+            })
+        },
         {
           userRegionOutputParams: userStateRegionOutputParams()
         },
@@ -92,7 +76,7 @@ export const apolloContainers = (apolloConfig = {}) => {
     },
 
     mutateRegion: props => {
-      return _makeRegionMutationContainer(
+      return makeRegionMutationContainer(
         R.merge(apolloConfig, {
           options: {
             variables: (props) => {

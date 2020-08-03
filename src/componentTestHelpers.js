@@ -203,17 +203,19 @@ export const shallowWrap = (componentFactory, props) => {
  * Waits for a child component with the given className to render. Useful for apollo along with Enzyme
  * 3, since Enzyme 3 doesn't keep it's wrapper synced with all DOM changes, and Apollo doesn't expose
  * any event that announces when the network status changes to 7 (loaded)
- * @param wrapper The mounted enzyme Component
- * @param componentName The component of the wrapper whose render method will render the child component
- * @param childClassName The child class name to search for periodically
- * @returns {Promise} A promise that returns the component matching childClassName or if an error
+ * @param {Object} config
+ * @param {String} config.componentName The component of the wrapper whose render method will render the child component
+ * @param {String} config.childClassName The child class name to search for periodically
+ * @param {Number} [config.waitLength] Default 10000 ms. Set longer for longer queries
+ * @param {Object} wrapper The mounted enzyme Component
+ * @returns {Task} A task that returns the component matching childClassName or if an error
  * occurs return an Error with the message and dump of the props
  */
-export const waitForChildComponentRenderTask = (wrapper, componentName, childClassName) => {
+export const waitForChildComponentRenderTask = ({componentName, childClassName, waitLength=10000}, wrapper) => {
   const component = wrapper.find(componentName);
   const childClassNameStr = `.${getClass(childClassName)}`;
   // Wait for the child component to render, which indicates that data loading completed
-  const waitForChild = createWaitForElement(childClassNameStr, 10000);
+  const waitForChild = createWaitForElement(childClassNameStr, waitLength);
   const find = component.find;
   // Override find to call update each time we poll for an update
   // Enzyme 3 doesn't stay synced with React DOM changes without update
