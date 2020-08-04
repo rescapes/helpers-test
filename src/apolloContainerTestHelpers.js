@@ -591,8 +591,8 @@ const _testRender = (
     // Render component, calling queries
     mapToMergedResponseAndInputs(
       ({apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName, props}) => {
-        return _testRenderComponent(
-          {apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName},
+        return _testRenderComponentTask(
+          {apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName, waitLength},
           container,
           component,
           props
@@ -644,7 +644,7 @@ const _testRender = (
  * childComponent is the child of component that has the class name of childClassDataName
  * @private
  */
-const _testRenderComponent = (
+const _testRenderComponentTask = (
   {
     apolloClient,
     componentName,
@@ -673,26 +673,48 @@ const _testRenderComponent = (
   );
   // Find the top-level componentInstance. This is always rendered in any Apollo status (loading, error, store data)
   const foundContainer = wrapper.find(container);
-  // Make sure the componentInstance props are consistent since the last test run
   expect(foundContainer.length).toEqual(1);
 
-  const foundComponent = wrapper.find(componentName);
-
-  // TODO act doesn't suppress the warning as it should
-  // If we have an Apollo componentInstance, we use enzyme-wait to await the query to run and the the child
-  // componentInstance that is dependent on the query result to render. If we don't have an Apollo componentInstance,
-  // this child will be rendered immediately without delay
-  let tsk = null;
-  act(() => {
-    // If we have an Apollo componentInstance, our immediate status after mounting the componentInstance is loading. Confirm
-    if (childClassLoadingName) {
-      expect(foundComponent.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
-    }
-    tsk = waitForChildComponentRenderTask({componentName, childClassName: childClassDataName, waitLength}, wrapper);
-  });
-  return tsk.map(({wrapper, childComponent}) => {
-    return {wrapper, childComponent, component: foundComponent};
-  });
+  return composeWithChain([
+    ({wrapper, render: {childComponent, foundComponent}}) => {
+      return of({wrapper, childComponent, component: foundComponent});
+    },
+    mapToNamedResponseAndInputs('render',
+      ({wrapper, childClassLoadingName, childClassDataName, loading}) => {
+        const foundComponent = wrapper.find(componentName);
+        // If we have an Apollo componentInstance, our immediate status after mounting the componentInstance is loading. Confirm
+        if (childClassLoadingName) {
+          expect(foundComponent.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
+        }
+        // TODO act doesn't suppress the warning as it should
+        // If we have an Apollo componentInstance, we use enzyme-wait to await the query to run and the the child
+        // componentInstance that is dependent on the query result to render. If we don't have an Apollo componentInstance,
+        // this child will be rendered immediately without delay
+        let tsk = null;
+        act(() => {
+          tsk = waitForChildComponentRenderTask({
+            componentName,
+            childClassName: childClassDataName,
+            waitLength
+          }, wrapper);
+        });
+        return tsk.map(x => R.merge({foundComponent}, x));
+      }
+    ),
+    mapToNamedResponseAndInputs('loading',
+      ({waitLength, wrapper, childClassLoadingName}) => {
+        // Make sure the componentInstance props are consistent since the last test run
+        let tsk = null;
+        act(() => {
+          tsk = waitForChildComponentRenderTask({
+            componentName,
+            childClassName: childClassLoadingName,
+            waitLength
+          }, wrapper);
+        });
+        return tsk;
+      })
+  ])({waitLength, wrapper, foundContainer, childClassLoadingName, childClassDataName});
 };
 
 const _testRenderComponentMutations = ({mutationComponents, componentName, childClassDataName, childClassErrorName, waitLength}, wrapper, component) => {
@@ -838,8 +860,8 @@ const _testRenderError = (
     // Render component, calling queries
     mapToMergedResponseAndInputs(
       ({apolloClient, componentName, childClassLoadingName, childClassErrorName, props}) => {
-        return _testRenderComponent(
-          {apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName},
+        return _testRenderComponentTask(
+          {apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName, waitLength},
           container,
           component,
           props
