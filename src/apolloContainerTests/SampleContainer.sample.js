@@ -8,18 +8,16 @@
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+
+import * as R from 'ramda';
 import {of} from 'folktale/concurrency/task';
-import {Ok} from 'folktale/result';
 import {parentPropsForContainerTask} from '../componentTestHelpers';
 import {composeWithChain, mapMonadByConfig} from 'rescape-ramda';
-import {
-  makeCurrentUserQueryContainer,
-  mutateSampleUserStateWithProjectAndRegionTask,
-  userOutputParams
-} from 'rescape-place';
+import {makeCurrentUserQueryContainer, userOutputParams} from 'rescape-place';
 import {apolloQueryResponsesTask} from 'rescape-apollo';
 import {filterForQueryContainers} from '../apolloContainerTestHelpers';
 import {apolloContainers} from './SampleContainer';
+import {mutateSampleUserStateWithProjectsAndRegionsContainer} from 'rescape-place'
 
 /**
  * @file Normally links sample props from a parent component to a Region component. In this case
@@ -43,26 +41,32 @@ export const chainedParentPropsForSampleTask = (apolloConfig, runParentContainer
     apolloConfig,
     // Fake the parent
     apolloConfig => composeWithChain([
-      ({userState, region, project}) => of({
+      ({userState, regions, projects}) => of({
         // Some props
         style: {
           width: 500,
           height: 500
         },
+        // Sample paging params
+        page: 1,
+        pageSize: 1,
+
+
+        regionFilter: {idIn: R.map(R.prop('id'), regions)},
         userState,
-        region,
-        project,
+        region: R.head(regions),
+        project: R.head(projects),
         // scope limits queryUserRegions to these params
         scope: {name: 'Earth'}
       }),
       // Mutate the UserState to get cache-only data stored
       mapMonadByConfig({},
         ({apolloConfig, user}) => {
-          return mutateSampleUserStateWithProjectAndRegionTask({
+          return mutateSampleUserStateWithProjectsAndRegionsContainer({
             apolloConfig,
-            user,
-            regionKey: 'earth',
-            projectKey: 'shrangrila'
+            user: R.pick(['id'], user),
+            regionKeys: ['earth', 'zorgon'],
+            projectKeys: ['shrangrila', 'pangea']
           });
         }
       ),

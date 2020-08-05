@@ -97,6 +97,9 @@ Sample.choicepoint = renderChoicepoint(
     onData: Sample.renderData
   },
   {
+    queryRegionsPaginatedAll: true,
+    queryRegionsPaginated: true,
+    queryRegionsMinimized: true,
     queryRegions: true,
     queryUserRegions: true,
     mutateRegion: true

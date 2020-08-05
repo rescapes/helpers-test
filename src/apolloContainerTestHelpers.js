@@ -702,19 +702,19 @@ const _testRenderComponentTask = (
       }
     ),
     mapToNamedResponseAndInputs('loading',
-      ({waitLength, wrapper, childClassLoadingName}) => {
+      ({waitLength, wrapper, childClassLoadingName, container}) => {
         // Make sure the componentInstance props are consistent since the last test run
         let tsk = null;
         act(() => {
           tsk = waitForChildComponentRenderTask({
-            componentName,
+            componentName: container,
             childClassName: childClassLoadingName,
             waitLength
           }, wrapper);
         });
         return tsk;
       })
-  ])({waitLength, wrapper, foundContainer, childClassLoadingName, childClassDataName});
+  ])({waitLength, wrapper, foundContainer, childClassLoadingName, childClassDataName, container});
 };
 
 const _testRenderComponentMutations = ({mutationComponents, componentName, childClassDataName, childClassErrorName, waitLength}, wrapper, component) => {

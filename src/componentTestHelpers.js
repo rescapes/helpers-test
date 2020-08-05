@@ -204,7 +204,7 @@ export const shallowWrap = (componentFactory, props) => {
  * 3, since Enzyme 3 doesn't keep it's wrapper synced with all DOM changes, and Apollo doesn't expose
  * any event that announces when the network status changes to 7 (loaded)
  * @param {Object} config
- * @param {String} config.componentName The component of the wrapper whose render method will render the child component
+ * @param {String|Object} config.componentName The component name or component of the wrapper whose render method will render the child component
  * @param {String} config.childClassName The child class name to search for periodically
  * @param {Number} [config.waitLength] Default 10000 ms. Set longer for longer queries
  * @param {Object} wrapper The mounted enzyme Component
