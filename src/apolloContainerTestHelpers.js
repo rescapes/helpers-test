@@ -183,7 +183,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
     const resolvedPropsTaskForRendering = R.chain(
       apolloConfig => configToChainedPropsForSampleTask(
         apolloConfig,
-        {}
+        {runParentContainerQueries: true}
       ),
       apolloConfigTask
     );

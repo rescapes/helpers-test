@@ -1,6 +1,5 @@
 import {
   makeRegionMutationContainer,
-  makeRegionsQueryContainer,
   regionOutputParams,
   regionQueryVariationContainers,
   userStateRegionMutationContainer,

@@ -102,7 +102,8 @@ Sample.choicepoint = renderChoicepoint(
     queryRegionsMinimized: true,
     queryRegions: true,
     queryUserRegions: true,
-    mutateRegion: true
+    mutateRegion: true,
+    mutateUserRegion: true,
   }
 );
 
