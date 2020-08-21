@@ -17,7 +17,7 @@ import {makeCurrentUserQueryContainer, userOutputParams} from 'rescape-place';
 import {apolloQueryResponsesTask} from 'rescape-apollo';
 import {filterForQueryContainers} from '../apolloContainerTestHelpers';
 import {apolloContainers} from './SampleContainer';
-import {mutateSampleUserStateWithProjectsAndRegionsContainer} from 'rescape-place'
+import {mutateSampleUserStateWithProjectsAndRegionsContainer} from 'rescape-place';
 
 /**
  * @file Normally links sample props from a parent component to a Region component. In this case
@@ -36,7 +36,7 @@ import {mutateSampleUserStateWithProjectsAndRegionsContainer} from 'rescape-plac
  * We fake the parent here, pretending that our Region component is named 'currentRegion' in the parent component
  * @param {boolean} runParentContainerQueries This would normally be passed to the parent
  */
-export const chainedParentPropsForSampleTask = (apolloConfig, runParentContainerQueries = false) => {
+export const chainedParentPropsForSampleTask = (apolloConfig, {runParentContainerQueries = false}) => {
   return parentPropsForContainerTask(
     apolloConfig,
     // Fake the parent
@@ -85,18 +85,18 @@ export const chainedParentPropsForSampleTask = (apolloConfig, runParentContainer
 /**
  * Task combining result of chainedParentPropsForRegionTask
  * @param {Object} apolloConfig
- * @param {Object} queryConfig
- * @param {Boolean} queryConfig.runParentContainerQueries Default false, set true when not testing rendering so the
+ * @param {Object} options
+ * @param {Boolean} options.runParentContainerQueries Default false, set true when not testing rendering so the
  * parent containers can run.
- * @param {Boolean} queryConfig.runContainerQueries Default false. Always set false, used internally to make parents run
+ * @param {Boolean} options.runContainerQueries Default false. Always set false, used internally to make parents run
  * parent containers run their queries to give us the props we expect. For instance, a parent container
  * might fetch the userState for us and from that user state we know what regions to query
  * happen automatically when we test rendered the component
  */
-export const configToChainedPropsForSampleTask = (apolloConfig, {runParentContainerQueries = false, runContainerQueries = false}) => {
+export const configToChainedPropsForSampleTask = (apolloConfig, {runParentContainerQueries=false, runContainerQueries=false, ...options}) => {
   return apolloQueryResponsesTask(
     // Apply these props from the "parent" to the queries
-    chainedParentPropsForSampleTask(apolloConfig, runParentContainerQueries),
+    chainedParentPropsForSampleTask(apolloConfig, {runParentContainerQueries, ...options}),
     // Get the Apollo queries for the container since we can run the props through them and get the
     // structured query results that the component expect
     filterForQueryContainers(apolloContainers(apolloConfig)),

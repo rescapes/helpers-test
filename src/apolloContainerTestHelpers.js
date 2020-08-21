@@ -34,29 +34,7 @@ import {apolloQueryResponsesTask} from 'rescape-apollo';
 const log = loggers.get('rescapeDefault');
 
 
-/**
- * Processes a apolloConfigToPropsResultTask representing parent props. props
- * Resolve the Result to the Result.ok value or throw if Result.Error
- * samplePropsResultTask returns and Result so that the an error
- * in the query can be processed by detected a Result.Error value, but here
- * we only accept a Result.Ok
- * @param {function} apolloConfigToPropsTask Expects the apolloConfig that is resolved from apolloConfig
- * task and returns a Task that resolves to the props
- * @param {Task} apolloConfigTask Resolves to a {schema, apollo}
- * @param {boolean} runParentContainerQueries Default false. Runs container queries for parent containers
- * so they can provide the expected props. We don't need this when testing rendering since the parent components
- * will automatically run their queries
- * @return {*}
- */
-const parentPropsTask = (apolloConfigToPropsTask, apolloConfigTask, runParentContainerQueries = false) => {
-  return composeWithChain([
-    apolloConfig => {
-      return apolloConfigToPropsTask(apolloConfig, runParentContainerQueries);
-    },
-    // Resolve the apolloConfig (typically by authenticating)
-    apolloConfigTask => apolloConfigTask
-  ])(apolloConfigTask);
-};
+
 
 /**
  * Filter for just the query containers of the given apolloContainers
@@ -728,7 +706,9 @@ const _testRenderComponentMutations = ({mutationComponents, componentName, child
           mutationName,
           // Return the render props before and after the mutations so we can confirm that values changed
           preMutationApolloRenderProps: apolloRenderProps,
-          postMutationApolloRenderProps: updatedComponent.instance().props,
+          postMutationApolloRenderProps: updatedComponent.instance() ?
+            updatedComponent.instance().props :
+            updatedComponent.props,
           // This isn't really needed. It just shows the return value of the mutation
           mutationResponse
         };
