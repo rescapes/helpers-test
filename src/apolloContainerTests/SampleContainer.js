@@ -62,8 +62,7 @@ export const apolloContainers = (apolloConfig = {}) => {
           {
             userRegionOutputParams: userStateRegionOutputParams()
           },
-          // We just need the userState and scope
-          R.pick(['render', 'children', 'userState', 'scope'], props)
+          props
         );
       },
 
@@ -89,7 +88,7 @@ export const apolloContainers = (apolloConfig = {}) => {
           R.merge(apolloConfig, {
             options: {
               variables: (props) => {
-                return R.propOr({}, 'region', props);
+                return R.pick(['id'], reqStrPathThrowing('scope.region', props));
               },
               errorPolicy: 'all'
             }

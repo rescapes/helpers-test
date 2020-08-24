@@ -32,6 +32,7 @@ const omitKeysFromSnapshots = R.concat(['id', 'key'], VERSION_PROPS);
 // We expect calling mutateRegion to update the updatedAt of the queryRegions response
 const updatedPaths = {
   mutateRegion: {
+    // Check that mutation modified the query, we could likewise check the mutation result
     component: ['queryRegions.data.regions.0.updatedAt'],
     client: ['data.mutate.region']
   },

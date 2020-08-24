@@ -34,8 +34,6 @@ import {apolloQueryResponsesTask} from 'rescape-apollo';
 const log = loggers.get('rescapeDefault');
 
 
-
-
 /**
  * Filter for just the query containers of the given apolloContainers
  * @param {Object} apolloContainers Keyed by request name and valued by apollo request container.
@@ -215,7 +213,6 @@ export const apolloContainerTests = v((context, container, component, configToCh
       {
         apolloConfigTask,
         resolvedPropsTask,
-        omitKeysFromSnapshots,
         updatedPaths
       },
       apolloConfig => filterForMutationContainers(apolloContainers(apolloConfig)),
@@ -393,13 +390,22 @@ const _testMutations = (
   {
     apolloConfigTask,
     resolvedPropsTask,
-    omitKeysFromSnapshots,
     updatedPaths
   },
   apolloConfigToMutationTasks,
   done
 ) => {
-  const assertions = R.length(R.values(updatedPaths)) + R.length(R.chain(R.prop('client'), R.values(updatedPaths)));
+  const assertions = R.add(
+    // The number of mutations with updatePaths to test
+    R.length(R.values(updatedPaths)),
+    // The total number of updatePaths, counted by looking at the client array
+    R.compose(
+      R.length,
+      updatedValues => R.chain(R.propOr([], 'client'), updatedValues),
+      updatedPaths => R.values(updatedPaths)
+    )(updatedPaths)
+  );
+
   expect.assertions(assertions);
 
   const errors = [];
@@ -654,8 +660,10 @@ const _testRenderComponentTask = (
   expect(foundContainer.length).toEqual(1);
 
   return composeWithChain([
-    ({wrapper, render: {childComponent, foundComponent}}) => {
-      return of({wrapper, childComponent, component: foundComponent});
+    ({wrapper, render: {childComponent}}) => {
+      return of({wrapper, childComponent,
+        // Find again to update the props
+        component: wrapper.find(componentName)});
     },
     mapToNamedResponseAndInputs('render',
       ({wrapper, childClassLoadingName, childClassDataName, loading}) => {
@@ -708,7 +716,7 @@ const _testRenderComponentMutations = ({mutationComponents, componentName, child
           preMutationApolloRenderProps: apolloRenderProps,
           postMutationApolloRenderProps: updatedComponent.instance() ?
             updatedComponent.instance().props :
-            updatedComponent.props,
+            updatedComponent.props(),
           // This isn't really needed. It just shows the return value of the mutation
           mutationResponse
         };
@@ -728,12 +736,14 @@ const _testRenderComponentMutations = ({mutationComponents, componentName, child
             ),
             // Wait for render again--this might be immediate
             mapToNamedResponseAndInputs('childRendered',
-              ({}) => waitForChildComponentRenderTask({
-                  componentName,
-                  childClassName: childClassErrorName || childClassDataName,
-                  waitLength
-                },
-                wrapper)
+              ({}) => {
+                return waitForChildComponentRenderTask({
+                    componentName,
+                    childClassName: childClassErrorName || childClassDataName,
+                    waitLength
+                  },
+                  wrapper);
+              }
             ),
             // Call the mutate function
             mapToNamedResponseAndInputs('mutationResponse',
