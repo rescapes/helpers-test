@@ -646,7 +646,12 @@ const _testRenderComponentTask = (
     props,
     // These props contains the results of the Apollo queries and the mutation functions
     // Merge them with the original props, which can return values unrelated to the apollo requests
-    responseProps => e(component, R.merge(props, responseProps))
+    responseProps => {
+      return e(
+        component,
+        R.merge(props, responseProps)
+      );
+    }
   );
   // Wrap the componentInstance in mock Apollo providers.
   // If the componentInstance doesn't use Apollo it just means that it will render its children synchronously,
@@ -661,9 +666,11 @@ const _testRenderComponentTask = (
 
   return composeWithChain([
     ({wrapper, render: {childComponent}}) => {
-      return of({wrapper, childComponent,
+      return of({
+        wrapper, childComponent,
         // Find again to update the props
-        component: wrapper.find(componentName)});
+        component: wrapper.find(componentName)
+      });
     },
     mapToNamedResponseAndInputs('render',
       ({wrapper, childClassLoadingName, childClassDataName, loading}) => {
