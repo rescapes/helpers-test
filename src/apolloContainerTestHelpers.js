@@ -174,7 +174,13 @@ export const apolloContainerTests = v((context, container, component, configToCh
       composeWithChain([
         ({apolloClient, props}) => of(mountWithApolloClient(
           {apolloClient},
-          e(container, props)
+          e(
+            container,
+            props,
+            responseProps => {
+              // Render anything. We're just testing request composition
+              return e('div');
+            })
         )),
         mapToMergedResponseAndInputs(
           // Resolves to {schema, apolloClient}
