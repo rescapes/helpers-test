@@ -64,6 +64,7 @@ export const filterForMutationContainers = apolloContainers => {
   );
 };
 
+
 /**
  * Runs tests on an apollo React container with the * given config.
  * Even if the container being tested does not have an apollo query, this can be used
@@ -149,6 +150,12 @@ export const apolloContainerTests = v((context, container, component, configToCh
       }
     } = context;
 
+    const apolloConfigOptionalFunctionTask = testName => R.unless(
+      R.hasIn('run'),
+      // Call with test name if not task
+      apolloConfigTask => apolloConfigTask(testName)
+    )(apolloConfigTask);
+
     // A Task that resolves props all the way up the hierarchy chain, ending with props for this
     // container based on the ancestor Containers/Components
     const resolvedPropsTask = R.chain(
@@ -156,14 +163,15 @@ export const apolloContainerTests = v((context, container, component, configToCh
         apolloConfig,
         {runParentContainerQueries: true}
       ),
-      apolloConfigTask
+      apolloConfigOptionalFunctionTask('Top')
     );
+
     const resolvedPropsTaskForRendering = R.chain(
       apolloConfig => configToChainedPropsForSampleTask(
         apolloConfig,
         {runParentContainerQueries: true}
       ),
-      apolloConfigTask
+      apolloConfigOptionalFunctionTask('Top')
     );
 
     /**
@@ -186,11 +194,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
         )),
         mapToMergedResponseAndInputs(
           // Resolves to {schema, apolloClient}
-          () => R.unless(
-            R.hasIn('run'),
-            // Call with test name if not task
-            apolloConfigTask => apolloConfigTask('testComposeRequests')
-          )(apolloConfigTask)
+          () => apolloConfigOptionalFunctionTask('testComposeRequests')
         ),
         mapToNamedResponseAndInputs('props',
           () => resolvedPropsTask
@@ -210,11 +214,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
      */
     const testQueries = done => _testQueries(
       {
-        apolloConfigTask: R.unless(
-          R.hasIn('run'),
-          // Call with test name if not task
-          apolloConfigTask => apolloConfigTask('testQueries')
-        )(apolloConfigTask),
+        apolloConfigTask: apolloConfigOptionalFunctionTask('testQueries'),
         resolvedPropsTask,
         omitKeysFromSnapshots
       },
@@ -227,18 +227,13 @@ export const apolloContainerTests = v((context, container, component, configToCh
      */
     const testMutations = done => _testMutations(
       {
-        apolloConfigTask: R.unless(
-          R.hasIn('run'),
-          // Call with test name if not task
-          apolloConfigTask => apolloConfigTask('testMutations')
-        )(apolloConfigTask),
+        apolloConfigTask: apolloConfigOptionalFunctionTask('testMutations'),
         resolvedPropsTask,
         updatedPaths
       },
       apolloConfig => filterForMutationContainers(apolloContainers(apolloConfig)),
       done
     );
-
 
     /**
      * Tests that the correct child class renders and that the child component props match the snapshot
@@ -248,11 +243,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
     const testRender = done => {
       _testRender(
         {
-          apolloConfigTask: R.unless(
-            R.hasIn('run'),
-            // Call with test name if not task
-            apolloConfigTask => apolloConfigTask('testRender')
-          )(apolloConfigTask),
+          apolloConfigTask: apolloConfigOptionalFunctionTask('testRender'),
           resolvedPropsTask: resolvedPropsTaskForRendering,
           componentName,
           childClassDataName,
@@ -277,11 +268,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
       _testRenderError(
         {
           errorMaker,
-          apolloConfigTask: R.unless(
-            R.hasIn('run'),
-            // Call with test name if not task
-            apolloConfigTask => apolloConfigTask('testRenderError')
-          )(apolloConfigTask),
+          apolloConfigTask: apolloConfigOptionalFunctionTask('testRenderError'),
           resolvedPropsTask: resolvedPropsTaskForRendering,
           componentName,
           childClassDataName,
