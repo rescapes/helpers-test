@@ -98,7 +98,9 @@ export const filterForMutationContainers = apolloContainers => {
  * needed for components with queries.
  * component's renderData method--or any render code when apollo data is loaded
  * @param {Object} apolloContext
- * @param {Task} apolloContext.apolloConfigTask Task resolving to the ApolloConfig
+ * @param {Task|Function<String, Task>} apolloContext.apolloConfigTask Task resolving to the ApolloConfig.
+ * This can alternatively be a function that accepts the name of the test and returns a task.
+ * This is used to optionally pass authenticated or non authenticated apolloConfigs based on the test
  * @param {[Object|Function|Task]} apolloContext.apolloContainers List of apolloContainers returning an Apollo Query or Mutate component
  * Apollo Containers or Apollo Tasks. The tests below call this function with and empty value and then
  * wrap the result in adopt of react-adopt to make adopted Apollo components that render all of their
@@ -184,7 +186,11 @@ export const apolloContainerTests = v((context, container, component, configToCh
         )),
         mapToMergedResponseAndInputs(
           // Resolves to {schema, apolloClient}
-          () => apolloConfigTask
+          () => R.unless(
+            R.hasIn('run'),
+            // Call with test name if not task
+            apolloConfigTask => apolloConfigTask('testComposeRequests')
+          )(apolloConfigTask)
         ),
         mapToNamedResponseAndInputs('props',
           () => resolvedPropsTask
@@ -204,7 +210,11 @@ export const apolloContainerTests = v((context, container, component, configToCh
      */
     const testQueries = done => _testQueries(
       {
-        apolloConfigTask,
+        apolloConfigTask: R.unless(
+          R.hasIn('run'),
+          // Call with test name if not task
+          apolloConfigTask => apolloConfigTask('testQueries')
+        )(apolloConfigTask),
         resolvedPropsTask,
         omitKeysFromSnapshots
       },
@@ -217,7 +227,11 @@ export const apolloContainerTests = v((context, container, component, configToCh
      */
     const testMutations = done => _testMutations(
       {
-        apolloConfigTask,
+        apolloConfigTask: R.unless(
+          R.hasIn('run'),
+          // Call with test name if not task
+          apolloConfigTask => apolloConfigTask('testMutations')
+        )(apolloConfigTask),
         resolvedPropsTask,
         updatedPaths
       },
@@ -234,7 +248,11 @@ export const apolloContainerTests = v((context, container, component, configToCh
     const testRender = done => {
       _testRender(
         {
-          apolloConfigTask,
+          apolloConfigTask: R.unless(
+            R.hasIn('run'),
+            // Call with test name if not task
+            apolloConfigTask => apolloConfigTask('testRender')
+          )(apolloConfigTask),
           resolvedPropsTask: resolvedPropsTaskForRendering,
           componentName,
           childClassDataName,
@@ -259,7 +277,11 @@ export const apolloContainerTests = v((context, container, component, configToCh
       _testRenderError(
         {
           errorMaker,
-          apolloConfigTask,
+          apolloConfigTask: R.unless(
+            R.hasIn('run'),
+            // Call with test name if not task
+            apolloConfigTask => apolloConfigTask('testRenderError')
+          )(apolloConfigTask),
           resolvedPropsTask: resolvedPropsTaskForRendering,
           componentName,
           childClassDataName,
