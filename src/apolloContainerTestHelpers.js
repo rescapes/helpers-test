@@ -315,7 +315,11 @@ export const apolloContainerTests = v((context, container, component, configToCh
           })
         }),
         apolloContext: PropTypes.shape({
-          apolloConfigTask: PropTypes.shape().isRequired,
+          apolloConfigTask: PropTypes.oneOfType(
+            [
+              PropTypes.shape(),
+              PropTypes.func
+            ]).isRequired,
           requests: PropTypes.shape()
         }),
         testContext: PropTypes.shape({
