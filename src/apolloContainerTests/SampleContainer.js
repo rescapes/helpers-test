@@ -9,6 +9,12 @@ import {
 import {adopt} from 'react-adopt';
 import * as R from 'ramda';
 import {reqStrPathThrowing, strPathOr, toNamedResponseAndInputs} from 'rescape-ramda';
+import {
+  containerForApolloType,
+  deleteTokenCookieMutationRequestContainer,
+  getRenderPropFunction,
+  isAuthenticatedLocal, tokenAuthMutationContainer
+} from 'rescape-apollo';
 
 // The __typename that represent the fields of the Region type. We need these to query by object types rather than
 // just by primitives, e.g. to query by geojson: {feature: {type: 'FeatureCollection'}} to get objects whose
@@ -26,14 +32,40 @@ export const readInputTypeMapper = {
  * @return {{queryRegions: (function(*=): *), mutateRegion: (function(*=): *), queryUserRegions: (function(*=): *)}}
  */
 export const apolloContainers = (apolloConfig = {}) => {
-  return R.merge(
-    regionQueryVariationContainers(
+  return R.mergeAll([
+    // Cache lookup to see if the user is authenticated
+    {
+      isAuthenticated: props => {
+        return containerForApolloType(
+          apolloConfig,
+          {
+            render: getRenderPropFunction(props),
+            response: isAuthenticatedLocal(apolloConfig)
+          }
+        );
+      }
+    },
+    R.map(component => {
+      // Skip if not authentication
+      return props => {
+        if (!reqStrPathThrowing('isAuthenticated', props)) {
+          return containerForApolloType(
+            apolloConfig,
+            {
+              render: getRenderPropFunction(props),
+              response: isAuthenticatedLocal(apolloConfig)
+            }
+          );
+        }
+        return component(props);
+      };
+    }, regionQueryVariationContainers(
       {
         apolloConfig: R.merge(apolloConfig,
           {
             options: {
               variables: props => {
-                return R.prop('regionFilter', props)
+                return R.prop('regionFilter', props);
               },
               // Pass through error so we can handle it in the component
               errorPolicy: 'all'
@@ -42,10 +74,56 @@ export const apolloContainers = (apolloConfig = {}) => {
         ),
         regionConfig: {}
       }
-    ),
+    )),
     {
+
+      mutateTokenAuth: props => {
+        return tokenAuthMutationContainer(
+          R.merge(apolloConfig,
+            {
+              options: {
+                variables: props => {
+                  return R.pick(['username', 'password'], props);
+                },
+                // Pass through error so we can handle it in the component
+                errorPolicy: 'all'
+              }
+            }
+          ),
+          {},
+          props
+        );
+      },
+      mutateDeleteTokenCookie: props => {
+        return deleteTokenCookieMutationRequestContainer(
+          R.merge(apolloConfig,
+            {
+              options: {
+                variables: () => {
+                  return {};
+                },
+                // Pass through error so we can handle it in the component
+                errorPolicy: 'all'
+              }
+            }
+          ),
+          {},
+          props
+        );
+      },
       // Test sequential queries
       queryUserRegions: props => {
+        // Skip if not authenticated
+        if (!reqStrPathThrowing('isAuthenticated', props)) {
+          return containerForApolloType(
+            apolloConfig,
+            {
+              render: getRenderPropFunction(props),
+              response: isAuthenticatedLocal(apolloConfig)
+            }
+          );
+        }
+
         return userStateRegionsQueryContainer(
           {
             apolloConfig: R.merge(apolloConfig,
@@ -115,7 +193,7 @@ export const apolloContainers = (apolloConfig = {}) => {
           )
         );
       }
-    });
+    }]);
 };
 
 // This produces a component class that expects a props object keyed by the keys in apolloContainers

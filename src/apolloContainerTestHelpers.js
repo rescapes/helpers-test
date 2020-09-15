@@ -30,7 +30,6 @@ import * as R from 'ramda';
 import Result from 'folktale/result';
 import {loggers} from 'rescape-log';
 import {apolloQueryResponsesTask} from 'rescape-apollo';
-
 const log = loggers.get('rescapeDefault');
 
 
@@ -79,8 +78,8 @@ export const filterForMutationContainers = apolloContainers => {
           loading: ...
           // A classname rendered in the component renderError
           error: ...
-          // A classname rendered in the component renderNoAuthorization (or renderData with no auth)
-          noAuthorization: ...
+          // A classname rendered in the component renderNoAuthentication (or renderData with no auth)
+          noAuthentication: ...
         }
       },
       apolloContext: {
@@ -127,10 +126,10 @@ export const filterForMutationContainers = apolloContainers => {
  * It's in the form {component: path, client: path}. For component we use the result of querying after mutation,
  * since we do all requests. For client tests we test the difference between mutating twice
  * @param {String} [authorizeMutationKey] The name of the mutation key in the result of testContext.apolloContainers
- * functions for authorizing when we run testRenderAuthorization. Props from configToChainedPropsForSampleTask
+ * functions for authorizing when we run testRenderAuthentication. Props from configToChainedPropsForSampleTask
  * are passed, so they must have the needed params, such as username and password
  * @param {String} [deauthorizeMutationKey] The name of the mutation key in the result of testContext.apolloContainers
- * functions for deauthorizing when we run testRenderAuthorization. Props from configToChainedPropsForSampleTask
+ * functions for deauthorizing when we run testRenderAuthentication. Props from configToChainedPropsForSampleTask
  * are passed although typically no props are needed
  * @param {Object} HOC Apollo container created by calling react-adopt or similar
  * @param {Object} component. The child component to container having a render function that receives
@@ -151,8 +150,8 @@ export const apolloContainerTests = v((context, container, component, configToCh
           error: childClassErrorName,
 
           // If we are testing login with, set the classname that shows when the user needs to login:
-          // testRenderAuthorization
-          noAuthorization: childClassNoAuthName
+          // testRenderAuthentication
+          noAuthentication: childClassNoAuthName
         }
       },
       apolloContext: {
@@ -165,27 +164,21 @@ export const apolloContainerTests = v((context, container, component, configToCh
         omitKeysFromSnapshots,
         updatedPaths,
         authorizeMutationKey,
-        deuthorizeMutationKey,
+        deuthorizeMutationKey
       }
     } = context;
 
-    const apolloConfigOptionalFunctionTask = testName => R.unless(
-      R.hasIn('run'),
-      // Call with test name if not task
-      apolloConfigTask => apolloConfigTask(testName)
-    )(apolloConfigTask);
+    const apolloConfigOptionalFunctionTask = testName => {
+      return R.unless(
+        R.hasIn('run'),
+        // Call with test name if not task
+        apolloConfigTask => apolloConfigTask(testName)
+      )(apolloConfigTask);
+    };
 
     // A Task that resolves props all the way up the hierarchy chain, ending with props for this
     // container based on the ancestor Containers/Components
     const resolvedPropsTask = R.chain(
-      apolloConfig => configToChainedPropsForSampleTask(
-        apolloConfig,
-        {runParentContainerQueries: true}
-      ),
-      apolloConfigOptionalFunctionTask('Top')
-    );
-
-    const resolvedPropsTaskForRendering = R.chain(
       apolloConfig => configToChainedPropsForSampleTask(
         apolloConfig,
         {runParentContainerQueries: true}
@@ -260,37 +253,43 @@ export const apolloContainerTests = v((context, container, component, configToCh
      * @return {Promise<void>}
      */
     const testRender = done => {
-      _testRender(
+      const errors = [];
+      const mutationComponents = filterForMutationContainers(apolloContainers({}));
+      _testRenderExpectations(mutationComponents, updatedPaths);
+      _testRenderTask(
         {
           apolloConfigTask: apolloConfigOptionalFunctionTask('testRender'),
-          resolvedPropsTask: resolvedPropsTaskForRendering,
+          resolvedPropsTask,
           componentName,
           childClassDataName,
           childClassLoadingName,
           omitKeysFromSnapshots,
-          mutationComponents: filterForMutationContainers(apolloContainers({})),
+          mutationComponents,
           updatedPaths,
           waitLength
         },
         container,
         component,
         done
-      );
+      ).run().listen(_testRenderRunConfig(errors, done));
     };
 
-    const testRenderAuthorization = done => {
+    const testRenderAuthentication = done => {
+      const mutationComponents = filterForMutationContainers(apolloContainers({}));
+      const errors = [];
+      _testRenderExpectations(mutationComponents, updatedPaths);
       composeWithChain([
         // Logout and render
-        () => of(_testRender(
+        () => of(_testRenderTask(
           {
-            apolloConfigTask: apolloConfigOptionalFunctionTask('testRenderAuthorizationNoAuth'),
-            resolvedPropsTask: resolvedPropsTaskForRendering,
+            apolloConfigTask: apolloConfigOptionalFunctionTask('testRenderAuthenticationNoAuth'),
+            resolvedPropsTask,
             componentName,
             childClassDataName: childClassNoAuthName,
             // No loading state for no auth
             childClassLoadingName: childClassNoAuthName,
             omitKeysFromSnapshots,
-            mutationComponents: filterForMutationContainers(apolloContainers({})),
+            mutationComponents,
             updatedPaths,
             waitLength
           },
@@ -302,48 +301,52 @@ export const apolloContainerTests = v((context, container, component, configToCh
         // Authorize
         (apolloConfig) => apolloContainers(apolloConfig)[deuthorizeMutationKey],
         // Get the auth client
-        () => apolloConfigOptionalFunctionTask('testRenderAuthorization'),
+        () => apolloConfigOptionalFunctionTask('testRenderAuthentication'),
         // Authorized render
-        () => of(_testRender(
-          {
-            apolloConfigTask: apolloConfigOptionalFunctionTask('testRenderAuthorization'),
-            resolvedPropsTask: resolvedPropsTaskForRendering,
-            componentName,
-            childClassDataName,
-            // No loading state for no auth
-            childClassLoadingName,
-            omitKeysFromSnapshots,
-            mutationComponents: filterForMutationContainers(apolloContainers({})),
-            updatedPaths,
-            waitLength
-          },
-          container,
-          component,
-          done
-        )),
+        () => {
+          return _testRenderTask(
+            {
+              apolloConfigTask: apolloConfigOptionalFunctionTask('testRenderAuthentication'),
+              resolvedPropsTask,
+              componentName,
+              childClassDataName,
+              // No loading state for no auth
+              childClassLoadingName,
+              omitKeysFromSnapshots,
+              mutationComponents: filterForMutationContainers(apolloContainers({})),
+              updatedPaths,
+              waitLength
+            },
+            container,
+            component,
+            done
+          );
+        },
         // Authorize
         (apolloConfig) => apolloContainers(apolloConfig)[authorizeMutationKey],
         // Get the no-auth client
-        () => apolloConfigOptionalFunctionTask('testRenderAuthorizationNoAuth'),
+        () => apolloConfigOptionalFunctionTask('testRenderAuthenticationNoAuth'),
         // No auth login
-        () => of(_testRender(
-          {
-            apolloConfigTask: apolloConfigOptionalFunctionTask('testRenderAuthorizationNoAuth'),
-            resolvedPropsTask: resolvedPropsTaskForRendering,
-            componentName,
-            childClassDataName: childClassNoAuthName,
-            // No loading state for no auth
-            childClassLoadingName: childClassNoAuthName,
-            omitKeysFromSnapshots,
-            mutationComponents: filterForMutationContainers(apolloContainers({})),
-            updatedPaths,
-            waitLength
-          },
-          container,
-          component,
-          done
-        ))
-      ])();
+        () => {
+          return _testRenderTask(
+            {
+              apolloConfigTask: apolloConfigOptionalFunctionTask('testRenderAuthenticationNoAuth'),
+              resolvedPropsTask,
+              componentName,
+              childClassDataName: childClassNoAuthName,
+              // No loading state for no auth
+              childClassLoadingName: childClassNoAuthName,
+              omitKeysFromSnapshots,
+              mutationComponents: filterForMutationContainers(apolloContainers({})),
+              updatedPaths,
+              waitLength
+            },
+            container,
+            component,
+            done
+          );
+        }
+      ])().run().listen(_testRenderRunConfig(errors, done));
     };
 
     /**
@@ -356,7 +359,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
         {
           errorMaker,
           apolloConfigTask: apolloConfigOptionalFunctionTask('testRenderError'),
-          resolvedPropsTask: resolvedPropsTaskForRendering,
+          resolvedPropsTask,
           componentName,
           childClassDataName,
           childClassErrorName,
@@ -375,7 +378,8 @@ export const apolloContainerTests = v((context, container, component, configToCh
       testQueries,
       testMutations,
       testRenderError,
-      testRender
+      testRender,
+      testRenderAuthentication
     };
   },
   [
@@ -638,7 +642,7 @@ export const apolloMutationResponsesTask = ({apolloConfigTask, resolvedPropsTask
  * @return {*}
  * @private
  */
-const _testRender = (
+const _testRenderTask = (
   {
     apolloConfigTask,
     resolvedPropsTask,
@@ -650,19 +654,6 @@ const _testRender = (
     updatedPaths,
     waitLength
   }, container, component, done) => {
-
-  expect.assertions(
-    // Assertions during processing
-    2 +
-    // Asserts that the child component was found
-    1 +
-    // One assertion per mutation component to prove the mutation function returned a value
-    R.length(R.values(mutationComponents)) +
-    // One per updated paths, which are keyed by mutation and valued by {component: [paths]}
-    R.length(R.chain(R.prop('component'), R.values(updatedPaths)))
-  );
-
-  const errors = [];
 
   return composeWithChain([
     mapToNamedResponseAndInputs('prePostMutationComparisons',
@@ -692,10 +683,15 @@ const _testRender = (
     ),
     // Resolve the apolloConfigTask. This resolves to {schema, apolloClient}
     mapToMergedResponseAndInputs(
-      ({apolloConfigTask}) => apolloConfigTask
+      ({apolloConfigTask}) => {
+        return apolloConfigTask;
+      }
     ),
     mapToNamedResponseAndInputs('props',
-      ({resolvedPropsTask}) => resolvedPropsTask
+      // Resolve the props
+      ({resolvedPropsTask}) => {
+        return resolvedPropsTask;
+      }
     )
   ])({
     apolloConfigTask,
@@ -705,15 +701,30 @@ const _testRender = (
     childClassDataName,
     childClassErrorName,
     mutationComponents
-  }).run().listen(
-    defaultRunConfig({
-      onResolved: ({childComponent, prePostMutationComparisons}) => {
-        expect(childComponent.length).toEqual(1); // We found the child, meaning we loaded data and rendered
-        testMutationChanges('component', updatedPaths, prePostMutationComparisons);
-      }
-    }, errors, done)
+  });
+};
+const _testRenderExpectations = (mutationComponents, updatedPaths) => {
+  expect.assertions(
+    // Assertions during processing
+    2 +
+    // Asserts that the child component was found
+    1 +
+    // One assertion per mutation component to prove the mutation function returned a value
+    R.length(R.values(mutationComponents)) +
+    // One per updated paths, which are keyed by mutation and valued by {component: [paths]}
+    R.length(R.chain(R.prop('component'), R.values(updatedPaths)))
   );
 };
+
+const _testRenderRunConfig = (errors, done = null) => {
+  defaultRunConfig({
+    onResolved: ({childComponent, prePostMutationComparisons}) => {
+      expect(childComponent.length).toEqual(1); // We found the child, meaning we loaded data and rendered
+      testMutationChanges('component', updatedPaths, prePostMutationComparisons);
+    }
+  }, errors, done);
+};
+
 
 /**
  * Tests rendering a component where Apollo query responses must be awaited.
@@ -807,7 +818,7 @@ const _testRenderComponentTask = (
         let tsk = null;
         act(() => {
           tsk = waitForChildComponentRenderTask({
-            componentName: container,
+            componentName,
             childClassName: childClassLoadingName,
             waitLength
           }, wrapper);

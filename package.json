@@ -87,6 +87,7 @@
     "localstorage-polyfill": "^1.0.1",
     "react": ">=16.4.1",
     "react-dev-utils": "^10.2.1",
+    "react-router-dom": "^5.2.0",
     "rollup": "^2.6.1",
     "rollup-plugin-babel": "^4.4.0",
     "rollup-plugin-commonjs": "10.1.0",

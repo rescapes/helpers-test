@@ -50,6 +50,9 @@ export const chainedParentPropsForSampleTask = (apolloConfig, {runParentContaine
         page: 1,
         pageSize: 1,
 
+        // Authentication with the test user
+        username: 'test',
+        password: 'testpass',
 
         regionFilter: {idIn: R.map(R.prop('id'), regions)},
         userState,

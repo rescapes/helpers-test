@@ -8,13 +8,23 @@ import {
   renderErrorDefault,
   renderLoadingDefault
 } from 'rescape-helpers-component';
-import {strPath} from 'rescape-ramda';
+import {reqStrPathThrowing, strPath} from 'rescape-ramda';
 import PropTypes from 'prop-types';
+import Logout from './LogoutComponent';
+import {MemoryRouter, Route} from 'react-router-dom';
+import * as R from 'ramda';
+import PrivateRouteComponent from './PrivateRouteComponent';
+import Login from './LoginComponent';
 
 export const c = nameLookup({
   sample: true,
   sampleLoading: true,
   sampleError: true,
+  sampleRouter: true,
+  sampleRouteLogin: true,
+  sampleLogin: true,
+  sampleRouteProtected: true,
+  sampleLogout: true,
 
   sampleHeader: true,
   sampleMapboxOuter: true,
@@ -67,10 +77,36 @@ Sample.viewActions = () => {
 };
 
 Sample.renderData = ({views}) => {
-  const props = propsFor(views);
+  const propsOf = propsFor(views);
+  // Put routeProps in the routeProps key and merge with the props destined for the component of the given key
+  const mergeWithRoute = (key, routeProps) => {
+    return R.merge(propsOf(key), {routeProps});
+  };
 
-  return e('div', props(c.sampleMapboxOuter),
-    e('div', props(c.sampleHeader))
+  return e(MemoryRouter, propsOf(c.sampleRouter),
+    // Route to render Login if the user is not authenticated
+    e(Route,
+      R.merge(
+        propsOf(c.sampleRouteLogin),
+        {
+          render: props => {
+            return e(Login, propsOf(c.sampleLogin));
+          }
+        }
+      )
+    ),
+    // Route to render Login if the user is not authenticated
+    e(PrivateRouteComponent, R.merge(propsOf(c.sampleRouteProtected), {
+      render: routeProps => {
+        // PrivateRoute redirects to authentication unless authenticated
+        // If authenticated, render the logout button
+        // Render the logout button
+        return e('div', propsOf(c.sampleMapboxOuter), [
+          e('div', propsOf(c.sampleHeader)),
+          e(Logout, mergeWithRoute(c.sampleLogout, routeProps))
+        ]);
+      }
+    }))
   );
 };
 
@@ -94,16 +130,26 @@ Sample.choicepoint = renderChoicepoint(
   {
     onError: renderErrorDefault(c.sampleError),
     onLoading: renderLoadingDefault(c.sampleLoading),
-    onData: Sample.renderData
+    onData: Sample.renderData,
+    // If not authenticated, simply render
+    onUnauthenticated: Sample.renderData
   },
   {
+    // Bypass to onData unless authenticated
+    isAuthenticated: ({onError, onLoading, onData}, props) => {
+      return R.ifElse(
+        reqStrPathThrowing('isAuthenticated'),
+        () => null,
+        () => onData
+      )(props);
+    },
     queryRegionsPaginatedAll: true,
     queryRegionsPaginated: true,
     queryRegionsMinimized: true,
     queryRegions: true,
     queryUserRegions: true,
     mutateRegion: true,
-    mutateUserRegion: true,
+    mutateUserRegion: true
   }
 );
 
