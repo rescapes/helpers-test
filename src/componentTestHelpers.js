@@ -16,18 +16,20 @@ import PropTypes from 'prop-types';
 import {mount, shallow} from 'enzyme';
 import configureStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
-import {mergeDeep, reqPathThrowing, reqStrPathThrowing} from 'rescape-ramda';
+import {mergeDeep, promiseToTask, reqPathThrowing, reqStrPathThrowing} from 'rescape-ramda';
 import * as apolloTestUtils from 'apollo-test-utils';
 import ApolloClient from 'apollo-client';
 import {InMemoryCache} from 'apollo-client-preset';
 import {SchemaLink} from 'apollo-link-schema';
 import {e, getClass} from 'rescape-helpers-component';
 import {onError} from "apollo-link-error";
-import {of, task} from 'folktale/concurrency/task';
+import {of, task, rejected} from 'folktale/concurrency/task';
 import * as Result from 'folktale/result';
 import {v} from 'rescape-validate';
 import * as R from 'ramda';
-import {ApolloProvider} from '@apollo/react-hooks';
+import {ApolloProvider} from "react-apollo";
+import {ApolloProvider as ApolloHookProvider} from '@apollo/react-hooks';
+
 
 const middlewares = [thunk];
 // Importing this way because rollup can't find it
@@ -122,21 +124,6 @@ export const mockApolloClientWithSamples = (state, resolvedSchema) => {
   return mockApolloClient(resolvedSchema, context);
 };
 
-// Wraps the component in a Redux store. (It no longer works to put the store in the context)
-export const mountWithReduxProvider = (store, component, opts) => {
-  let c;
-  act(() => {
-    c = mount(
-      component,
-      opts
-    );
-  });
-  if (!c) {
-    throw new Error("act failed!");
-  }
-  return c;
-};
-
 /**
  * Wraps a component in an Apollo Provider for testing
  * @param apolloConfig
@@ -152,7 +139,11 @@ export const mountWithApolloClient = v((apolloConfig, componentElement) => {
       e(
         ApolloProvider,
         {client: reqStrPathThrowing('apolloClient', apolloConfig)},
-        componentElement
+        e(
+          ApolloHookProvider,
+          {client: reqStrPathThrowing('apolloClient', apolloConfig)},
+          componentElement
+        )
       )
     );
   });
@@ -163,29 +154,6 @@ export const mountWithApolloClient = v((apolloConfig, componentElement) => {
   }).isRequired],
   ['component', PropTypes.shape().isRequired]
 ], 'mountWithApolloClient');
-
-/**
- * Wraps a component in a store context for Redux testing
- * @param state Sample state
- * @param config Sample config
- * @param connectedComponent Redux-connected component
- * @return {*}
- */
-export const enzymeMountWithMockStore = (state, connectedComponent) => {
-
-  const store = makeSampleStore(state);
-
-  // shallow wrap the component, passing the Apollo client and redux store to the component and children
-  // Also dive once to get passed the Apollo wrapper
-  return mountWithReduxProvider(
-    store,
-    connectedComponent,
-    {
-      context: {},
-      childContextTypes: {}
-    }
-  );
-};
 
 /**
  * Wrap a component factory with the given props in a shallow enzyme wrapper
@@ -210,46 +178,51 @@ export const shallowWrap = (componentFactory, props) => {
  * @returns {Task} A task that returns the component matching childClassName or if an error
  * occurs return an Error with the message and dump of the props
  */
-export const waitForChildComponentRenderTask = ({componentName, childClassName, waitLength=10000}, wrapper) => {
-  const component = wrapper.find(componentName);
-  const childClassNameStr = `.${getClass(childClassName)}`;
-  // Wait for the child component to render, which indicates that data loading completed
-  const waitForChild = createWaitForElement(childClassNameStr, waitLength);
-  const find = component.find;
-  // Override find to call update each time we poll for an update
-  // Enzyme 3 doesn't stay synced with React DOM changes without update
-  component.find = (...args) => {
-    try {
-      wrapper.update();
-    } catch (e) {
-      console.warn("Couldn't update wrapper. Assuming that render failed.");
-      // If update failed because of a component error, just quit
-    }
-    // Find the component with the updated wrapper, otherwise we get the old component
-    return find.apply(wrapper.find(componentName), args);
-  };
-  return task(resolver => {
-    waitForChild(component)
-      .then(component => {
-        return resolver.resolve({wrapper, childComponent: component.find(childClassNameStr)});
-      })
-      .catch(error => {
-          const comp = wrapper.find(componentName);
-          if (comp.length) {
-            const errorMessage = `${error.message}
+export const waitForChildComponentRenderTask = v(({componentName, childClassName, waitLength = 10000}, wrapper) => {
+    const component = wrapper.find(componentName);
+    const childClassNameStr = `.${getClass(childClassName)}`;
+    // Wait for the child component to render, which indicates that data loading completed
+    const waitForChild = createWaitForElement(childClassNameStr, waitLength);
+    const find = component.find;
+    // Override find to call update each time we poll for an update
+    // Enzyme 3 doesn't stay synced with React DOM changes without update
+    component.find = (...args) => {
+      try {
+        wrapper.update();
+      } catch (e) {
+        console.warn("Couldn't update wrapper. Assuming that render failed.");
+        // If update failed because of a component error, just quit
+      }
+      // Find the component with the updated wrapper, otherwise we get the old component
+      return find.apply(wrapper.find(componentName), args);
+    };
+    return promiseToTask(waitForChild(component)).map(
+      component => {
+        return {wrapper, childComponent: component.find(childClassNameStr)};
+      }).orElse(
+      error => {
+        const comp = wrapper.find(componentName);
+        if (comp.length) {
+          const errorMessage = `${error.message}
         \n${error.stack}
         \n${comp.debug()}
         \n${inspect(comp.props().data, {depth: 3})}
       `;
-            console.log(errorMessage)
-            return resolver.reject(new Error(errorMessage));
-          } else {
-            throw resolver.reject(error);
-          }
+          console.log(errorMessage);
+          return rejected(new Error(errorMessage));
+        } else {
+          throw rejected(error);
         }
-      );
-  });
-};
+      });
+  },
+  [
+    ['config', PropTypes.shape({
+      componentName: PropTypes.string.isRequired,
+      childClassName: PropTypes.string.isRequired,
+      waitLength: PropTypes.number
+    }).isRequired],
+    ['wrapper', PropTypes.shape().isRequired]
+  ], 'waitForChildComponentRenderTask');
 
 /**
  * Calls makeTestPropsFunction on a non Apollo container. This is a synchronous but wrapped in a

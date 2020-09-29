@@ -29,7 +29,8 @@ import {
 import * as R from 'ramda';
 import Result from 'folktale/result';
 import {loggers} from 'rescape-log';
-import {apolloQueryResponsesTask} from 'rescape-apollo';
+import {apolloQueryResponsesTask, filterOutReadOnlyVersionProps} from 'rescape-apollo';
+
 const log = loggers.get('rescapeDefault');
 
 
@@ -61,6 +62,33 @@ export const filterForMutationContainers = apolloContainers => {
     },
     apolloContainers
   );
+};
+
+/**
+ * Returns default empty updatePaths object for all mutation requests in the form
+ * {
+ *   aMutationName: {component:[], client:[]},
+ *   bMutationName: {component:[], client:[]}
+ *   ...
+ * }
+ * @param {Object} apolloContainers Keyed by mutation container name, valued by apollo request
+ * @param {Object} overrides, same shape as above, but with component and client filled in with
+ * paths of data that will update as a result of the mutation. Provide both a component and client
+ * path. If you omit a mutation request key, that mutation will not be tested for changes. This
+ * makes sense for things like authentication that don't have any new values when you call mutation twice.
+ * It makes most sense to test update timestamps, since we mutate with the same data twice
+ * @returns {Object} The above object
+ */
+export const defaultUpdatePathsForMutationContainers = (apolloContainers, overrides) => {
+  return R.compose(
+    defaults => R.merge(defaults, overrides),
+    apolloContainers => {
+      return R.map(
+        R.always({component: [], client: []}),
+        filterForMutationContainers(apolloContainers({}))
+      );
+    }
+  )(apolloContainers);
 };
 
 
@@ -746,7 +774,7 @@ const _testRenderRunConfig = (errors, done = null) => {
  * childComponent is the child of component that has the class name of childClassDataName
  * @private
  */
-const _testRenderComponentTask = (
+const _testRenderComponentTask = v((
   {
     apolloClient,
     componentName,
@@ -756,77 +784,91 @@ const _testRenderComponentTask = (
     waitLength
   }, container, component, props) => {
 
-  // Create the React element from container, passing the props and component via a render function.
-  // The react-adopt container expects to be given a render function so it can pass the results of the
-  // Apollo request components
-  const containerInstance = e(
-    container,
-    props,
-    // These props contains the results of the Apollo queries and the mutation functions
-    // Merge them with the original props, which can return values unrelated to the apollo requests
-    responseProps => {
-      return e(
-        component,
-        R.merge(props, responseProps)
-      );
-    }
-  );
-  // Wrap the componentInstance in mock Apollo providers.
-  // If the componentInstance doesn't use Apollo it just means that it will render its children synchronously,
-  // rather than asynchronously
-  const wrapper = mountWithApolloClient(
-    {apolloClient},
-    containerInstance
-  );
-  // Find the top-level componentInstance. This is always rendered in any Apollo status (loading, error, store data)
-  const foundContainer = wrapper.find(container);
-  expect(foundContainer.length).toEqual(1);
-
-  return composeWithChain([
-    ({wrapper, render: {childComponent}}) => {
-      return of({
-        wrapper, childComponent,
-        // Find again to update the props
-        component: wrapper.find(componentName)
-      });
-    },
-    mapToNamedResponseAndInputs('render',
-      ({wrapper, childClassLoadingName, childClassDataName, loading}) => {
-        const foundComponent = wrapper.find(componentName);
-        // If we have an Apollo componentInstance, our immediate status after mounting the componentInstance is loading. Confirm
-        if (childClassLoadingName) {
-          expect(foundComponent.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
-        }
-        // TODO act doesn't suppress the warning as it should
-        // If we have an Apollo componentInstance, we use enzyme-wait to await the query to run and the the child
-        // componentInstance that is dependent on the query result to render. If we don't have an Apollo componentInstance,
-        // this child will be rendered immediately without delay
-        let tsk = null;
-        act(() => {
-          tsk = waitForChildComponentRenderTask({
-            componentName,
-            childClassName: childClassDataName,
-            waitLength
-          }, wrapper);
-        });
-        return tsk.map(x => R.merge({foundComponent}, x));
+    // Create the React element from container, passing the props and component via a render function.
+    // The react-adopt container expects to be given a render function so it can pass the results of the
+    // Apollo request components
+    const containerInstance = e(
+      container,
+      props,
+      // These props contains the results of the Apollo queries and the mutation functions
+      // Merge them with the original props, which can return values unrelated to the apollo requests
+      responseProps => {
+        return e(
+          component,
+          R.merge(props, responseProps)
+        );
       }
-    ),
-    mapToNamedResponseAndInputs('loading',
-      ({waitLength, wrapper, childClassLoadingName, container}) => {
-        // Make sure the componentInstance props are consistent since the last test run
-        let tsk = null;
-        act(() => {
-          tsk = waitForChildComponentRenderTask({
-            componentName,
-            childClassName: childClassLoadingName,
-            waitLength
-          }, wrapper);
+    );
+    // Wrap the componentInstance in mock Apollo providers.
+    // If the componentInstance doesn't use Apollo it just means that it will render its children synchronously,
+    // rather than asynchronously
+    const wrapper = mountWithApolloClient(
+      {apolloClient},
+      containerInstance
+    );
+    // Find the top-level componentInstance. This is always rendered in any Apollo status (loading, error, store data)
+    const foundContainer = wrapper.find(container);
+    expect(foundContainer.length).toEqual(1);
+
+    return composeWithChain([
+      ({wrapper, render: {childComponent}}) => {
+        return of({
+          wrapper, childComponent,
+          // Find again to update the props
+          component: wrapper.find(componentName)
         });
-        return tsk;
-      })
-  ])({waitLength, wrapper, foundContainer, childClassLoadingName, childClassDataName, container});
-};
+      },
+      mapToNamedResponseAndInputs('render',
+        ({wrapper, childClassLoadingName, childClassDataName, loading}) => {
+          const foundComponent = wrapper.find(componentName);
+          // If we have an Apollo componentInstance, our immediate status after mounting the componentInstance is loading. Confirm
+          if (childClassLoadingName) {
+            expect(foundComponent.find(`.${getClass(childClassLoadingName)}`).length).toEqual(1);
+          }
+          // TODO act doesn't suppress the warning as it should
+          // If we have an Apollo componentInstance, we use enzyme-wait to await the query to run and the the child
+          // componentInstance that is dependent on the query result to render. If we don't have an Apollo componentInstance,
+          // this child will be rendered immediately without delay
+          let tsk = null;
+          act(() => {
+            tsk = waitForChildComponentRenderTask({
+              componentName,
+              childClassName: childClassDataName,
+              waitLength
+            }, wrapper);
+          });
+          return tsk.map(x => R.merge({foundComponent}, x));
+        }
+      ),
+      mapToNamedResponseAndInputs('loading',
+        ({waitLength, wrapper, childClassLoadingName, container}) => {
+          // Make sure the componentInstance props are consistent since the last test run
+          let tsk = null;
+          act(() => {
+            tsk = waitForChildComponentRenderTask({
+              componentName,
+              childClassName: childClassLoadingName,
+              waitLength
+            }, wrapper);
+          });
+          return tsk;
+        })
+    ])({waitLength, wrapper, foundContainer, childClassLoadingName, childClassDataName, container});
+  },
+  [
+    ['config', PropTypes.shape({
+      apolloClient:PropTypes.shape().isRequired,
+      componentName:PropTypes.string.isRequired,
+      childClassLoadingName:PropTypes.string.isRequired,
+      childClassDataName:PropTypes.string.isRequired,
+      childClassErrorName:PropTypes.string,
+      waitLength:PropTypes.number
+    })],
+    ['container', PropTypes.func.isRequired],
+    ['component', PropTypes.func.isRequired],
+    ['props', PropTypes.shape().isRequired]
+  ], '_testRenderComponentTask'
+);
 
 const _testRenderComponentMutations = ({mutationComponents, componentName, childClassDataName, childClassErrorName, waitLength}, wrapper, component) => {
   // Store the state of the component's prop before the mutation

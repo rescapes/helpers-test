@@ -1,4 +1,5 @@
 import {Component} from 'react';
+import styled from 'styled-components';
 import {
   composeViews,
   e,
@@ -8,13 +9,13 @@ import {
   renderErrorDefault,
   renderLoadingDefault
 } from 'rescape-helpers-component';
-import {reqStrPathThrowing, strPath} from 'rescape-ramda';
+import {reqStrPathThrowing, strPath, strPathOr} from 'rescape-ramda';
 import PropTypes from 'prop-types';
-import Logout from './LogoutComponent';
 import {MemoryRouter, Route} from 'react-router-dom';
 import * as R from 'ramda';
 import PrivateRouteComponent from './PrivateRouteComponent';
-import Login from './LoginComponent';
+import {Login} from './login';
+import {Logout} from './logout';
 
 export const c = nameLookup({
   sample: true,
@@ -23,12 +24,9 @@ export const c = nameLookup({
   sampleRouter: true,
   sampleRouteLogin: true,
   sampleLogin: true,
-  sampleRouteProtected: true,
+  privateRouterComponent: true,
   sampleLogout: true,
-
   sampleHeader: true,
-  sampleMapboxOuter: true,
-  sampleMapbox: true
 });
 
 /**
@@ -65,10 +63,26 @@ Sample.viewProps = (props) => {
     [c.sample]: {
       sample
     },
+    [c.sampleLogin]: R.pick(['style', 'username', 'password', 'queryAuthenticatedUserLocalContainer'], props),
 
-    [c.sampleMapboxOuter]: {},
-
-    [c.sampleHeader]: {}
+    [c.sampleHeader]: {},
+    [c.sampleRouter]: {
+      // History, this will help us pretend that the user is requested an authenticated page.
+      // When we are authenticated, we'll redirect to it. Otherwise we'll get stuck on the login page
+      initialEntries: strPathOr([], 'memoryRouterInitialEntries', props),
+      initialIndex: strPathOr(0, 'memoryRouterInitialIndex', props)
+    },
+    [c.sampleRouteLogin]: {
+      // The login route path
+      path: reqStrPathThrowing('loginPath', props)
+    },
+    [c.sampleLogout]: props,
+    [c.privateRouterComponent]: {
+      // The protected (needs authentication) route path
+      // This will likely just be '/' in production
+      path: reqStrPathThrowing('protectedPath', props),
+      ...R.pick(['queryAuthenticatedUserLocalContainer'], props)
+    }
   };
 };
 
@@ -95,16 +109,12 @@ Sample.renderData = ({views}) => {
         }
       )
     ),
-    // Route to render Login if the user is not authenticated
-    e(PrivateRouteComponent, R.merge(propsOf(c.sampleRouteProtected), {
+    // Route to PrivateRouteComponent if logged in
+    e(PrivateRouteComponent, R.merge(propsOf(c.privateRouterComponent), {
       render: routeProps => {
         // PrivateRoute redirects to authentication unless authenticated
-        // If authenticated, render the logout button
-        // Render the logout button
-        return e('div', propsOf(c.sampleMapboxOuter), [
-          e('div', propsOf(c.sampleHeader)),
-          e(Logout, mergeWithRoute(c.sampleLogout, routeProps))
-        ]);
+        // If authenticated, render the authenticated page, which here is just a logout button
+        return e(Logout, mergeWithRoute(c.sampleLogout, routeProps));
       }
     }))
   );
@@ -126,41 +136,43 @@ Sample.views = composeViews(
  * Loading, Error, or Data based on the props.
  * Our propConfig instructs renderChoicepoint to evaluate the loading state of the query and mutation
  */
-Sample.choicepoint = renderChoicepoint(
-  {
-    onError: renderErrorDefault(c.sampleError),
-    onLoading: renderLoadingDefault(c.sampleLoading),
-    onData: Sample.renderData,
-    // If not authenticated, simply render
-    onUnauthenticated: Sample.renderData
-  },
-  {
-    // Bypass to onData unless authenticated
-    isAuthenticated: ({onError, onLoading, onData}, props) => {
-      return R.ifElse(
-        reqStrPathThrowing('isAuthenticated'),
-        () => null,
-        () => onData
-      )(props);
+Sample.choicepoint = p => {
+  return renderChoicepoint(
+    {
+      onError: renderErrorDefault(c.sampleError),
+      onLoading: renderLoadingDefault(c.sampleLoading),
+      onData: Sample.renderData,
+      // If not authenticated, simply render
+      onUnauthenticated: Sample.renderData
     },
-    queryRegionsPaginatedAll: true,
-    queryRegionsPaginated: true,
-    queryRegionsMinimized: true,
-    queryRegions: true,
-    queryUserRegions: true,
-    mutateRegion: true,
-    mutateUserRegion: true
-  }
-);
+    {
+      // Bypass other checks and call onData unless authenticated
+      queryAuthenticatedUserLocalContainer: ({onError, onLoading, onData}, propConfig, props) => {
+        return R.ifElse(
+          props => {
+            return reqStrPathThrowing('queryAuthenticatedUserLocalContainer', props);
+          },
+          () => null,
+          () => {
+            return onData(props);
+          }
+        )(props);
+      },
+      queryRegionsPaginatedAll: true,
+      queryRegionsPaginated: true,
+      queryRegionsMinimized: true,
+      queryRegions: true,
+      queryUserRegions: true,
+      mutateRegion: true,
+      mutateUserRegion: true
+    },
+    p
+  );
+};
 
 Sample.propTypes = {
   data: PropTypes.shape().isRequired,
   style: PropTypes.shape().isRequired
-};
-
-Sample.propTypes = {
-  //queryRegions: PropTypes.shape({}).isRequired,
-  //mutateRegion: PropTypes.func.isRequired
 };
 
 export default Sample;

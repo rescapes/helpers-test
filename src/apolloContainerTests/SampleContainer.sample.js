@@ -43,8 +43,8 @@ export const chainedParentPropsForSampleTask = (apolloConfig, {runParentContaine
       ({userState, regions, projects}) => of({
         // Some props
         style: {
-          width: 500,
-          height: 500
+          width: '500px',
+          height: '500px'
         },
         // Sample paging params
         page: 1,
@@ -59,7 +59,16 @@ export const chainedParentPropsForSampleTask = (apolloConfig, {runParentContaine
         region: R.head(regions),
         project: R.head(projects),
         // scope limits queryUserRegions to these params
-        scope: {name: 'Earth'}
+        scope: {name: 'Earth'},
+        // In testing we use a memory router to change routes
+        // Pretend the user had been trying to access the protected path, so that we redirect
+        // unauthorized users to login
+        memoryRouterInitialEntries: [
+          {pathname: '/protected', key: 'protected'}
+        ],
+        // Sample paths for authentication
+        loginPath: '/login',
+        protectedPath: '/protected',
       }),
       // Mutate the UserState to get cache-only data stored
       mapMonadByConfig({},

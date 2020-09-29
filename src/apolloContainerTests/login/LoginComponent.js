@@ -57,12 +57,12 @@ export default function LoginComponent(props) {
  * @param views
  * @returns {Object}
  */
-LoginComponent.renderData = ({history, location, views}) => {
+LoginComponent.renderData = ({history, location, queryAuthenticatedUserLocalContainer, views}) => {
   const props = propsFor(views);
-  const styledComponentAndProps = componentAndPropsFor(views)
-  const {from} = R.propOr({from: {pathname: "/"}}, 'state', location);
+  const styledComponentAndProps = componentAndPropsFor(views);
+  const from = R.propOr('/', 'pathname', location);
 
-  if (props.isAuthenticated) {
+  if (queryAuthenticatedUserLocalContainer) {
     return e(Redirect, {to: from});
   }
 
@@ -74,13 +74,8 @@ LoginComponent.renderData = ({history, location, views}) => {
   ]);
 };
 
-/**
- * Merges parent and state styles into component styles
- * @param style
- */
-LoginComponent.viewStyles = ({style}) => {
-  const styledComponents = {
-    login: styled.div`
+const styledComponents = {
+  login: styled.div`
   display: flex;
   align-items: center;
   flex-flow: column;
@@ -106,7 +101,7 @@ LoginComponent.viewStyles = ({style}) => {
   }
 `,
 
-    input: styled.input`
+  input: styled.input`
   border: 1px solid #000;
   border-radius: 10px;
   padding: 10px;
@@ -114,10 +109,17 @@ LoginComponent.viewStyles = ({style}) => {
   width: 150px;
   box-sizing: border-box;
 `
-  };
+};
+
+/**
+ * Merges parent and state styles into component styles
+ * @param style
+ */
+LoginComponent.viewStyles = ({style}) => {
+
   return {
     styledComponents,
-    [c.login]: styledComponents.login,
+    [c.login]: {},
 
     [c.loginBody]: applyMatchingStyles(style, {
       width: styleMultiplier(1),
@@ -128,7 +130,9 @@ LoginComponent.viewStyles = ({style}) => {
 
 LoginComponent.viewProps = props => {
   return {
-    [c.login]: R.pick(['queryLogins', 'queryUserLogins', 'mutateUserLogin'], props),
+    [c.login]: {
+      component: styledComponents.login,
+    },
     [c.loginHeader]: {children: 'Login'},
     [c.loginUsername]: {type: 'text', placeholder: 'username'},
     [c.loginPassword]: {type: 'password', placeholder: 'password'},
@@ -161,12 +165,7 @@ LoginComponent.choicepoint = p => {
       onLoading: renderLoadingDefault(c.loginLoading),
       onData: LoginComponent.renderData
     },
-    {
-      queryUserStates: true,
-      mutateTokenAuth: true,
-      mutateDeleteTokenCookie: true,
-      mutateDeleteRefreshTokenCookie: true
-    }
+    {}
   )(p);
 };
 

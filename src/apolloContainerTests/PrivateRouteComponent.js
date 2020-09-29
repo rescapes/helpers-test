@@ -9,7 +9,6 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 import {
-  componentAndPropsFor,
   composeViews,
   e,
   nameLookup,
@@ -20,7 +19,7 @@ import {
 } from 'rescape-helpers-component';
 import * as R from 'ramda';
 import {Redirect, Route, useHistory, useLocation} from 'react-router-dom';
-import {renameKey, reqStrPath, reqStrPathThrowing} from 'rescape-ramda';
+import {reqStrPath, reqStrPathThrowing} from 'rescape-ramda';
 
 export const c = nameLookup({
   privateRoute: true,
@@ -44,22 +43,22 @@ export default function PrivateRouteComponent(props) {
  * @param views
  * @returns {Object}
  */
-PrivateRouteComponent.renderData = ({views, ...props}) => {
+PrivateRouteComponent.renderData = ({render, views}) => {
   const propsOf = propsFor(views);
-  const componentAndPropsOf = componentAndPropsFor(views);
-  const {isAuthenticated, ...privateRouteBodyProps} = propsOf(c.privateRouteBody);
+  const {queryAuthenticatedUserLocalContainer, ...privateRouteBodyProps} = propsOf(c.privateRouteBody);
+  // Put routeProps in the routeProps key and merge with the props destined for the component of the given key
+  const mergeWithRoute = (key, routeProps) => {
+    return R.merge(propsOf(key), {routeProps});
+  };
   // Since Route has no path, it will always match here
   return e(Route, R.merge(
     privateRouteBodyProps, {
-      render: (props) => {
-        return R.ifElse(
-          R.identity,
-          // Render the given component
-          () => e(...componentAndPropsOf(c.privateRouteComponent)),
+      render: routeProps => {
+        return queryAuthenticatedUserLocalContainer ?
+          // Call the render prop
+          render(mergeWithRoute(c.privateRouteComponent, routeProps)) :
           // Redirect to login
-          () => e(Redirect, propsOf(c.privateRouteRedirect)
-          )
-        )(isAuthenticated);
+          e(Redirect, propsOf(c.privateRouteRedirect));
       }
     }
   ));
@@ -75,11 +74,8 @@ PrivateRouteComponent.viewStyles = ({style}) => {
 
 PrivateRouteComponent.viewProps = props => {
   return {
-    [c.privateRouteBody]: R.omit(['component'], props),
-    // Rename 'component' to 'style' so we can grab it with componentAndPropsFor, which
-    // currently looks for a styledComponent at the style key.
-    // TODO componentAndPropsFor should look at 'component'
-    [c.privateRouteComponent]: renameKey(R.lensPath([]), 'component', 'style', props),
+    [c.privateRouteBody]: props,
+    [c.privateRouteComponent]: props,
     [c.privateRouteRedirect]: {
       to: reqStrPath('loginPath', props),
       // The location the user is trying to access, so we can redirect their after they login

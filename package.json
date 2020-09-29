@@ -51,6 +51,7 @@
     "redux-thunk": "^2.3.0",
     "regenerator-runtime": "^0.13.5",
     "render-props": "^1.1.0",
+    "styled-components": "^5.2.0",
     "util": "^0.12.2"
   },
   "devDependencies": {

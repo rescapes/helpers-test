@@ -4,17 +4,20 @@ import {
   regionQueryVariationContainers,
   userStateRegionMutationContainer,
   userStateRegionOutputParams,
-  userStateRegionsQueryContainer
+  userStateRegionsQueryContainer,
+  variationContainerAuthDependency
 } from 'rescape-place';
 import {adopt} from 'react-adopt';
 import * as R from 'ramda';
 import {reqStrPathThrowing, strPathOr, toNamedResponseAndInputs} from 'rescape-ramda';
 import {
+  authenticatedUserLocalContainer,
   containerForApolloType,
   deleteTokenCookieMutationRequestContainer,
   getRenderPropFunction,
   isAuthenticatedLocal, tokenAuthMutationContainer
 } from 'rescape-apollo';
+
 
 // The __typename that represent the fields of the Region type. We need these to query by object types rather than
 // just by primitives, e.g. to query by geojson: {feature: {type: 'FeatureCollection'}} to get objects whose
@@ -35,31 +38,15 @@ export const apolloContainers = (apolloConfig = {}) => {
   return R.mergeAll([
     // Cache lookup to see if the user is authenticated
     {
-      isAuthenticated: props => {
-        return containerForApolloType(
-          apolloConfig,
-          {
-            render: getRenderPropFunction(props),
-            response: isAuthenticatedLocal(apolloConfig)
-          }
-        );
+      queryAuthenticatedUserLocalContainer: props => {
+        return authenticatedUserLocalContainer(apolloConfig, props)
       }
     },
-    R.map(component => {
-      // Skip if not authentication
-      return props => {
-        if (!reqStrPathThrowing('isAuthenticated', props)) {
-          return containerForApolloType(
-            apolloConfig,
-            {
-              render: getRenderPropFunction(props),
-              response: isAuthenticatedLocal(apolloConfig)
-            }
-          );
-        }
-        return component(props);
-      };
-    }, regionQueryVariationContainers(
+
+    variationContainerAuthDependency(
+      apolloConfig,
+      'queryAuthenticatedUserLocalContainer.data.currentUser',
+      regionQueryVariationContainers(
       {
         apolloConfig: R.merge(apolloConfig,
           {
@@ -76,7 +63,6 @@ export const apolloContainers = (apolloConfig = {}) => {
       }
     )),
     {
-
       mutateTokenAuth: props => {
         return tokenAuthMutationContainer(
           R.merge(apolloConfig,
@@ -114,12 +100,12 @@ export const apolloContainers = (apolloConfig = {}) => {
       // Test sequential queries
       queryUserRegions: props => {
         // Skip if not authenticated
-        if (!reqStrPathThrowing('isAuthenticated', props)) {
+        if (!strPathOr(false, 'queryAuthenticatedUserLocalContainer.data.currentUser', props)) {
           return containerForApolloType(
             apolloConfig,
             {
               render: getRenderPropFunction(props),
-              response: isAuthenticatedLocal(apolloConfig)
+              response: null
             }
           );
         }

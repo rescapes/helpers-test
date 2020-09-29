@@ -9,7 +9,6 @@ export {
   shallowWrap,
   testState,
   mountWithApolloClient,
-  enzymeMountWithMockStore,
   testPropsTaskMaker,
   parentPropsForContainerTask,
   makeTestPropsFunction

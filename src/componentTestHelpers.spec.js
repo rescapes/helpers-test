@@ -9,20 +9,13 @@
  * THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import {gql} from 'apollo-client-preset';
-import {graphql} from 'react-apollo';
 import * as R from 'ramda';
-import {e} from 'rescape-helpers-component';
-import React from 'react';
 import {
-  mountWithApolloClient,
   makeMockStore,
   makeSampleInitialState,
   propsFromSampleStateAndContainer,
   testState
 } from './componentTestHelpers';
-import {of} from 'folktale/concurrency/task'
-import {localTestConfig} from 'rescape-apollo';
 
 const createInitialState = config => R.merge({
   foo: 'boo'

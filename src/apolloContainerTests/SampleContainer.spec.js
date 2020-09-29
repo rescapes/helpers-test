@@ -1,9 +1,14 @@
 import * as R from 'ramda';
 import Sample, {c} from './SampleComponent';
+import {c as cLogout} from './logout/LogoutComponent'
 import SampleContainer, {apolloContainers} from './SampleContainer';
 import {configToChainedPropsForSampleTask} from './SampleContainer.sample';
 import {localTestAuthTask, localTestNoAuthTask, VERSION_PROPS} from 'rescape-apollo';
-import {apolloContainerTests} from '../apolloContainerTestHelpers';
+import {
+  apolloContainerTests,
+  defaultUpdatePathsForMutationContainers,
+  filterForMutationContainers
+} from '../apolloContainerTestHelpers';
 
 // Test this container
 const container = SampleContainer;
@@ -13,7 +18,7 @@ const component = Sample;
 // Find this React component
 const componentName = 'Sample';
 // Find this class in the data renderer
-const childClassDataName = c.sampleMapboxOuter;
+const childClassDataName = cLogout.logoutButton;
 // Find this class in the loading renderer
 const childClassLoadingName = c.sampleLoading;
 // Find this class in the error renderer
@@ -31,7 +36,7 @@ const errorMaker = parentProps => {
 
 const omitKeysFromSnapshots = R.concat(['id', 'key'], VERSION_PROPS);
 // We expect calling mutateRegion to update the updatedAt of the queryRegions response
-const updatedPaths = {
+const updatedPaths = defaultUpdatePathsForMutationContainers(apolloContainers, {
   mutateRegion: {
     // Check that mutation modified the query, we could likewise check the mutation result
     component: ['queryRegions.data.regions.0.updatedAt'],
@@ -41,7 +46,7 @@ const updatedPaths = {
     component: ['mutateUserRegion.result.data.updateUserState.userState.updatedAt'],
     client: ['data.mutate.userState']
   }
-};
+});
 
 describe('SampleContainer', () => {
 
