@@ -11,7 +11,8 @@
 import {Redirect, useHistory, useLocation} from "react-router-dom";
 import styled from "styled-components";
 import {
-  applyMatchingStyles, componentAndPropsFor,
+  applyMatchingStyles,
+  componentAndPropsFor,
   composeViews,
   e,
   nameLookup,
@@ -121,21 +122,30 @@ LoginComponent.viewStyles = ({style}) => {
   return {
     [c.login]: {},
 
-    [c.loginBody]: applyMatchingStyles(style, {
-      width: styleMultiplier(1),
-      height: styleMultiplier(1)
-    })
+    [c.loginBody]: {
+      component: styledComponents.login,
+      style: applyMatchingStyles(style, {
+        width: styleMultiplier(1),
+        height: styleMultiplier(1)
+      })
+    },
+
+    [c.loginUsername]: {
+      component: styledComponents.input
+    },
+
+    [c.loginPassword]: {
+      component: styledComponents.input
+    }
   };
 };
 
 LoginComponent.viewProps = props => {
   return {
-    [c.loginBody]: {
-      component: styledComponents.login,
-    },
+    [c.loginBody]: {},
     [c.loginHeader]: {children: 'Login'},
-    [c.loginUsername]: {type: 'text', placeholder: 'username', component: styledComponents.input},
-    [c.loginPassword]: {type: 'password', placeholder: 'password', component: styledComponents.input},
+    [c.loginUsername]: {type: 'text', placeholder: 'username'},
+    [c.loginPassword]: {type: 'password', placeholder: 'password'},
     [c.loginButton]: {children: 'Login'}
   };
 };

@@ -71,22 +71,6 @@ LogoutComponent.renderData = ({history, location, queryAuthenticatedUserLocalCon
 };
 
 
-/**
- * Merges parent and state styles into component styles
- * @param style
- */
-LogoutComponent.viewStyles = ({style}) => {
-
-  return {
-    [c.logout]: {},
-
-    [c.logoutBody]: applyMatchingStyles(style, {
-      width: styleMultiplier(1),
-      height: styleMultiplier(1)
-    })
-  };
-};
-
 const styledComponents = {
   logoutButton: styled.button`
   border: 1px solid #000;
@@ -96,14 +80,36 @@ const styledComponents = {
   display: flex;
 `
 };
+
+/**
+ * Merges parent and state styles into component styles
+ * @param style
+ */
+LogoutComponent.viewStyles = ({style}) => {
+
+  return {
+    [c.logout]: {},
+
+    [c.logoutBody]: {
+      component: reqStrPathThrowing('logoutBody', styledComponents),
+      style: {
+        ...applyMatchingStyles(style, {
+          width: styleMultiplier(1),
+          height: styleMultiplier(1)
+        })
+      }
+    },
+    [c.logoutButton]: {
+      component: reqStrPathThrowing('logoutButton', styledComponents)
+    }
+  };
+};
+
 LogoutComponent.viewProps = props => {
   return {
     [c.logout]: {},
-    [c.logoutBody]: {
-      component: reqStrPathThrowing('logoutBody', styledComponents)
-    },
+    [c.logoutBody]: {},
     [c.logoutButton]: {
-      component: reqStrPathThrowing('logoutButton', styledComponents),
       children: 'Logout'
     }
   };

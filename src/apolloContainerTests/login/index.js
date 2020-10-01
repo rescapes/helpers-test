@@ -11,7 +11,7 @@
 
 import LoginComponent from './LoginComponent';
 import LoginContainer from './LoginContainer';
-import {apolloContainerComponent} from 'rescape-helpers-component'
+import {apolloContainerComponent} from 'rescape-helpers-component';
 
 export const Login = props => {
   return apolloContainerComponent(LoginContainer, LoginComponent)(props);

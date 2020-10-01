@@ -12,10 +12,8 @@
 import {adopt} from 'react-adopt';
 import * as R from 'ramda';
 import {
-  authenticatedUserLocalContainer,
   deleteRefreshTokenCookieMutationRequestContainer,
-  deleteTokenCookieMutationRequestContainer,
-  tokenAuthMutationContainer
+  deleteTokenCookieMutationRequestContainer
 } from 'rescape-apollo';
 
 /**
