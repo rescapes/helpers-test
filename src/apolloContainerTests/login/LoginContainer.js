@@ -26,6 +26,7 @@ export const apolloContainersLogin = (apolloConfig = {}) => {
           {
             options: {
               variables: props => {
+                // These aren't usually specified, rather sent the mutation function
                 return R.pick(['username', 'password'], props);
               },
               // Pass through error so we can handle it in the component

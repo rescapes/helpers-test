@@ -7,7 +7,8 @@ import {
   propsFor,
   renderChoicepoint,
   renderErrorDefault,
-  renderLoadingDefault
+  renderLoadingDefault,
+  bypassToDataIfUnauthenticated
 } from 'rescape-helpers-component';
 import {reqStrPathThrowing, strPath, strPathOr} from 'rescape-ramda';
 import PropTypes from 'prop-types';
@@ -63,7 +64,7 @@ Sample.viewProps = (props) => {
     [c.sample]: {
       sample
     },
-    [c.sampleLogin]: R.pick(['style', 'username', 'password', 'queryAuthenticatedUserLocalContainer'], props),
+    [c.sampleLogin]: R.pick(['style', 'queryAuthenticatedUserLocalContainer'], props),
 
     [c.sampleHeader]: {},
     [c.sampleRouter]: {
@@ -148,17 +149,9 @@ Sample.choicepoint = p => {
     },
     {
       // Bypass other checks and call onData unless authenticated
-      queryAuthenticatedUserLocalContainer: ({onError, onLoading, onData}, propConfig, props) => {
-        return R.ifElse(
-          props => {
-            return strPathOr(false, 'queryAuthenticatedUserLocalContainer.data.currentUser', props);
-          },
-          () => null,
-          () => {
-            return onData
-          }
-        )(props);
-      },
+      queryAuthenticatedUserLocalContainer: bypassToDataIfUnauthenticated(
+        'queryAuthenticatedUserLocalContainer.data.currentUser'
+      ),
       queryRegionsPaginatedAll: true,
       queryRegionsPaginated: true,
       queryRegionsMinimized: true,

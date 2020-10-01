@@ -362,12 +362,13 @@ export const apolloContainerTests = v((context, container, component, configToCh
           );
         },
         // Authorize
-        ({wrapper}) => {
+        ({wrapper, props}) => {
           const {mutation} = reqStrPathThrowing(
             authorizeMutationKey,
             wrapper.find(loginComponentName).props()
           );
-          return fromPromised(() => mutation())()
+          // Pass the username and password from the props
+          return fromPromised(() => mutation({variables: R.pick(['username', 'password'], props)}))()
         },
         // No auth login
         () => {
