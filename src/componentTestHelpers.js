@@ -23,7 +23,7 @@ import {InMemoryCache} from 'apollo-client-preset';
 import {SchemaLink} from 'apollo-link-schema';
 import {e, getClass} from 'rescape-helpers-component';
 import {onError} from "apollo-link-error";
-import {of, task, rejected} from 'folktale/concurrency/task';
+import {of, rejected} from 'folktale/concurrency/task';
 import * as Result from 'folktale/result';
 import {v} from 'rescape-validate';
 import * as R from 'ramda';
@@ -170,12 +170,12 @@ export const classifyChildClassName = childClassName => {
   return R.ifElse(
     R.includes('.'),
     childClassName => {
-      const parts = R.split('.', childClassName)
-      return R.join('.', [R.head(parts), R.map(getClass, R.tail(parts))])
+      const parts = R.split('.', childClassName);
+      return R.join('.', [R.head(parts), R.map(getClass, R.tail(parts))]);
     },
-    childClassName => R.concat('.', getClass(childClassName)),
-  )(childClassName)
-}
+    childClassName => R.concat('.', getClass(childClassName))
+  )(childClassName);
+};
 
 /**
  * Waits for a child component with the given className to render. Useful for apollo along with Enzyme
@@ -191,7 +191,7 @@ export const classifyChildClassName = childClassName => {
  */
 export const waitForChildComponentRenderTask = v(({componentName, childClassName, waitLength = 10000}, wrapper) => {
     const component = wrapper.find(componentName);
-    const childClassNameStr = classifyChildClassName(childClassName)
+    const childClassNameStr = classifyChildClassName(childClassName);
     // Wait for the child component to render, which indicates that data loading completed
     const waitForChild = createWaitForElement(childClassNameStr, waitLength);
     const find = component.find;
@@ -210,7 +210,7 @@ export const waitForChildComponentRenderTask = v(({componentName, childClassName
     return promiseToTask(waitForChild(component)).map(
       component => {
         // We need to get the updated referenc to the component that has all requests finished
-        const updatedComponent = wrapper.find(componentName)
+        const updatedComponent = wrapper.find(componentName);
         return {wrapper, component: updatedComponent, childComponent: updatedComponent.find(childClassNameStr)};
       }).orElse(
       error => {

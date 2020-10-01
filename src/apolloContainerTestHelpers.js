@@ -29,7 +29,7 @@ import {
 import * as R from 'ramda';
 import Result from 'folktale/result';
 import {loggers} from 'rescape-log';
-import {apolloQueryResponsesTask, filterOutReadOnlyVersionProps} from 'rescape-apollo';
+import {apolloQueryResponsesTask} from 'rescape-apollo';
 
 const log = loggers.get('rescapeDefault');
 
@@ -285,23 +285,28 @@ export const apolloContainerTests = v((context, container, component, configToCh
     const testRender = done => {
       const errors = [];
       const mutationComponents = filterForMutationContainers(apolloContainers({}));
-      _testRenderExpectations(mutationComponents, updatedPaths);
-      _testRenderTask(
-        {
-          apolloConfigTask: apolloConfigOptionalFunctionTask('testRender'),
-          resolvedPropsTask,
-          componentName,
-          childClassDataName,
-          childClassLoadingName,
-          omitKeysFromSnapshots,
-          mutationComponents,
-          updatedPaths,
-          waitLength
+      _testRenderExpectations({}, mutationComponents, updatedPaths);
+      R.map(
+        ({prePostMutationComparisons, ...rest}) => {
+          testMutationChanges('component', updatedPaths, prePostMutationComparisons);
+          return rest;
         },
-        container,
-        component,
-        done
-      ).run().listen(_testRenderRunConfig(updatedPaths, errors, done));
+        _testRenderTask(
+          {
+            apolloConfigTask: apolloConfigOptionalFunctionTask('testRender'),
+            resolvedPropsTask,
+            componentName,
+            childClassDataName,
+            childClassLoadingName,
+            omitKeysFromSnapshots,
+            mutationComponents,
+            updatedPaths,
+            waitLength
+          },
+          container,
+          component,
+          done
+        )).run().listen(_testRenderRunConfig(updatedPaths, errors, done));
     };
 
     /**
@@ -311,7 +316,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
     const testRenderAuthentication = done => {
       const mutationComponents = filterForMutationContainers(apolloContainers({}));
       const errors = [];
-      _testRenderExpectations(mutationComponents, updatedPaths);
+      _testRenderExpectations({testingAuthentication: true}, mutationComponents, updatedPaths);
       composeWithChain([
         // Logout and render
         () => _testRenderTask(
@@ -339,27 +344,33 @@ export const apolloContainerTests = v((context, container, component, configToCh
             deauthorizeMutationKey,
             wrapper.find(logoutComponentName).props()
           );
-          return fromPromised(() => mutation())()
+          return fromPromised(() => mutation())();
         },
         // Authorized render
         () => {
-          return _testRenderTask(
-            {
-              apolloConfigTask: apolloConfigOptionalFunctionTask('testRenderAuthentication'),
-              resolvedPropsTask,
-              componentName,
-              childClassDataName,
-              // No loading state for no auth
-              childClassLoadingName,
-              omitKeysFromSnapshots,
-              mutationComponents: filterForMutationContainers(apolloContainers({})),
-              updatedPaths,
-              waitLength
+          return R.map(
+            ({prePostMutationComparisons, ...rest}) => {
+              // Test our mutation tests while authorized
+              testMutationChanges('component', updatedPaths, prePostMutationComparisons);
+              return rest
             },
-            container,
-            component,
-            done
-          );
+            _testRenderTask(
+              {
+                apolloConfigTask: apolloConfigOptionalFunctionTask('testRenderAuthentication'),
+                resolvedPropsTask,
+                componentName,
+                childClassDataName,
+                // No loading state for no auth
+                childClassLoadingName,
+                omitKeysFromSnapshots,
+                mutationComponents: filterForMutationContainers(apolloContainers({})),
+                updatedPaths,
+                waitLength
+              },
+              container,
+              component,
+              done
+            ));
         },
         // Authorize
         ({wrapper, props}) => {
@@ -368,7 +379,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
             wrapper.find(loginComponentName).props()
           );
           // Pass the username and password from the props
-          return fromPromised(() => mutation({variables: R.pick(['username', 'password'], props)}))()
+          return fromPromised(() => mutation({variables: R.pick(['username', 'password'], props)}))();
         },
         // No auth login
         () => {
@@ -419,22 +430,22 @@ export const apolloContainerTests = v((context, container, component, configToCh
             }, wrapper, component);
         }
       ),
-      _testRenderError(
-        {
-          errorMaker,
-          apolloConfigTask: apolloConfigOptionalFunctionTask('testRenderError'),
-          resolvedPropsTask,
-          componentName,
-          childClassLoadingName,
-          childClassDataName,
-          childClassErrorName,
-          mutationComponents: filterForMutationContainers(apolloContainers({})),
-          waitLength
-        },
-        container,
-        component,
-        done
-      );
+        _testRenderError(
+          {
+            errorMaker,
+            apolloConfigTask: apolloConfigOptionalFunctionTask('testRenderError'),
+            resolvedPropsTask,
+            componentName,
+            childClassLoadingName,
+            childClassDataName,
+            childClassErrorName,
+            mutationComponents: filterForMutationContainers(apolloContainers({})),
+            waitLength
+          },
+          container,
+          component,
+          done
+        );
     };
 
     return {
@@ -773,10 +784,13 @@ const _testRenderTask = (
     mutationComponents
   });
 };
-const _testRenderExpectations = (mutationComponents, updatedPaths) => {
+const _testRenderExpectations = ({testingAuthentication = false}, mutationComponents, updatedPaths) => {
+  // If we are testing authentication, to early assertions are run thrice because _testRenderTask
+  // is called twice. The mutation tests are only run once when we are authorized to run them
+  const multiplier = testingAuthentication ? 3 : 1;
   expect.assertions(
-    // Assertions during processing
-    2 +
+    // Assertions during _testRenderComponentTask
+    2 * multiplier +
     // Asserts that the child component was found
     1 +
     // One assertion per mutation component to prove the mutation function returned a value
@@ -790,7 +804,6 @@ const _testRenderRunConfig = (updatedPaths, errors, done = null) => {
   return defaultRunConfig({
     onResolved: ({childComponent, prePostMutationComparisons}) => {
       expect(childComponent.length).toEqual(1); // We found the child, meaning we loaded data and rendered
-      testMutationChanges('component', updatedPaths, prePostMutationComparisons);
     }
   }, errors, done);
 };
@@ -855,16 +868,13 @@ const _testRenderComponentTask = v((
         return of({
           wrapper,
           component,
-          childComponent,
+          childComponent
         });
       },
       mapToNamedResponseAndInputs('render',
         ({wrapper, childClassLoadingName, childClassDataName, loading}) => {
           const foundComponent = wrapper.find(componentName);
-          // If we have an Apollo componentInstance, our immediate status after mounting the componentInstance is loading. Confirm
-          if (childClassLoadingName) {
-            expect(foundComponent.find(classifyChildClassName(childClassLoadingName)).length).toEqual(1);
-          }
+          expect(foundComponent.find(classifyChildClassName(childClassLoadingName)).length).toEqual(1);
           // TODO act doesn't suppress the warning as it should
           // If we have an Apollo componentInstance, we use enzyme-wait to await the query to run and the the child
           // componentInstance that is dependent on the query result to render. If we don't have an Apollo componentInstance,
@@ -878,7 +888,7 @@ const _testRenderComponentTask = v((
             }, wrapper);
           });
           // resolves to {wrapper, component, render: {childComponent}}
-          return tsk.map(x => x);
+          return tsk;
         }
       ),
       mapToNamedResponseAndInputs('loading',
@@ -898,11 +908,11 @@ const _testRenderComponentTask = v((
   },
   [
     ['config', PropTypes.shape({
-      apolloClient:PropTypes.shape().isRequired,
-      componentName:PropTypes.string.isRequired,
-      childClassLoadingName:PropTypes.string.isRequired,
-      childClassDataName:PropTypes.string.isRequired,
-      waitLength:PropTypes.number
+      apolloClient: PropTypes.shape().isRequired,
+      componentName: PropTypes.string.isRequired,
+      childClassLoadingName: PropTypes.string.isRequired,
+      childClassDataName: PropTypes.string.isRequired,
+      waitLength: PropTypes.number
     })],
     ['container', PropTypes.func.isRequired],
     ['component', PropTypes.func.isRequired],
