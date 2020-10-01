@@ -15,7 +15,7 @@ import {parentPropsForContainerTask} from '../componentTestHelpers';
 import {composeWithChain, mapMonadByConfig} from 'rescape-ramda';
 import {apolloQueryResponsesTask, makeCurrentUserQueryContainer, userOutputParams} from 'rescape-apollo';
 import {filterForQueryContainers} from '../apolloContainerTestHelpers';
-import {apolloContainers} from './SampleContainer';
+import {apolloContainersSample} from './SampleContainer';
 import {mutateSampleUserStateWithProjectsAndRegionsContainer} from 'rescape-place';
 
 /**
@@ -110,7 +110,7 @@ export const configToChainedPropsForSampleTask = (apolloConfig, {runParentContai
     chainedParentPropsForSampleTask(apolloConfig, {runParentContainerQueries, ...options}),
     // Get the Apollo queries for the container since we can run the props through them and get the
     // structured query results that the component expect
-    filterForQueryContainers(apolloContainers(apolloConfig)),
+    filterForQueryContainers(apolloContainersSample(apolloConfig)),
     runContainerQueries
   );
 };

@@ -23,6 +23,7 @@ import {
 } from 'rescape-helpers-component';
 import PropTypes from 'prop-types';
 import * as R from 'ramda';
+import {strPathOr} from 'rescape-ramda';
 
 export const c = nameLookup({
   login: true,
@@ -58,19 +59,19 @@ export default function LoginComponent(props) {
  * @returns {Object}
  */
 LoginComponent.renderData = ({history, location, queryAuthenticatedUserLocalContainer, views}) => {
-  const props = propsFor(views);
-  const styledComponentAndProps = componentAndPropsFor(views);
+  const propsOf = propsFor(views);
+  const componentAndPropsOf = componentAndPropsFor(views);
   const from = R.propOr('/', 'pathname', location);
 
-  if (queryAuthenticatedUserLocalContainer) {
+  if (strPathOr(false, 'data.currentUser', queryAuthenticatedUserLocalContainer)) {
     return e(Redirect, {to: from});
   }
 
-  return e(...styledComponentAndProps(c.loginBody), [
-    e('h2', props(c.loginHeader)),
-    e(...componentAndProps(c.loginUsername)),
-    e(...componentAndprops(c.loginPassword)),
-    e('button', props(c.loginButton))
+  return e(...componentAndPropsOf(c.loginBody), [
+    e('h2', propsOf(c.loginHeader)),
+    e(...componentAndPropsOf(c.loginUsername)),
+    e(...componentAndPropsOf(c.loginPassword)),
+    e('button', propsOf(c.loginButton))
   ]);
 };
 
@@ -118,7 +119,6 @@ const styledComponents = {
 LoginComponent.viewStyles = ({style}) => {
 
   return {
-    styledComponents,
     [c.login]: {},
 
     [c.loginBody]: applyMatchingStyles(style, {
@@ -130,12 +130,12 @@ LoginComponent.viewStyles = ({style}) => {
 
 LoginComponent.viewProps = props => {
   return {
-    [c.login]: {
+    [c.loginBody]: {
       component: styledComponents.login,
     },
     [c.loginHeader]: {children: 'Login'},
-    [c.loginUsername]: {type: 'text', placeholder: 'username'},
-    [c.loginPassword]: {type: 'password', placeholder: 'password'},
+    [c.loginUsername]: {type: 'text', placeholder: 'username', component: styledComponents.input},
+    [c.loginPassword]: {type: 'password', placeholder: 'password', component: styledComponents.input},
     [c.loginButton]: {children: 'Login'}
   };
 };

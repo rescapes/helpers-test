@@ -1,14 +1,11 @@
 import * as R from 'ramda';
 import Sample, {c} from './SampleComponent';
-import {c as cLogout} from './logout/LogoutComponent'
-import SampleContainer, {apolloContainers} from './SampleContainer';
+import {c as cLogout} from './logout/LogoutComponent';
+import {c as cLogin} from './login/LoginComponent';
+import SampleContainer, {apolloContainersSample} from './SampleContainer';
 import {configToChainedPropsForSampleTask} from './SampleContainer.sample';
 import {localTestAuthTask, localTestNoAuthTask, VERSION_PROPS} from 'rescape-apollo';
-import {
-  apolloContainerTests,
-  defaultUpdatePathsForMutationContainers,
-  filterForMutationContainers
-} from '../apolloContainerTestHelpers';
+import {apolloContainerTests, defaultUpdatePathsForMutationContainers} from '../apolloContainerTestHelpers';
 
 // Test this container
 const container = SampleContainer;
@@ -17,13 +14,13 @@ const component = Sample;
 
 // Find this React component
 const componentName = 'Sample';
-// Find this class in the data renderer
-const childClassDataName = cLogout.logoutButton;
+// Find this class in the data renderer. Use button. Since the styled wrappers shares the classname
+const childClassDataName = `button.${cLogout.logoutButton}`;
 // Find this class in the loading renderer
 const childClassLoadingName = c.sampleLoading;
 // Find this class in the error renderer
 const childClassErrorName = c.sampleError;
-const childClassNoAuthenticationName = c.sampleLogin;
+const childClassNoAuthenticationName = `button.${cLogin.loginButton}`;
 // Error maker creates an unknown id that can't be queried
 // Error maker creates an unknown id that can't be queried
 const errorMaker = parentProps => {
@@ -36,7 +33,7 @@ const errorMaker = parentProps => {
 
 const omitKeysFromSnapshots = R.concat(['id', 'key'], VERSION_PROPS);
 // We expect calling mutateRegion to update the updatedAt of the queryRegions response
-const updatedPaths = defaultUpdatePathsForMutationContainers(apolloContainers, {
+const updatedPaths = defaultUpdatePathsForMutationContainers(apolloContainersSample, {
   mutateRegion: {
     // Check that mutation modified the query, we could likewise check the mutation result
     component: ['queryRegions.data.regions.0.updatedAt'],
@@ -67,7 +64,8 @@ describe('SampleContainer', () => {
           return R.includes(testName, ['testRenderAuthenticationNoAuth']) ? localTestNoAuthTask() : localTestAuthTask();
         },
         // This is called with one argument, null or and apolloConfig to return the containers
-        apolloContainers
+        // Compose with the loginContainers and logoutContainers so we can test authentication
+        apolloContainers: apolloContainersSample
       },
       reduxContext: {},
       testContext: {
@@ -77,7 +75,9 @@ describe('SampleContainer', () => {
         // This value should change when we mutate
         updatedPaths,
         authorizeMutationKey: 'mutateTokenAuth',
-        deuthorizeMutationKey: 'mutateDeleteTokenCookie'
+        deauthorizeMutationKey: 'mutateDeleteTokenCookie',
+        loginComponentName: 'LoginComponent',
+        logoutComponentName: 'LogoutComponent'
       }
     },
     container,

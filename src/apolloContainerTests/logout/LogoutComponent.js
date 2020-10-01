@@ -24,7 +24,7 @@ import {
   styleMultiplier
 } from 'rescape-helpers-component';
 import PropTypes from 'prop-types';
-import {reqStrPathThrowing} from 'rescape-ramda';
+import {reqStrPathThrowing, strPathOr} from 'rescape-ramda';
 
 export const c = nameLookup({
   logout: true,
@@ -60,7 +60,7 @@ LogoutComponent.renderData = ({history, location, queryAuthenticatedUserLocalCon
 
   const props = propsFor(views);
 
-  if (!queryAuthenticatedUserLocalContainer) {
+  if (!strPathOr(false, 'data.currentUser', queryAuthenticatedUserLocalContainer)) {
     return e(Redirect, {to: '/login'});
   }
 

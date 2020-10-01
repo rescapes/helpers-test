@@ -18,23 +18,12 @@ import {
   isAuthenticatedLocal, tokenAuthMutationContainer
 } from 'rescape-apollo';
 
-
-// The __typename that represent the fields of the Region type. We need these to query by object types rather than
-// just by primitives, e.g. to query by geojson: {feature: {type: 'FeatureCollection'}} to get objects whose
-// geojson type is a 'FeatureCollection'
-// TODO, these should be derived from the remote schema
-export const readInputTypeMapper = {
-  //'data': 'DataTypeofLocationTypeRelatedReadInputType'
-  'geojson': 'FeatureCollectionDataTypeofRegionTypeRelatedReadInputType'
-};
-
-
 /**
  * Each query and mutation expects a container to compose then props
  * @param {Object} apolloConfig Optionally supply {apolloClient} to run requests as tasks instead of components
  * @return {{queryRegions: (function(*=): *), mutateRegion: (function(*=): *), queryUserRegions: (function(*=): *)}}
  */
-export const apolloContainers = (apolloConfig = {}) => {
+export const apolloContainersSample = (apolloConfig = {}) => {
   return R.mergeAll([
     // Cache lookup to see if the user is authenticated
     {
@@ -63,40 +52,6 @@ export const apolloContainers = (apolloConfig = {}) => {
       }
     )),
     {
-      mutateTokenAuth: props => {
-        return tokenAuthMutationContainer(
-          R.merge(apolloConfig,
-            {
-              options: {
-                variables: props => {
-                  return R.pick(['username', 'password'], props);
-                },
-                // Pass through error so we can handle it in the component
-                errorPolicy: 'all'
-              }
-            }
-          ),
-          {},
-          props
-        );
-      },
-      mutateDeleteTokenCookie: props => {
-        return deleteTokenCookieMutationRequestContainer(
-          R.merge(apolloConfig,
-            {
-              options: {
-                variables: () => {
-                  return {};
-                },
-                // Pass through error so we can handle it in the component
-                errorPolicy: 'all'
-              }
-            }
-          ),
-          {},
-          props
-        );
-      },
       // Test sequential queries
       queryUserRegions: props => {
         // Skip if not authenticated
@@ -182,10 +137,10 @@ export const apolloContainers = (apolloConfig = {}) => {
     }]);
 };
 
-// This produces a component class that expects a props object keyed by the keys in apolloContainers
+// This produces a component class that expects a props object keyed by the keys in apolloContainersLogout
 // The value at each key is the result of the corresponding query container or the mutate function of the corresponding
 // mutation container
-const AdoptedApolloContainer = adopt(apolloContainers());
+const AdoptedApolloContainer = adopt(apolloContainersSample());
 // Wrap AdoptedApolloContainer in
 //const apolloHoc = apolloHOC(AdoptedApolloContainer);
 export default AdoptedApolloContainer;

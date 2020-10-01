@@ -10,7 +10,9 @@
  */
 
 import LogoutComponent from './LogoutComponent';
+import LogoutContainer from './LogoutContainer';
+import {apolloContainerComponent} from 'rescape-helpers-component'
 
 export const Logout = props => {
-  return LogoutComponent(props);
+  return apolloContainerComponent(LogoutContainer, LogoutComponent)(props);
 };

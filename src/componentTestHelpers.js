@@ -166,6 +166,17 @@ export const shallowWrap = (componentFactory, props) => {
   );
 };
 
+export const classifyChildClassName = childClassName => {
+  return R.ifElse(
+    R.includes('.'),
+    childClassName => {
+      const parts = R.split('.', childClassName)
+      return R.join('.', [R.head(parts), R.map(getClass, R.tail(parts))])
+    },
+    childClassName => R.concat('.', getClass(childClassName)),
+  )(childClassName)
+}
+
 /**
  * Waits for a child component with the given className to render. Useful for apollo along with Enzyme
  * 3, since Enzyme 3 doesn't keep it's wrapper synced with all DOM changes, and Apollo doesn't expose
@@ -180,7 +191,7 @@ export const shallowWrap = (componentFactory, props) => {
  */
 export const waitForChildComponentRenderTask = v(({componentName, childClassName, waitLength = 10000}, wrapper) => {
     const component = wrapper.find(componentName);
-    const childClassNameStr = `.${getClass(childClassName)}`;
+    const childClassNameStr = classifyChildClassName(childClassName)
     // Wait for the child component to render, which indicates that data loading completed
     const waitForChild = createWaitForElement(childClassNameStr, waitLength);
     const find = component.find;
@@ -198,7 +209,9 @@ export const waitForChildComponentRenderTask = v(({componentName, childClassName
     };
     return promiseToTask(waitForChild(component)).map(
       component => {
-        return {wrapper, childComponent: component.find(childClassNameStr)};
+        // We need to get the updated referenc to the component that has all requests finished
+        const updatedComponent = wrapper.find(componentName)
+        return {wrapper, component: updatedComponent, childComponent: updatedComponent.find(childClassNameStr)};
       }).orElse(
       error => {
         const comp = wrapper.find(componentName);

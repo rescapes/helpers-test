@@ -31,6 +31,7 @@
     "publish-minor": "yarn version --minor && yarn publish --non-interactive"
   },
   "dependencies": {
+    "@apollo/client": "^3.2.1",
     "apollo-client": "^2.6.4",
     "apollo-client-preset": "^1.0.8",
     "apollo-link-error": "^1.1.13",

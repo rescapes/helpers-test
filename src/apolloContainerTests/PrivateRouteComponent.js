@@ -19,7 +19,7 @@ import {
 } from 'rescape-helpers-component';
 import * as R from 'ramda';
 import {Redirect, Route, useHistory, useLocation} from 'react-router-dom';
-import {reqStrPath, reqStrPathThrowing} from 'rescape-ramda';
+import {reqStrPath, reqStrPathThrowing, strPathOr} from 'rescape-ramda';
 
 export const c = nameLookup({
   privateRoute: true,
@@ -54,7 +54,7 @@ PrivateRouteComponent.renderData = ({render, views}) => {
   return e(Route, R.merge(
     privateRouteBodyProps, {
       render: routeProps => {
-        return queryAuthenticatedUserLocalContainer ?
+        return strPathOr(false, 'data.currentUser', queryAuthenticatedUserLocalContainer) ?
           // Call the render prop
           render(mergeWithRoute(c.privateRouteComponent, routeProps)) :
           // Redirect to login
@@ -77,7 +77,7 @@ PrivateRouteComponent.viewProps = props => {
     [c.privateRouteBody]: props,
     [c.privateRouteComponent]: props,
     [c.privateRouteRedirect]: {
-      to: reqStrPath('loginPath', props),
+      to: reqStrPathThrowing('loginPath', props),
       // The location the user is trying to access, so we can redirect their after they login
       state: {from: reqStrPathThrowing('location', props)}
     }

@@ -81,6 +81,7 @@ Sample.viewProps = (props) => {
       // The protected (needs authentication) route path
       // This will likely just be '/' in production
       path: reqStrPathThrowing('protectedPath', props),
+      loginPath: reqStrPathThrowing('loginPath', props),
       ...R.pick(['queryAuthenticatedUserLocalContainer'], props)
     }
   };
@@ -150,11 +151,11 @@ Sample.choicepoint = p => {
       queryAuthenticatedUserLocalContainer: ({onError, onLoading, onData}, propConfig, props) => {
         return R.ifElse(
           props => {
-            return reqStrPathThrowing('queryAuthenticatedUserLocalContainer', props);
+            return strPathOr(false, 'queryAuthenticatedUserLocalContainer.data.currentUser', props);
           },
           () => null,
           () => {
-            return onData(props);
+            return onData
           }
         )(props);
       },
@@ -163,15 +164,19 @@ Sample.choicepoint = p => {
       queryRegionsMinimized: true,
       queryRegions: true,
       queryUserRegions: true,
-      mutateRegion: true,
-      mutateUserRegion: true
+      // We shouldn't care about when a mutation is loading. That's shouldn't block rendering
+      // We do care if a mutate errors or if a complex mutation is not ready.
+      // mutateUserRegion is a complex mutation that must query first, so it can have a skip=true state,
+      // meaning we are not ready to render a page that lets us run this mutation.
+      // mutateRegion doesn't need onReady because it is always ready to run if the queries have completed
+      mutateRegion: ['onError'],
+      mutateUserRegion: ['onError', 'onReady']
     },
     p
   );
 };
 
 Sample.propTypes = {
-  data: PropTypes.shape().isRequired,
   style: PropTypes.shape().isRequired
 };
 
