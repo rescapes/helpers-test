@@ -11,7 +11,7 @@
 
 // Enzyme setup
 import enzyme from 'enzyme';
-import Adapter from 'enzyme-adapter-react-16';
+import Adapter from '@wojtekmaj/enzyme-adapter-react-17'
 // Makes localStorage available in node to Apollo
 import 'localstorage-polyfill';
 import 'regenerator-runtime';
