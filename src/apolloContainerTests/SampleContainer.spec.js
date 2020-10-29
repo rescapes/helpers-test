@@ -6,6 +6,7 @@ import SampleContainer, {apolloContainersSample} from './SampleContainer';
 import {configToChainedPropsForSampleTask} from './SampleContainer.sample';
 import {localTestAuthTask, localTestNoAuthTask, VERSION_PROPS} from 'rescape-apollo';
 import {apolloContainerTests, defaultUpdatePathsForMutationContainers} from '../apolloContainerTestHelpers';
+import {testAuthTask, testNoAuthTask} from 'rescape-place';
 
 // Test this container
 const container = SampleContainer;
@@ -61,13 +62,12 @@ describe('SampleContainer', () => {
       apolloContext: {
         state: {},
         apolloConfigTask: testName => {
-          return R.includes(testName, ['testRenderAuthenticationNoAuth']) ? localTestNoAuthTask() : localTestAuthTask();
+          return R.includes(testName, ['testRenderAuthenticationNoAuth']) ? testNoAuthTask : testAuthTask;
         },
         // This is called with one argument, null or and apolloConfig to return the containers
         // Compose with the loginContainers and logoutContainers so we can test authentication
         apolloContainers: apolloContainersSample
       },
-      reduxContext: {},
       testContext: {
         errorMaker,
         // Don't snapshot compare these non-deterministic keys on any object

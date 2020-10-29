@@ -14,9 +14,7 @@ import {inspect} from 'util';
 import {createWaitForElement} from 'enzyme-wait';
 import PropTypes from 'prop-types';
 import {mount, shallow} from 'enzyme';
-import configureStore from 'redux-mock-store';
-import thunk from 'redux-thunk';
-import {mergeDeep, promiseToTask, reqPathThrowing, reqStrPathThrowing} from 'rescape-ramda';
+import {promiseToTask, reqPathThrowing, reqStrPathThrowing} from 'rescape-ramda';
 import * as apolloTestUtils from 'apollo-test-utils';
 import ApolloClient from 'apollo-client';
 import {InMemoryCache} from 'apollo-client-preset';
@@ -31,7 +29,7 @@ import {ApolloProvider} from "react-apollo";
 import {ApolloProvider as ApolloHookProvider} from '@apollo/react-hooks';
 
 
-const middlewares = [thunk];
+const middlewares = [];
 // Importing this way because rollup can't find it
 const mockNetworkInterfaceWithSchema = apolloTestUtils.mockNetworkInterfaceWithSchema;
 
@@ -44,26 +42,6 @@ const mockNetworkInterfaceWithSchema = apolloTestUtils.mockNetworkInterfaceWithS
  */
 export const testState = (createInitialState, sampleConfig) => createInitialState(sampleConfig);
 
-/**
- * Creates a mock store from our sample data an our initialState function
- * @param {Object} sampleUserSettings Merges in sample local settings, like those from a browser cache
- * @param {Object} initialState The initial state
- * @param {Object} sampleConfig The config to give the initialState
- * @type {function(*, *=)}
- */
-export const makeSampleStore = (initialState, sampleUserSettings = {}) =>
-  makeMockStore(initialState, sampleUserSettings);
-
-/**
- * Like test state but initializes a mock store. This will probably be unneeded
- * unless the middleware is needed, such as cycle.js
- * @param {Function} createInitialState Creates the intial state from the sampleConfig
- * @param {Object} sampleConfig object for craeteInitialState
- * @param {Object} sampleUserSettings Merges in sample local settings, like those from a browser cache
- */
-export const makeSampleInitialState = (createInitialState, sampleConfig, sampleUserSettings = {}) => {
-  return makeSampleStore(createInitialState(sampleConfig), sampleUserSettings).getState();
-};
 
 /**
  * Simulates complete props from a container component by combining mapStateToProps, mapDispatchToProps, and props
@@ -76,24 +54,6 @@ export const makeSampleInitialState = (createInitialState, sampleConfig, sampleU
  */
 export const propsFromSampleStateAndContainer = (initialState, containerPropMaker, sampleParentProps = {}) =>
   containerPropMaker(initialState, sampleParentProps);
-
-/**
- * Makes a mock store with the given state and optional sampleUserSettings. If the sampleUserSettings
- * they are merged into the state with deepMerge, so make sure the structure matches the state
- * @param {Object} state The initial redux state
- * @param {Object} sampleUserSettings Merges in sample local settings, like those from a browser cache
- * @returns {Object} A mock redux store
- */
-export const makeMockStore = (state, sampleUserSettings = {}) => {
-  const mockStore = configureStore(middlewares);
-  // Creates a mock store that merges the initial state with local user settings.
-  return mockStore(
-    mergeDeep(
-      state,
-      sampleUserSettings
-    )
-  );
-};
 
 export const mockApolloClient = (schema, context) => {
   const mockNetworkInterface = mockNetworkInterfaceWithSchema({schema});
@@ -117,7 +77,7 @@ export const mockApolloClient = (schema, context) => {
 };
 
 /**
- * Creates a mockApolloClient using makeSchema and makeSampleInitialState
+ * Creates a mockApolloClient
  */
 export const mockApolloClientWithSamples = (state, resolvedSchema) => {
   const context = {options: {dataSource: state}};

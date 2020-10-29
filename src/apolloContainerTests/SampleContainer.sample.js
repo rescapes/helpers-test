@@ -13,7 +13,7 @@ import * as R from 'ramda';
 import {of} from 'folktale/concurrency/task';
 import {parentPropsForContainerTask} from '../componentTestHelpers';
 import {composeWithChain, mapMonadByConfig} from 'rescape-ramda';
-import {apolloQueryResponsesTask, makeCurrentUserQueryContainer, userOutputParams} from 'rescape-apollo';
+import {apolloQueryResponsesTask, currentUserQueryContainer, userOutputParams} from 'rescape-apollo';
 import {filterForQueryContainers} from '../apolloContainerTestHelpers';
 import {apolloContainersSample} from './SampleContainer';
 import {mutateSampleUserStateWithProjectsAndRegionsContainer} from 'rescape-place';
@@ -83,7 +83,7 @@ export const chainedParentPropsForSampleTask = (apolloConfig, {runParentContaine
       ),
       mapMonadByConfig({name: 'user', strPath: 'data.currentUser'},
         ({apolloConfig}) => {
-          return makeCurrentUserQueryContainer(apolloConfig, userOutputParams, {});
+          return currentUserQueryContainer(apolloConfig, userOutputParams, {});
         }
       )
     ])({apolloConfig}),

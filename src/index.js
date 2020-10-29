@@ -1,9 +1,6 @@
 export {
   waitForChildComponentRenderTask,
   propsFromSampleStateAndContainer,
-  makeMockStore,
-  makeSampleInitialState,
-  makeSampleStore,
   mockApolloClient,
   mockApolloClientWithSamples,
   shallowWrap,

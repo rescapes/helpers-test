@@ -123,14 +123,18 @@ export const defaultUpdatePathsForMutationContainers = (apolloContainers, overri
         deauathorizeMutationKey
       }
     }
- * @param {String} context.componentContext.name The name of the React component that the container wraps
+ * @param {String} context.componentContext.name The name of the React component that the container wraps.
+ * This can be any combination of class and component name that Enzyme can find.
  * @param {String} context.componentContext.statusClasses.data.childClassDataName A class used in a React component in the named
- *  * @param {String} [context.componentContext.statusClasses.data..childClassLoadingName] Optional. A class used in a React component in the named
+ * This can be any combination of class and component name that Enzyme can find.
+ * @param {String} [context.componentContext.statusClasses.data.childClassLoadingName] Optional. A class used in a React component in the named
+ * This can be any combination of class and component name that Enzyme can find.
  * component's renderLoading method--or any render code called when apollo loading is true. Normally
  * only needed for components with queries.
  * @param {String} [context.componentContext.statusClasses.data..childClassErrorName] Optional. A class used in a React component in the named
  * component's renderError method--or any render code called when apollo error is true. Normally only
  * needed for components with queries.
+ * This can be any combination of class and component name that Enzyme can find.
  * component's renderData method--or any render code when apollo data is loaded
  * @param {Object} apolloContext
  * @param {Task|Function<String, Task>} apolloContext.apolloConfigTask Task resolving to the ApolloConfig.
@@ -159,6 +163,12 @@ export const defaultUpdatePathsForMutationContainers = (apolloContainers, overri
  * @param {String} [deauthorizeMutationKey] The name of the mutation key in the result of testContext.apolloContainersLogout
  * functions for deauthorizing when we run testRenderAuthentication. Props from configToChainedPropsForSampleTask
  * are passed although typically no props are needed
+ * @param {String} testContext.loginComponentName For the authentication test, a component that is expected on the login component
+ * This is sought and the mutation with key authorizeMutationKey is expected in its props
+ * This can be any combination of class and component name that Enzyme can find.
+ * @param {String} testContext.logoutComponentName For the authentication test, a component that is expected on the logout component
+ * This is sought and the mutation with key deauthorizeMutationKey is expected in its props
+ * This can be any combination of class and component name that Enzyme can find.
  * @param {Object} HOC Apollo container created by calling react-adopt or similar
  * @param {Object} component. The child component to container having a render function that receives
  * the results of the apollo requests from container
@@ -352,7 +362,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
             ({prePostMutationComparisons, ...rest}) => {
               // Test our mutation tests while authorized
               testMutationChanges('component', updatedPaths, prePostMutationComparisons);
-              return rest
+              return rest;
             },
             _testRenderTask(
               {
@@ -1079,9 +1089,13 @@ const _testRenderError = (
     mapToMergedResponseAndInputs(
       ({apolloConfigTask}) => apolloConfigTask
     ),
+    // Resolve the props and alter them with the errorMaker so that we submit something
+    // invalid to the API, such as a negative id, that will cause an error
     mapToNamedResponseAndInputs('props',
       ({resolvedPropsTask}) => R.map(
-        props => errorMaker(props),
+        props => {
+          return errorMaker(props);
+        },
         resolvedPropsTask
       )
     )

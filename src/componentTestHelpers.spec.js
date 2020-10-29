@@ -10,12 +10,7 @@
  */
 
 import * as R from 'ramda';
-import {
-  makeMockStore,
-  makeSampleInitialState,
-  propsFromSampleStateAndContainer,
-  testState
-} from './componentTestHelpers';
+import {testState} from './componentTestHelpers';
 
 const createInitialState = config => R.merge({
   foo: 'boo'
@@ -31,37 +26,6 @@ describe('componentTestHelpers', () => {
     expect(testState(createInitialState, sampleConfig)).toMatchSnapshot()
   );
 
-  test('propsFromSampleStateAndContainer', () => {
-    const initialState = makeSampleInitialState(createInitialState, sampleConfig);
-
-    // propsFromSampleStateAndContainer should take a function that merges processes
-    // state and ownProps based on a container's
-    // mapStateToProps, mapDispatchToProps, and mergeProps.
-    // This function alweays uses makeSampleInitialState as the state and accepts
-    // sample ownProps from the test
-    expect(propsFromSampleStateAndContainer(
-      initialState,
-      // Simply merge a fake dispatch result with the sampleOwnProps
-      (sampleInitialState, sampleOwnProps) => R.mergeAll([sampleInitialState, {someAction: R.identity}, sampleOwnProps]),
-      // our sample ownProps
-      {sample: 'own props'}))
-      .toEqual(
-        R.mergeAll([
-          {someAction: R.identity},
-          initialState,
-          {sample: 'own props'}
-        ])
-      );
-  });
-
-  test('makeMockStore', () => {
-    const config = {
-      users: [{user: 'joe'}],
-      regions: [{region: 'alberta'}],
-      settings: {go: 'west'}
-    };
-    expect(makeMockStore(config).getState()).toEqual(config);
-  });
 
   /*
 test('enzymeMountWithApolloClientAndReduxProvider', async done => {

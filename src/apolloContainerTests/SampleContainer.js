@@ -107,7 +107,7 @@ export const apolloContainersSample = (apolloConfig = {}) => {
           R.merge(apolloConfig, {
             options: {
               variables: (props) => {
-                return R.pick(['id'], reqStrPathThrowing('scope.region', props));
+                return R.pick(['id'], reqStrPathThrowing('userScope.region', props));
               },
               errorPolicy: 'all'
             }
