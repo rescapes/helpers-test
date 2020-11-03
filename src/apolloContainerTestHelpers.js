@@ -902,13 +902,16 @@ const _testRenderComponentTask = v((
         }
       ),
       mapToNamedResponseAndInputs('loading',
-        ({waitLength, wrapper, childClassLoadingName, container}) => {
+        ({waitLength, wrapper, childClassLoadingName, childClassDataName, container}) => {
           // Make sure the componentInstance props are consistent since the last test run
           let tsk = null;
           act(() => {
             tsk = waitForChildComponentRenderTask({
               componentName,
               childClassName: childClassLoadingName,
+              // Some components go to data state immediately because there is nothing to load,
+              // so check this before waiting for loading state
+              alreadyChildClassName: childClassDataName,
               waitLength
             }, wrapper);
           });

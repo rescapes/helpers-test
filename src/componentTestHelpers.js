@@ -14,7 +14,7 @@ import {inspect} from 'util';
 import {createWaitForElement} from 'enzyme-wait';
 import PropTypes from 'prop-types';
 import {mount, shallow} from 'enzyme';
-import {promiseToTask, reqPathThrowing, reqStrPathThrowing} from 'rescape-ramda';
+import {compact, promiseToTask, reqPathThrowing, reqStrPathThrowing} from 'rescape-ramda';
 import * as apolloTestUtils from 'apollo-test-utils';
 import ApolloClient from 'apollo-client';
 import {InMemoryCache} from 'apollo-client-preset';
@@ -144,16 +144,28 @@ export const classifyChildClassName = childClassName => {
  * @param {Object} config
  * @param {String|Object} config.componentName The component name or component of the wrapper whose render method will render the child component
  * @param {String} config.childClassName The child class name to search for periodically
+ * @param {String} [config.alreadyChildClassName] A child class to check for. If it already exists,
+ * skip waiting for childclassName. This is handy to look for the ready state when a component is never actually in the loading state
  * @param {Number} [config.waitLength] Default 10000 ms. Set longer for longer queries
  * @param {Object} wrapper The mounted enzyme Component
  * @returns {Task} A task that returns the component matching childClassName or if an error
  * occurs return an Error with the message and dump of the props
  */
-export const waitForChildComponentRenderTask = v(({componentName, childClassName, waitLength = 10000}, wrapper) => {
+export const waitForChildComponentRenderTask = v(({componentName, childClassName, alreadyChildClassName, waitLength = 10000}, wrapper) => {
     const component = wrapper.find(componentName);
     const childClassNameStr = classifyChildClassName(childClassName);
+
+    // If alreadyChildClassName already exists, return it.
+    // This happens when the component never was in the loading state but went straight to the ready/data state
+    if (alreadyChildClassName && R.length(component.find(classifyChildClassName(alreadyChildClassName)))) {
+      return of({wrapper, component, childComponent: component.find(childClassNameStr)})
+    }
+
     // Wait for the child component to render, which indicates that data loading completed
-    const waitForChild = createWaitForElement(childClassNameStr, waitLength);
+    const waitForChild = createWaitForElement(
+      childClassNameStr,
+      waitLength
+    );
     const find = component.find;
     // Override find to call update each time we poll for an update
     // Enzyme 3 doesn't stay synced with React DOM changes without update
@@ -169,7 +181,7 @@ export const waitForChildComponentRenderTask = v(({componentName, childClassName
     };
     return promiseToTask(waitForChild(component)).map(
       component => {
-        // We need to get the updated referenc to the component that has all requests finished
+        // We need to get the updated reference to the component that has all requests finished
         const updatedComponent = wrapper.find(componentName);
         return {wrapper, component: updatedComponent, childComponent: updatedComponent.find(childClassNameStr)};
       }).orElse(
