@@ -10,7 +10,8 @@
  */
 
 import * as R from 'ramda';
-import {of} from 'folktale/concurrency/task';
+import T from 'folktale/concurrency/task';
+const {of} = T
 import {parentPropsForContainerTask} from '../componentTestHelpers';
 import {composeWithChain, mapMonadByConfig} from 'rescape-ramda';
 import {apolloQueryResponsesTask, currentUserQueryContainer, userOutputParams} from 'rescape-apollo';

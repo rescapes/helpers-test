@@ -1,5 +1,5 @@
-import {Component} from 'react';
-import styled from 'styled-components';
+import React from 'react';
+const {Component} = React
 import {
   composeViews,
   e,
@@ -12,7 +12,8 @@ import {
 } from 'rescape-helpers-component';
 import {reqStrPathThrowing, strPath, strPathOr} from 'rescape-ramda';
 import PropTypes from 'prop-types';
-import {MemoryRouter, Route} from 'react-router-dom';
+import reactRouterDom from 'react-router-dom';
+const {MemoryRouter, Route} = reactRouterDom
 import * as R from 'ramda';
 import PrivateRouteComponent from './PrivateRouteComponent';
 import {Login} from './login';

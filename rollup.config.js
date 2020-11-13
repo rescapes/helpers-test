@@ -6,7 +6,7 @@ import * as R from 'ramda';
 
 const config = {
   input: [
-    'src/index.js',
+    'src/index.mjs',
     'src/apolloContainerTestHelpers.js',
     'src/componentTestHelpers.js'
   ],

@@ -8,8 +8,8 @@
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-import {Redirect, useHistory, useLocation} from "react-router-dom";
-import styled from "styled-components";
+import chakra from '@chakra-ui/core';
+import reactRouterDom from "react-router-dom";
 import {
   applyMatchingStyles,
   componentAndPropsFor,
@@ -25,6 +25,10 @@ import {
 import PropTypes from 'prop-types';
 import * as R from 'ramda';
 import {strPathOr} from 'rescape-ramda';
+
+const {Box, Input} = chakra;
+
+const {Redirect, useHistory, useLocation} = reactRouterDom;
 
 export const c = nameLookup({
   login: true,
@@ -77,7 +81,9 @@ LoginComponent.renderData = ({history, location, queryAuthenticatedUserLocalCont
 };
 
 const styledComponents = {
-  login: styled.div`
+  login: Box,
+  /*
+  styled.div`
   display: flex;
   align-items: center;
   flex-flow: column;
@@ -102,8 +108,9 @@ const styledComponents = {
     box-sizing: border-box;
   }
 `,
-
-  input: styled.input`
+*/
+  input: Input
+  /*
   border: 1px solid #000;
   border-radius: 10px;
   padding: 10px;
@@ -111,6 +118,7 @@ const styledComponents = {
   width: 150px;
   box-sizing: border-box;
 `
+  */
 };
 
 /**

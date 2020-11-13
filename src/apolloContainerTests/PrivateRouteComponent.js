@@ -18,8 +18,10 @@ import {
   renderLoadingDefault
 } from 'rescape-helpers-component';
 import * as R from 'ramda';
-import {Redirect, Route, useHistory, useLocation} from 'react-router-dom';
-import {reqStrPath, reqStrPathThrowing, strPathOr} from 'rescape-ramda';
+import reactRouterDom from 'react-router-dom';
+import {reqStrPathThrowing, strPathOr} from 'rescape-ramda';
+
+const {Redirect, Route, useHistory, useLocation} = reactRouterDom
 
 export const c = nameLookup({
   privateRoute: true,

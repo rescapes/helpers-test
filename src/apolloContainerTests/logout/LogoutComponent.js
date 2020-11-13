@@ -9,8 +9,10 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 import * as R from 'ramda';
-import styled from "styled-components";
-import {Redirect, useHistory, useLocation} from "react-router-dom";
+import reactRouterDom from "react-router-dom";
+const {Redirect, useHistory, useLocation} = reactRouterDom
+import chakra from '@chakra-ui/core'
+const {Button} = chakra;
 import {
   applyMatchingStyles,
   componentAndPropsFor,
@@ -72,13 +74,19 @@ LogoutComponent.renderData = ({history, location, queryAuthenticatedUserLocalCon
 
 
 const styledComponents = {
-  logoutButton: styled.button`
+  logoutButton: Button,
+  /*
+  styled.button`
   border: 1px solid #000;
 `,
+   */
 
-  logoutBody: styled.div`
+  logoutBody: Button
+  /*
+  styled.div`
   display: flex;
 `
+   */
 };
 
 /**

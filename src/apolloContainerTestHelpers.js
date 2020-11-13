@@ -9,12 +9,13 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import {act} from 'react-dom/test-utils';
+import testUtils from 'react-dom/test-utils';
 import {classifyChildClassName, mountWithApolloClient, waitForChildComponentRenderTask} from './componentTestHelpers';
-import {e, getClass} from 'rescape-helpers-component';
+import {e} from 'rescape-helpers-component';
 import PropTypes from 'prop-types';
 import {v} from 'rescape-validate';
-import {fromPromised, of, waitAll} from 'folktale/concurrency/task';
+import T from 'folktale/concurrency/task';
+const {fromPromised, of, waitAll} = T
 import {
   composeWithChain,
   defaultRunConfig,
@@ -30,6 +31,8 @@ import * as R from 'ramda';
 import Result from 'folktale/result';
 import {loggers} from 'rescape-log';
 import {apolloQueryResponsesTask} from 'rescape-apollo';
+
+const {act} = testUtils
 
 const log = loggers.get('rescapeDefault');
 

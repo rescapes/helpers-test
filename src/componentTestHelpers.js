@@ -9,24 +9,30 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import {act} from 'react-dom/test-utils';
+import testUtils from 'react-dom/test-utils';
 import {inspect} from 'util';
 import {createWaitForElement} from 'enzyme-wait';
 import PropTypes from 'prop-types';
-import {mount, shallow} from 'enzyme';
-import {compact, promiseToTask, reqPathThrowing, reqStrPathThrowing} from 'rescape-ramda';
+import enzyme from 'enzyme';
+import {promiseToTask, reqPathThrowing, reqStrPathThrowing} from 'rescape-ramda';
 import * as apolloTestUtils from 'apollo-test-utils';
 import ApolloClient from 'apollo-client';
 import {InMemoryCache} from 'apollo-client-preset';
 import {SchemaLink} from 'apollo-link-schema';
 import {e, getClass} from 'rescape-helpers-component';
 import {onError} from "apollo-link-error";
-import {of, rejected} from 'folktale/concurrency/task';
+import T from 'folktale/concurrency/task';
+const {of, rejected} = T
 import * as Result from 'folktale/result';
 import {v} from 'rescape-validate';
 import * as R from 'ramda';
 import {ApolloProvider} from "react-apollo";
-import {ApolloProvider as ApolloHookProvider} from '@apollo/react-hooks';
+import apolloReactHooks from '@apollo/react-hooks';
+const {ApolloProvider: ApolloHookProvider} = apolloReactHooks
+
+const {act} = testUtils;
+
+const {mount, shallow} = enzyme;
 
 
 const middlewares = [];
@@ -158,7 +164,7 @@ export const waitForChildComponentRenderTask = v(({componentName, childClassName
     // If alreadyChildClassName already exists, return it.
     // This happens when the component never was in the loading state but went straight to the ready/data state
     if (alreadyChildClassName && R.length(component.find(classifyChildClassName(alreadyChildClassName)))) {
-      return of({wrapper, component, childComponent: component.find(childClassNameStr)})
+      return of({wrapper, component, childComponent: component.find(childClassNameStr)});
     }
 
     // Wait for the child component to render, which indicates that data loading completed
