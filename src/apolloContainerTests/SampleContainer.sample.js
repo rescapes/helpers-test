@@ -13,11 +13,11 @@ import * as R from 'ramda';
 import T from 'folktale/concurrency/task';
 const {of} = T
 import {parentPropsForContainerTask} from '../componentTestHelpers';
-import {composeWithChain, mapMonadByConfig} from 'rescape-ramda';
-import {apolloQueryResponsesTask, currentUserQueryContainer, userOutputParams} from 'rescape-apollo';
+import {composeWithChain, mapMonadByConfig} from '@rescapes/ramda';
+import {apolloQueryResponsesTask, currentUserQueryContainer, userOutputParams} from '@rescapes/apollo';
 import {filterForQueryContainers} from '../apolloContainerTestHelpers';
 import {apolloContainersSample} from './SampleContainer';
-import {mutateSampleUserStateWithProjectsAndRegionsContainer} from 'rescape-place';
+import {mutateSampleUserStateWithProjectsAndRegionsContainer} from '@rescapes/place';
 
 /**
  * @file Normally links sample props from a parent component to a Region component. In this case

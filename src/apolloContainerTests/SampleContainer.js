@@ -6,17 +6,17 @@ import {
   userStateRegionOutputParams,
   userStateRegionsQueryContainer,
   variationContainerAuthDependency
-} from 'rescape-place';
+} from '@rescapes/place';
 import {adopt} from 'react-adopt';
 import * as R from 'ramda';
-import {reqStrPathThrowing, strPathOr, toNamedResponseAndInputs} from 'rescape-ramda';
+import {reqStrPathThrowing, strPathOr, toNamedResponseAndInputs} from '@rescapes/ramda';
 import {
   authenticatedUserLocalContainer,
   containerForApolloType,
   deleteTokenCookieMutationRequestContainer,
   getRenderPropFunction,
   isAuthenticatedLocal, tokenAuthMutationContainer
-} from 'rescape-apollo';
+} from '@rescapes/apollo';
 
 /**
  * Each query and mutation expects a container to compose then props

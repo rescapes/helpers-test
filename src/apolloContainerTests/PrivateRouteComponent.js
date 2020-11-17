@@ -16,10 +16,10 @@ import {
   renderChoicepoint,
   renderErrorDefault,
   renderLoadingDefault
-} from 'rescape-helpers-component';
+} from '@rescapes/helpers-component';
 import * as R from 'ramda';
 import reactRouterDom from 'react-router-dom';
-import {reqStrPathThrowing, strPathOr} from 'rescape-ramda';
+import {reqStrPathThrowing, strPathOr} from '@rescapes/ramda';
 
 const {Redirect, Route, useHistory, useLocation} = reactRouterDom
 

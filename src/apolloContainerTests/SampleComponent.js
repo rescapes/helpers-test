@@ -9,8 +9,8 @@ import {
   renderErrorDefault,
   renderLoadingDefault,
   bypassToDataIfUnauthenticated
-} from 'rescape-helpers-component';
-import {reqStrPathThrowing, strPath, strPathOr} from 'rescape-ramda';
+} from '@rescapes/helpers-component';
+import {reqStrPathThrowing, strPath, strPathOr} from '@rescapes/ramda';
 import PropTypes from 'prop-types';
 import reactRouterDom from 'react-router-dom';
 const {MemoryRouter, Route} = reactRouterDom

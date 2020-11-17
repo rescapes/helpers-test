@@ -11,7 +11,7 @@
 
 import {adopt} from 'react-adopt';
 import * as R from 'ramda';
-import {tokenAuthMutationContainer} from 'rescape-apollo';
+import {tokenAuthMutationContainer} from '@rescapes/apollo';
 
 /**
  * Each query and mutation expects a container to compose then props

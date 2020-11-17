@@ -4,9 +4,9 @@ import {c as cLogout} from './logout/LogoutComponent';
 import {c as cLogin} from './login/LoginComponent';
 import SampleContainer, {apolloContainersSample} from './SampleContainer';
 import {configToChainedPropsForSampleTask} from './SampleContainer.sample';
-import {localTestAuthTask, localTestNoAuthTask, VERSION_PROPS} from 'rescape-apollo';
+import {localTestAuthTask, localTestNoAuthTask, VERSION_PROPS} from '@rescapes/apollo';
 import {apolloContainerTests, defaultUpdatePathsForMutationContainers} from '../apolloContainerTestHelpers';
-import {testAuthTask, testNoAuthTask} from 'rescape-place';
+import {testAuthTask, testNoAuthTask} from '@rescapes/place';
 
 // Test this container
 const container = SampleContainer;

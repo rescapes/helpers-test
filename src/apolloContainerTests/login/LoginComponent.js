@@ -21,10 +21,10 @@ import {
   renderErrorDefault,
   renderLoadingDefault,
   styleMultiplier
-} from 'rescape-helpers-component';
+} from '@rescapes/helpers-component';
 import PropTypes from 'prop-types';
 import * as R from 'ramda';
-import {strPathOr} from 'rescape-ramda';
+import {strPathOr} from '@rescapes/ramda';
 
 const {Box, Input} = chakra;
 

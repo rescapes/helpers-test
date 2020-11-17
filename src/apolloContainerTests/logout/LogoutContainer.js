@@ -14,7 +14,7 @@ import * as R from 'ramda';
 import {
   deleteRefreshTokenCookieMutationRequestContainer,
   deleteTokenCookieMutationRequestContainer
-} from 'rescape-apollo';
+} from '@rescapes/apollo';
 
 /**
  * Each query and mutation expects a container to compose then props

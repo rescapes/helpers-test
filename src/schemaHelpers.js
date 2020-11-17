@@ -10,7 +10,7 @@
  */
 
 import * as R from 'ramda';
-import {remoteLinkedSchemaTask, remoteSchemaTask} from 'rescape-apollo';
+import {remoteLinkedSchemaTask, remoteSchemaTask} from '@rescapes/apollo';
 
 
 /**

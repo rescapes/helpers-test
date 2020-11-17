@@ -24,9 +24,9 @@ import {
   renderErrorDefault,
   renderLoadingDefault,
   styleMultiplier
-} from 'rescape-helpers-component';
+} from '@rescapes/helpers-component';
 import PropTypes from 'prop-types';
-import {reqStrPathThrowing, strPathOr} from 'rescape-ramda';
+import {reqStrPathThrowing, strPathOr} from '@rescapes/ramda';
 
 export const c = nameLookup({
   logout: true,
