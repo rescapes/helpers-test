@@ -1,5 +1,6 @@
 import React from 'react';
-const {Component} = React
+
+const {Component} = React;
 import {
   composeViews,
   e,
@@ -13,11 +14,12 @@ import {
 import {reqStrPathThrowing, strPath, strPathOr} from '@rescapes/ramda';
 import PropTypes from 'prop-types';
 import reactRouterDom from 'react-router-dom';
-const {MemoryRouter, Route} = reactRouterDom
+
+const {MemoryRouter, Route} = reactRouterDom;
 import * as R from 'ramda';
 import PrivateRouteComponent from './PrivateRouteComponent.js';
-import {Login} from './login.js';
-import {Logout} from './logout.js';
+import {Login} from './login/index.js';
+import {Logout} from './logout/index.js';
 
 export const c = nameLookup({
   sample: true,
@@ -28,7 +30,7 @@ export const c = nameLookup({
   sampleLogin: true,
   privateRouterComponent: true,
   sampleLogout: true,
-  sampleHeader: true,
+  sampleHeader: true
 });
 
 /**
