@@ -1,6 +1,6 @@
 {
   "name": "@rescapes/helpers-test",
-  "version": "0.0.123",
+  "version": "0.0.124",
   "description": "Helpers for testing components",
   "main": "src/index.mjs",
   "module": "src/index.mjs",
@@ -30,9 +30,9 @@
     "publish-minor": "yarn version --minor && yarn publish --non-interactive"
   },
   "dependencies": {
-    "@apollo/client": "^3.2.5",
+    "@apollo/client": "^3.2.7",
     "@chakra-ui/core": "1.0.0-rc.8",
-    "@emotion/react": "^11.0.0",
+    "@emotion/react": "^11.1.1",
     "@emotion/styled": "^11.0.0",
     "apollo-client": "^2.6.10",
     "apollo-client-preset": "^1.0.8",
@@ -60,6 +60,13 @@
   "devDependencies": {
     "@apollo/react-hooks": "^4.0.0",
     "@apollo/react-testing": "^4.0.0",
+    "@rescapes/apollo": ">=0.0.74",
+    "@rescapes/helpers": ">=1.1.109",
+    "@rescapes/helpers-component": ">=1.5.64",
+    "@rescapes/log": ">=0.1.11",
+    "@rescapes/place": ">=0.0.337",
+    "@rescapes/ramda": ">=1.5.78",
+    "@rescapes/validate": ">=1.2.23",
     "@types/jest": "^26.0.15",
     "@wojtekmaj/enzyme-adapter-react-17": "^0.3.1",
     "babelrc-rollup": "^3.0.0",
@@ -83,15 +90,7 @@
     "ramda": ">=0.27.0",
     "react-dev-utils": "^11.0.0",
     "react-router-dom": "^5.2.0",
-    "rescape-apollo": ">=0.0.74",
-    "rescape-helpers": ">=1.1.109",
-    "rescape-helpers-component": ">=1.5.64",
-    "rescape-log": ">=0.1.11",
-    "rescape-place": ">=0.0.337",
-    "rescape-ramda": ">=1.5.78",
-    "rescape-sample-data": ">=1.2.60",
-    "rescape-validate": ">=1.2.23",
-    "rollup": "^2.33.1",
+    "rollup": "^2.33.3",
     "rollup-plugin-babel": "^4.4.0",
     "rollup-plugin-commonjs": "10.1.0",
     "rollup-plugin-json": "^4.0.0",
@@ -103,14 +102,13 @@
     "rollup-watch": "4.3.1"
   },
   "peerDependencies": {
-    "rescape-apollo": ">=0.0.74",
-    "rescape-helpers": ">=1.1.109",
-    "rescape-helpers-component": ">=1.5.64",
-    "rescape-log": ">=0.1.11",
-    "rescape-place": ">=0.0.337",
-    "rescape-ramda": ">=1.5.78",
-    "rescape-sample-data": ">=1.2.60",
-    "rescape-validate": ">=1.2.23"
+    "@rescapes/apollo": ">=0.0.74",
+    "@rescapes/helpers": ">=1.1.109",
+    "@rescapes/helpers-component": ">=1.5.64",
+    "@rescapes/log": ">=0.1.11",
+    "@rescapes/place": ">=0.0.337",
+    "@rescapes/ramda": ">=1.5.78",
+    "@rescapes/validate": ">=1.2.23"
   },
   "jest": {
     "modulePaths": [
