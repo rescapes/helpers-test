@@ -12,11 +12,11 @@
 import * as R from 'ramda';
 import T from 'folktale/concurrency/task';
 const {of} = T
-import {parentPropsForContainerTask} from '../componentTestHelpers';
+import {parentPropsForContainerTask} from '../componentTestHelpers.js';
 import {composeWithChain, mapMonadByConfig} from '@rescapes/ramda';
 import {apolloQueryResponsesTask, currentUserQueryContainer, userOutputParams} from '@rescapes/apollo';
-import {filterForQueryContainers} from '../apolloContainerTestHelpers';
-import {apolloContainersSample} from './SampleContainer';
+import {filterForQueryContainers} from '../apolloContainerTestHelpers.js';
+import {apolloContainersSample} from './SampleContainer.js';
 import {mutateSampleUserStateWithProjectsAndRegionsContainer} from '@rescapes/place';
 
 /**

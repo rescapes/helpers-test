@@ -15,9 +15,9 @@ import PropTypes from 'prop-types';
 import reactRouterDom from 'react-router-dom';
 const {MemoryRouter, Route} = reactRouterDom
 import * as R from 'ramda';
-import PrivateRouteComponent from './PrivateRouteComponent';
-import {Login} from './login';
-import {Logout} from './logout';
+import PrivateRouteComponent from './PrivateRouteComponent.js';
+import {Login} from './login.js';
+import {Logout} from './logout.js';
 
 export const c = nameLookup({
   sample: true,

@@ -22,13 +22,15 @@ import {SchemaLink} from 'apollo-link-schema';
 import {e, getClass} from '@rescapes/helpers-component';
 import {onError} from "apollo-link-error";
 import T from 'folktale/concurrency/task';
-const {of, rejected} = T
-import * as Result from 'folktale/result';
+
+const {of, rejected} = T;
+import Result from 'folktale/result';
 import {v} from '@rescapes/validate';
 import * as R from 'ramda';
 import {ApolloProvider} from "react-apollo";
 import apolloReactHooks from '@apollo/react-hooks';
-const {ApolloProvider: ApolloHookProvider} = apolloReactHooks
+
+const {ApolloProvider: ApolloHookProvider} = apolloReactHooks;
 
 const {act} = testUtils;
 
@@ -133,14 +135,31 @@ export const shallowWrap = (componentFactory, props) => {
 };
 
 export const classifyChildClassName = childClassName => {
-  return R.ifElse(
-    R.includes('.'),
-    childClassName => {
-      const parts = R.split('.', childClassName);
-      return R.join('.', [R.head(parts), R.map(getClass, R.tail(parts))]);
-    },
-    childClassName => R.concat('.', getClass(childClassName))
-  )(childClassName);
+  return R.cond([
+    [
+      // If it starts with a capital, assume it's a component name and leave it alone
+      childClassName => R.test(/^[A-Z]/, childClassName),
+      R.identity
+    ],
+    [
+      // This matches a component type followed by classes, such as button.className.className2
+      //
+      childClassName => R.includes('.', childClassName),
+      childClassName => {
+        const parts = R.split('.', childClassName);
+        return R.join('.',
+          R.concat(
+            [R.head(parts)],
+            R.map(getClass, R.tail(parts)))
+        );
+      }
+    ],
+    // Just add . to make it a class
+    [
+      R.T,
+      childClassName => R.concat('.', getClass(childClassName))
+    ]
+  ])(childClassName);
 };
 
 /**

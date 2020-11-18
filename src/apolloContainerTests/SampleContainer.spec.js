@@ -1,11 +1,11 @@
 import * as R from 'ramda';
-import Sample, {c} from './SampleComponent';
-import {c as cLogout} from './logout/LogoutComponent';
-import {c as cLogin} from './login/LoginComponent';
-import SampleContainer, {apolloContainersSample} from './SampleContainer';
-import {configToChainedPropsForSampleTask} from './SampleContainer.sample';
+import Sample, {c} from './SampleComponent.js';
+import {c as cLogout} from './logout/LogoutComponent.js';
+import {c as cLogin} from './login/LoginComponent.js';
+import SampleContainer, {apolloContainersSample} from './SampleContainer.js';
+import {configToChainedPropsForSampleTask} from './SampleContainer.sample.js';
 import {localTestAuthTask, localTestNoAuthTask, VERSION_PROPS} from '@rescapes/apollo';
-import {apolloContainerTests, defaultUpdatePathsForMutationContainers} from '../apolloContainerTestHelpers';
+import {apolloContainerTests, defaultUpdatePathsForMutationContainers} from '../apolloContainerTestHelpers.js';
 import {testAuthTask, testNoAuthTask} from '@rescapes/place';
 
 // Test this container

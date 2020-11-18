@@ -10,7 +10,7 @@
  */
 
 import testUtils from 'react-dom/test-utils';
-import {classifyChildClassName, mountWithApolloClient, waitForChildComponentRenderTask} from './componentTestHelpers';
+import {classifyChildClassName, mountWithApolloClient, waitForChildComponentRenderTask} from './componentTestHelpers.js';
 import {e} from '@rescapes/helpers-component';
 import PropTypes from 'prop-types';
 import {v} from '@rescapes/validate';

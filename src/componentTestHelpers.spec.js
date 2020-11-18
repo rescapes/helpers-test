@@ -10,7 +10,7 @@
  */
 
 import * as R from 'ramda';
-import {testState} from './componentTestHelpers';
+import {classifyChildClassName, testState} from './componentTestHelpers.js';
 
 const createInitialState = config => R.merge({
   foo: 'boo'
@@ -26,6 +26,14 @@ describe('componentTestHelpers', () => {
     expect(testState(createInitialState, sampleConfig)).toMatchSnapshot()
   );
 
+  test('classifyChildClassName', () => {
+    expect(classifyChildClassName('classyclass')).toEqual('.classyclass')
+    expect(classifyChildClassName('classyClass')).toEqual('.classy-class')
+    expect(classifyChildClassName('classy-class')).toEqual('.classy-class')
+    expect(classifyChildClassName('button.classRoom.class')).toEqual('button.class-room.class')
+    // Leave alone capitalized strings that seem to be component names, so enzyme can match on the name
+    expect(classifyChildClassName('InteractiveSuperMapComponent')).toEqual('InteractiveSuperMapComponent')
+  })
 
   /*
 test('enzymeMountWithApolloClientAndReduxProvider', async done => {
