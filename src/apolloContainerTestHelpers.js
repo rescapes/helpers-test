@@ -15,7 +15,8 @@ import {e} from '@rescapes/helpers-component';
 import PropTypes from 'prop-types';
 import {v} from '@rescapes/validate';
 import T from 'folktale/concurrency/task';
-const {fromPromised, of, waitAll} = T
+
+const {fromPromised, of, waitAll} = T;
 import {
   composeWithChain,
   defaultRunConfig,
@@ -32,7 +33,7 @@ import Result from 'folktale/result';
 import {loggers} from '@rescapes/log';
 import {apolloQueryResponsesTask} from '@rescapes/apollo';
 
-const {act} = testUtils
+const {act} = testUtils;
 
 const log = loggers.get('rescapeDefault');
 
@@ -560,7 +561,17 @@ const _testQueries = (
         );
         expect(R.map(
           dataSet => {
-            return omitDeep(omitKeysFromSnapshots, dataSet);
+            return R.compose(
+              data => {
+                // Remove keys that are not determinant, like update dates
+                return omitDeep(omitKeysFromSnapshots, data);
+              },
+              dataSet => {
+                // Just extract the query result. We don't care about what props got through,
+                // because they might change over time if we are passing them down to new child components
+                return reqStrPathThrowing('data', dataSet);
+              }
+            )(dataSet);
           },
           R.values(responsesByKey)
         )).toMatchSnapshot();
@@ -888,8 +899,8 @@ const _testRenderComponentTask = v((
         ({wrapper, childClassLoadingName, childClassDataName, loading}) => {
           const foundComponent = wrapper.find(componentName);
           // If either loading or data component is found, we've succeeded
-          const loadedComponent = foundComponent.find(classifyChildClassName(childClassLoadingName))
-          const dataComponent = foundComponent.find(classifyChildClassName(childClassDataName))
+          const loadedComponent = foundComponent.find(classifyChildClassName(childClassLoadingName));
+          const dataComponent = foundComponent.find(classifyChildClassName(childClassDataName));
           expect(R.length(loadedComponent) || R.length(dataComponent)).toEqual(1);
 
           // TODO act doesn't suppress the warning as it should
