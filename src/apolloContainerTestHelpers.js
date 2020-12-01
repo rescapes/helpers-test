@@ -901,7 +901,8 @@ const _testRenderComponentTask = v((
           // If either loading or data component is found, we've succeeded
           const loadedComponent = foundComponent.find(classifyChildClassName(childClassLoadingName));
           const dataComponent = foundComponent.find(classifyChildClassName(childClassDataName));
-          expect(R.length(loadedComponent) || R.length(dataComponent)).toEqual(1);
+          // Make sure we have at least one match. There can be > 1 if child components inherit the className
+          expect(R.length(loadedComponent) || R.length(dataComponent)).toBeGreaterThan(0)
 
           // TODO act doesn't suppress the warning as it should
           // If we have an Apollo componentInstance, we use enzyme-wait to await the query to run and the the child
