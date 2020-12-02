@@ -827,7 +827,7 @@ const _testRenderExpectations = ({testingAuthentication = false}, mutationCompon
 const _testRenderRunConfig = (updatedPaths, errors, done = null) => {
   return defaultRunConfig({
     onResolved: ({childComponent, prePostMutationComparisons}) => {
-      expect(childComponent.length).toEqual(1); // We found the child, meaning we loaded data and rendered
+      expect(childComponent.length).toBeGreaterThan(0); // We found the child, meaning we loaded data and rendered
     }
   }, errors, done);
 };
