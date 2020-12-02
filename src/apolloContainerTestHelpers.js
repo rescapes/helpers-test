@@ -1133,7 +1133,7 @@ const _testRenderError = (
     defaultRunConfig({
       onResolved: ({childComponent}) => {
         // Just make sure the error child component exists
-        expect(childComponent.length).toEqual(1);
+        expect(childComponent.length).toBeGreaterThan(0);
       }
     }, errors, done)
   );
