@@ -10,7 +10,11 @@
  */
 
 import testUtils from 'react-dom/test-utils';
-import {classifyChildClassName, mountWithApolloClient, waitForChildComponentRenderTask} from './componentTestHelpers.js';
+import {
+  classifyChildClassName,
+  mountWithApolloClient,
+  waitForChildComponentRenderTask
+} from './componentTestHelpers.js';
 import {e} from '@rescapes/helpers-component';
 import PropTypes from 'prop-types';
 import {v} from '@rescapes/validate';
@@ -902,7 +906,7 @@ const _testRenderComponentTask = v((
           const loadedComponent = foundComponent.find(classifyChildClassName(childClassLoadingName));
           const dataComponent = foundComponent.find(classifyChildClassName(childClassDataName));
           // Make sure we have at least one match. There can be > 1 if child components inherit the className
-          expect(R.length(loadedComponent) || R.length(dataComponent)).toBeGreaterThan(0)
+          expect(R.length(loadedComponent) || R.length(dataComponent)).toBeGreaterThan(0);
 
           // TODO act doesn't suppress the warning as it should
           // If we have an Apollo componentInstance, we use enzyme-wait to await the query to run and the the child

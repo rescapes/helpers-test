@@ -1,4 +1,5 @@
 import {
+
   makeRegionMutationContainer,
   regionOutputParams,
   regionQueryVariationContainers,
@@ -15,7 +16,7 @@ import {
   containerForApolloType,
   deleteTokenCookieMutationRequestContainer,
   getRenderPropFunction,
-  isAuthenticatedLocal, tokenAuthMutationContainer
+  isAuthenticatedLocal, queryLocalTokenAuthContainer, tokenAuthMutationContainer
 } from '@rescapes/apollo';
 
 /**
@@ -25,10 +26,14 @@ import {
  */
 export const apolloContainersSample = (apolloConfig = {}) => {
   return R.mergeAll([
-    // Cache lookup to see if the user is authenticated
     {
+      // Look fo the auth token in the cache
+      queryLocalTokenAuthContainer: props => {
+        return queryLocalTokenAuthContainer(apolloConfig, props);
+      },
+      // Cache lookup to see if the user is authenticated
       queryAuthenticatedUserLocalContainer: props => {
-        return authenticatedUserLocalContainer(apolloConfig, props)
+        return authenticatedUserLocalContainer(apolloConfig, props);
       }
     },
 
@@ -36,21 +41,21 @@ export const apolloContainersSample = (apolloConfig = {}) => {
       apolloConfig,
       'queryAuthenticatedUserLocalContainer.data.currentUser',
       regionQueryVariationContainers(
-      {
-        apolloConfig: R.merge(apolloConfig,
-          {
-            options: {
-              variables: props => {
-                return R.prop('regionFilter', props);
-              },
-              // Pass through error so we can handle it in the component
-              errorPolicy: 'all'
+        {
+          apolloConfig: R.merge(apolloConfig,
+            {
+              options: {
+                variables: props => {
+                  return R.prop('regionFilter', props);
+                },
+                // Pass through error so we can handle it in the component
+                errorPolicy: 'all'
+              }
             }
-          }
-        ),
-        regionConfig: {}
-      }
-    )),
+          ),
+          regionConfig: {}
+        }
+      )),
     {
       // Test sequential queries
       queryUserRegions: props => {
