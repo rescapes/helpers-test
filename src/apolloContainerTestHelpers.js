@@ -22,7 +22,7 @@ import T from 'folktale/concurrency/task';
 
 const {fromPromised, of, waitAll} = T;
 import {
-  composeWithChain,
+  composeWithChain, defaultNode,
   defaultRunConfig,
   filterWithKeys,
   mapObjToValues,
@@ -36,6 +36,8 @@ import * as R from 'ramda';
 import Result from 'folktale/result';
 import {loggers} from '@rescapes/log';
 import {apolloQueryResponsesTask} from '@rescapes/apollo';
+import * as chakra from "@chakra-ui/core";
+const {ChakraProvider} = defaultNode(chakra);
 
 const {act} = testUtils;
 
@@ -144,6 +146,7 @@ export const defaultUpdatePathsForMutationContainers = (apolloContainers, overri
  * needed for components with queries.
  * This can be any combination of class and component name that Enzyme can find.
  * component's renderData method--or any render code when apollo data is loaded
+ * @param {Object} context.theme The Chakra theme
  * @param {Object} apolloContext
  * @param {Task|Function<String, Task>} apolloContext.apolloConfigTask Task resolving to the ApolloConfig.
  * This can alternatively be a function that accepts the name of the test and returns a task.
@@ -198,7 +201,8 @@ export const apolloContainerTests = v((context, container, component, configToCh
           // If we are testing login with, set the classname that shows when the user needs to login:
           // testRenderAuthentication
           noAuthentication: childClassNoAuthName
-        }
+        },
+        theme
       },
       apolloContext: {
         apolloConfigTask,
@@ -244,13 +248,15 @@ export const apolloContainerTests = v((context, container, component, configToCh
       composeWithChain([
         ({apolloClient, props}) => of(mountWithApolloClient(
           {apolloClient},
-          e(
-            container,
-            props,
-            responseProps => {
-              // Render anything. We're just testing request composition
-              return e('div');
-            })
+          e(ChakraProvider, {theme},
+            e(
+              container,
+              props,
+              responseProps => {
+                // Render anything. We're just testing request composition
+                return e('div');
+              })
+          )
         )),
         mapToMergedResponseAndInputs(
           // Resolves to {schema, apolloClient}
@@ -319,7 +325,8 @@ export const apolloContainerTests = v((context, container, component, configToCh
             omitKeysFromSnapshots,
             mutationComponents,
             updatedPaths,
-            waitLength
+            waitLength,
+            theme
           },
           container,
           component,
@@ -458,7 +465,8 @@ export const apolloContainerTests = v((context, container, component, configToCh
             childClassDataName,
             childClassErrorName,
             mutationComponents: filterForMutationContainers(apolloContainers({})),
-            waitLength
+            waitLength,
+            theme
           },
           container,
           component,
@@ -736,6 +744,7 @@ export const apolloMutationResponsesTask = ({apolloConfigTask, resolvedPropsTask
  * Make sure that each path begins with the query name whose results we are comparing with before and after.
  * Example: {mutationRegion: ['queryRegions.data.regions.0.updatedAt']} means "when I call mutatRegion, queryRegion's
  * result should update"
+ * @param {Object} theme The Chakra theme
  * @param {Object} container The composed Apollo container. We create a react elmenet from this
  * with component as the children prop. component
  * props to create a component instance. The container is already composed with Apollo Query/Mutation components.
@@ -758,7 +767,8 @@ const _testRenderTask = (
     mutationComponents,
     updatedPaths,
     waitLength,
-    skipMutationTests = false
+    skipMutationTests = false,
+    theme
   }, container, component, done) => {
 
   return composeWithChain([
@@ -783,7 +793,7 @@ const _testRenderTask = (
     mapToMergedResponseAndInputs(
       ({apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName, props}) => {
         return _testRenderComponentTask(
-          {apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName, waitLength},
+          {apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName, waitLength, theme},
           container,
           component,
           props
@@ -847,6 +857,7 @@ const _testRenderRunConfig = (updatedPaths, errors, done = null) => {
  * @param {String} config.childClassLoadingName
  * @param {String} config.childClassDataName
  * @param {Number} config.waitLength Optional number of milliseconds to wait for asynchronous operations. Defaults to 10000
+ * @param {Object} config.theme Chakra theme
  * @param {Object} container The apollo container to test
  * @param {Object} component The apollo component of the container to test
  * @param {Object} props The props to pass
@@ -862,7 +873,8 @@ const _testRenderComponentTask = v((
     componentName,
     childClassLoadingName,
     childClassDataName,
-    waitLength
+    waitLength,
+    theme
   }, container, component, props) => {
 
     // Create the React element from container, passing the props and component via a render function.
@@ -885,7 +897,9 @@ const _testRenderComponentTask = v((
     // rather than asynchronously
     const wrapper = mountWithApolloClient(
       {apolloClient},
-      containerInstance
+      e(ChakraProvider, {theme},
+        containerInstance
+      )
     );
     // Find the top-level componentInstance. This is always rendered in any Apollo status (loading, error, store data)
     const foundContainer = wrapper.find(container);
@@ -1076,7 +1090,8 @@ const _testRenderError = (
     childClassErrorName,
     mutationComponents,
     updatedPaths,
-    waitLength
+    waitLength,
+    theme
   }, container, component, done) => {
 
   expect.assertions(
@@ -1104,7 +1119,7 @@ const _testRenderError = (
     mapToMergedResponseAndInputs(
       ({apolloClient, componentName, childClassLoadingName, childClassErrorName, props}) => {
         return _testRenderComponentTask(
-          {apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName, waitLength},
+          {apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName, waitLength, theme},
           container,
           component,
           props
