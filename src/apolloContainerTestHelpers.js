@@ -357,7 +357,8 @@ export const apolloContainerTests = v((context, container, component, configToCh
             updatedPaths,
             waitLength,
             // We can't mutate with an unauthenticated user
-            skipMutationTests: true
+            skipMutationTests: true,
+            theme
           },
           container,
           component,
@@ -390,7 +391,8 @@ export const apolloContainerTests = v((context, container, component, configToCh
                 omitKeysFromSnapshots,
                 mutationComponents: filterForMutationContainers(apolloContainers({})),
                 updatedPaths,
-                waitLength
+                waitLength,
+                theme
               },
               container,
               component,
@@ -421,7 +423,8 @@ export const apolloContainerTests = v((context, container, component, configToCh
               updatedPaths,
               waitLength,
               // We can't mutate with an unauthenticated user
-              skipMutationTests: true
+              skipMutationTests: true,
+              theme
             },
             container,
             component,
