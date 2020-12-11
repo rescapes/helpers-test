@@ -57,7 +57,9 @@ describe('SampleContainer', () => {
           loading: childClassLoadingName,
           error: childClassErrorName,
           noAuthentication: childClassNoAuthenticationName
-        }
+        },
+        // The Chakra theme
+        theme: {}
       },
       apolloContext: {
         state: {},
