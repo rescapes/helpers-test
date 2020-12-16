@@ -37,6 +37,7 @@ import Result from 'folktale/result';
 import {loggers} from '@rescapes/log';
 import {apolloQueryResponsesTask} from '@rescapes/apollo';
 import * as chakra from "@chakra-ui/core";
+
 const {ChakraProvider} = defaultNode(chakra);
 
 const {act} = testUtils;
@@ -389,7 +390,17 @@ export const apolloContainerTests = v((context, container, component, configToCh
                 // No loading state for no auth
                 childClassLoadingName,
                 omitKeysFromSnapshots,
-                mutationComponents: filterForMutationContainers(apolloContainers({})),
+                // Filter out mutations that are used for auth and de-auth
+                mutationComponents: R.compose(
+                  apolloContainers => filterWithKeys(
+                    (_, key) => {
+                      return !R.includes(key, [authorizeMutationKey, deauthorizeMutationKey]);
+                    },
+                    apolloContainers
+                  ),
+                  apolloContainers => filterForMutationContainers(apolloContainers),
+                  obj => apolloContainers(obj)
+                )({}),
                 updatedPaths,
                 waitLength,
                 theme
@@ -796,7 +807,15 @@ const _testRenderTask = (
     mapToMergedResponseAndInputs(
       ({apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName, props}) => {
         return _testRenderComponentTask(
-          {apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName, waitLength, theme},
+          {
+            apolloClient,
+            componentName,
+            childClassLoadingName,
+            childClassDataName,
+            childClassErrorName,
+            waitLength,
+            theme
+          },
           container,
           component,
           props
@@ -1122,7 +1141,15 @@ const _testRenderError = (
     mapToMergedResponseAndInputs(
       ({apolloClient, componentName, childClassLoadingName, childClassErrorName, props}) => {
         return _testRenderComponentTask(
-          {apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName, waitLength, theme},
+          {
+            apolloClient,
+            componentName,
+            childClassLoadingName,
+            childClassDataName,
+            childClassErrorName,
+            waitLength,
+            theme
+          },
           container,
           component,
           props
