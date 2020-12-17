@@ -372,7 +372,13 @@ export const apolloContainerTests = v((context, container, component, configToCh
               deauthorizeMutationKey,
               wrapper.find(logoutComponentName).props()
             );
-            return fromPromised(() => mutation())();
+            return fromPromised(() => {
+              let m = null;
+              act(() => {
+                m = mutation();
+              });
+              return m;
+            })();
           },
           // Authorized render
           () => {
@@ -418,7 +424,13 @@ export const apolloContainerTests = v((context, container, component, configToCh
               wrapper.find(loginComponentName).props()
             );
             // Pass the username and password from the props
-            return fromPromised(() => mutation({variables: R.pick(['username', 'password'], props)}))();
+            return fromPromised(() => {
+              let m = null;
+              act(() => {
+                m = mutation({variables: R.pick(['username', 'password'], props)});
+              });
+              return m;
+            })();
           },
           // No auth login
           () => {
@@ -683,9 +695,10 @@ const _testMutations = (
  * @private
  */
 export const apolloMutationResponsesTask = ({apolloConfigTask, resolvedPropsTask}, apolloConfigToMutationTasks) => {
+  let x = null;
   act(() => {
     // Task Object -> Task
-    return composeWithChain([
+    x = composeWithChain([
       // Wait for all the mutations to finish
       ({apolloConfigToMutationTasks, props, apolloClient}) => {
         // Create variables for the current queryComponent by sending props to its configuration
@@ -740,6 +753,7 @@ export const apolloMutationResponsesTask = ({apolloConfigTask, resolvedPropsTask
       )
     ])({apolloConfigTask, resolvedPropsTask, apolloConfigToMutationTasks});
   });
+  return x;
 };
 
 /**
@@ -858,9 +872,12 @@ const _testRenderExpectations = ({testingAuthentication = false}, mutationCompon
   // If we are testing authentication, to early assertions are run thrice because _testRenderTask
   // is called twice. The mutation tests are only run once when we are authorized to run them
   const multiplier = testingAuthentication ? 3 : 1;
+  // However the auth mutation and deauth mutation must be skipped in _testRenderTask because we don't
+  // want mess with the authentication state. Thus subtract two assertions that won't run
+  const subtract = testingAuthentication ? 2 : 0;
   expect.assertions(
     // Assertions during _testRenderComponentTask
-    2 * multiplier +
+    (2 * multiplier) - subtract +
     // Asserts that the child component was found
     1 +
     // One assertion per mutation component to prove the mutation function returned a value
