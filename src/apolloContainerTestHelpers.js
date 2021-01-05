@@ -279,15 +279,17 @@ export const apolloContainerTests = v((context, container, component, configToCh
     /**
      * For Apollo Containers with queries, tests that the query results match the snapshot
      */
-    const testQueries = done => _testQueries(
-      {
-        apolloConfigTask: apolloConfigOptionalFunctionTask('testQueries'),
-        resolvedPropsTask,
-        omitKeysFromSnapshots
-      },
-      apolloConfig => filterForQueryContainers(apolloContainers(apolloConfig)),
-      done
-    );
+    const testQueries = done => {
+      return _testQueries(
+        {
+          apolloConfigTask: apolloConfigOptionalFunctionTask('testQueries'),
+          resolvedPropsTask,
+          omitKeysFromSnapshots
+        },
+        apolloConfig => filterForQueryContainers(apolloContainers(apolloConfig)),
+        done
+      );
+    };
 
     /**
      * For Apollo Containers with mutations, tests that the mutation results match the snapshot

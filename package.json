@@ -32,6 +32,7 @@
   "dependencies": {
     "@apollo/client": "^3.3.6",
     "@chakra-ui/core": "1.0.0-rc.8",
+    "@chakra-ui/react": "^1.1.1",
     "@emotion/react": "^11.1.2",
     "@emotion/styled": "^11.0.0",
     "apollo-client": "^2.6.10",
@@ -67,6 +68,7 @@
     "@rescapes/place": ">=0.0.345",
     "@rescapes/ramda": ">=1.6.170",
     "@rescapes/validate": ">=1.2.23",
+    "@testing-library/react": "^11.2.2",
     "@types/jest": "^26.0.19",
     "@wojtekmaj/enzyme-adapter-react-17": "^0.3.1",
     "babelrc-rollup": "^3.0.0",

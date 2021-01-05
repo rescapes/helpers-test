@@ -4,9 +4,14 @@ import {c as cLogout} from './logout/LogoutComponent.js';
 import {c as cLogin} from './login/LoginComponent.js';
 import SampleContainer, {apolloContainersSample} from './SampleContainer.js';
 import {configToChainedPropsForSampleTask} from './SampleContainer.sample.js';
-import {localTestAuthTask, localTestNoAuthTask, VERSION_PROPS} from '@rescapes/apollo';
+import {VERSION_PROPS} from '@rescapes/apollo';
 import {apolloContainerTests, defaultUpdatePathsForMutationContainers} from '../apolloContainerTestHelpers.js';
 import {testAuthTask, testNoAuthTask} from '@rescapes/place';
+import * as chakraReact from '@chakra-ui/react';
+import {defaultNode} from '@rescapes/ramda';
+
+const {extendTheme} = defaultNode(chakraReact);
+const theme = extendTheme({});
 
 // Test this container
 const container = SampleContainer;
@@ -59,7 +64,7 @@ describe('SampleContainer', () => {
           noAuthentication: childClassNoAuthenticationName
         },
         // The Chakra theme
-        theme: {}
+        theme
       },
       apolloContext: {
         state: {},
