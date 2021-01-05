@@ -32,7 +32,7 @@ const errorMaker = parentProps => {
   )(parentProps);
 };
 
-const omitKeysFromSnapshots = R.concat(['id', 'key', 'lastLogin'], VERSION_PROPS);
+const omitKeysFromSnapshots = R.concat(['id', 'key', 'lastLogin', 'exp', 'origIat', 'token'], VERSION_PROPS);
 // We expect calling mutateRegion to update the updatedAt of the queryRegions response
 const updatedPaths = defaultUpdatePathsForMutationContainers(apolloContainersSample, {
   mutateRegion: {
@@ -57,7 +57,9 @@ describe('SampleContainer', () => {
           loading: childClassLoadingName,
           error: childClassErrorName,
           noAuthentication: childClassNoAuthenticationName
-        }
+        },
+        // The Chakra theme
+        theme: {}
       },
       apolloContext: {
         state: {},
