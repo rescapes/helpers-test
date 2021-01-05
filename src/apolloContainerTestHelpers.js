@@ -216,7 +216,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
       return R.unless(
         R.hasIn('run'),
         // Call with test name if not task
-        apolloConfigTask => apolloConfigTask(testName)
+        apolloConfigTask => apolloConfigTask(testName)()
       )(apolloConfigTask);
     };
 
