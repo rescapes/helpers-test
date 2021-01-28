@@ -3,7 +3,7 @@ import Sample, {c} from './SampleComponent.js';
 import {c as cLogout} from './logout/LogoutComponent.js';
 import {c as cLogin} from './login/LoginComponent.js';
 import SampleContainer, {apolloContainersSample} from './SampleContainer.js';
-import {configToChainedPropsForSampleTask} from './SampleContainer.sample.js';
+import {configToChainedPropsForSampleContainer} from './SampleContainer.sample.js';
 import {VERSION_PROPS} from '@rescapes/apollo';
 import {apolloContainerTests, defaultUpdatePathsForMutationContainers} from '../apolloContainerTestHelpers.js';
 import {testAuthTask, testNoAuthTask} from '@rescapes/place';
@@ -68,8 +68,8 @@ describe('SampleContainer', () => {
       },
       apolloContext: {
         state: {},
-        apolloConfigTask: testName => {
-          return R.includes(testName, ['testRenderAuthenticationNoAuth']) ? testNoAuthTask : testAuthTask;
+        apolloConfigContainer: testName => {
+          return R.includes(testName, ['testRenderAuthenticationNoAuth']) ? testNoAuthTask() : testAuthTask();
         },
         // This is called with one argument, null or and apolloConfig to return the containers
         // Compose with the loginContainers and logoutContainers so we can test authentication
@@ -89,7 +89,7 @@ describe('SampleContainer', () => {
     },
     container,
     component,
-    configToChainedPropsForSampleTask
+    configToChainedPropsForSampleContainer
   );
   test('testComposeRequests', testComposeRequests, 10000);
   test('testQueries', testQueries, 10000);

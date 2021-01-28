@@ -11,10 +11,16 @@
 
 import * as R from 'ramda';
 import T from 'folktale/concurrency/task';
-const {of} = T
-import {parentPropsForContainerTask} from '../componentTestHelpers.js';
-import {composeWithChain, mapMonadByConfig} from '@rescapes/ramda';
-import {apolloQueryResponsesTask, currentUserQueryContainer, userOutputParams} from '@rescapes/apollo';
+
+const {of} = T;
+import {parentPropsForContainer} from '../componentTestHelpers.js';
+import {composeWithChain, mapMonadByConfig, reqStrPathThrowing} from '@rescapes/ramda';
+import {
+  apolloQueryResponsesContainer, containerForApolloType,
+  currentUserQueryContainer, getRenderPropFunction,
+  mapTaskOrComponentToNamedResponseAndInputs,
+  userOutputParams
+} from '@rescapes/apollo';
 import {filterForQueryContainers} from '../apolloContainerTestHelpers.js';
 import {apolloContainersSample} from './SampleContainer.js';
 import {mutateSampleUserStateWithProjectsAndRegionsContainer} from '@rescapes/place';
@@ -36,8 +42,8 @@ import {mutateSampleUserStateWithProjectsAndRegionsContainer} from '@rescapes/pl
  * We fake the parent here, pretending that our Region component is named 'currentRegion' in the parent component
  * @param {boolean} runParentContainerQueries This would normally be passed to the parent
  */
-export const chainedParentPropsForSampleTask = (apolloConfig, {runParentContainerQueries = false}) => {
-  return parentPropsForContainerTask(
+export const chainedParentPropsForSampleContainer = (apolloConfig, {runParentContainerQueries = false}, {render}) => {
+  return parentPropsForContainer(
     apolloConfig,
     // Fake the parent
     apolloConfig => composeWithChain([
@@ -69,25 +75,35 @@ export const chainedParentPropsForSampleTask = (apolloConfig, {runParentContaine
         ],
         // Sample paths for authentication
         loginPath: '/login',
-        protectedPath: '/protected',
+        protectedPath: '/protected'
       }),
       // Mutate the UserState to get cache-only data stored
-      mapMonadByConfig({},
-        ({apolloConfig, user}) => {
-          return mutateSampleUserStateWithProjectsAndRegionsContainer({
-            apolloConfig,
+      ({sampleResponses: {userStateResponse, regions, projects, locations}, render}) => {
+        return containerForApolloType(
+          apolloConfig,
+          {
+            render: getRenderPropFunction({render}),
+            response: {userState: reqStrPathThrowing('data.mutate.userState', userStateResponse), regions, projects, locations}
+          }
+        );
+      },
+      mapTaskOrComponentToNamedResponseAndInputs(apolloConfig, 'sampleResponses',
+      ({userResponse}) => {
+        const user = reqStrPathThrowing('data.currentUser', userResponse);
+        // Resolves to {userStateResponse, regions, projects, locations}
+        return mutateSampleUserStateWithProjectsAndRegionsContainer(
+          apolloConfig, {
             user: R.pick(['id'], user),
             regionKeys: ['earth', 'zorgon'],
             projectKeys: ['shrangrila', 'pangea']
           });
-        }
-      ),
-      mapMonadByConfig({name: 'user', strPath: 'data.currentUser'},
-        ({apolloConfig}) => {
-          return currentUserQueryContainer(apolloConfig, userOutputParams, {});
+      }),
+      mapTaskOrComponentToNamedResponseAndInputs(apolloConfig, 'userResponse',
+        ({render}) => {
+          return currentUserQueryContainer(apolloConfig, userOutputParams, {render});
         }
       )
-    ])({apolloConfig}),
+    ])({render}),
     // Normally this is the parent views function
     props => ({views: {currentRegion: props}}),
     'currentRegion'
@@ -104,11 +120,21 @@ export const chainedParentPropsForSampleTask = (apolloConfig, {runParentContaine
  * parent containers run their queries to give us the props we expect. For instance, a parent container
  * might fetch the userState for us and from that user state we know what regions to query
  * happen automatically when we test rendered the component
+ * @param {Object} props
+ * @param {Function} props.render render function for component calls
+ * @returns {Task|Function} The task or component that resolves/renders the query respnose
  */
-export const configToChainedPropsForSampleTask = (apolloConfig, {runParentContainerQueries=false, runContainerQueries=false, ...options}) => {
-  return apolloQueryResponsesTask(
+export const configToChainedPropsForSampleContainer = (
+  apolloConfig, {
+    runParentContainerQueries = false,
+    runContainerQueries = false,
+    ...options
+  }, {render}
+) => {
+  return apolloQueryResponsesContainer(
     // Apply these props from the "parent" to the queries
-    chainedParentPropsForSampleTask(apolloConfig, {runParentContainerQueries, ...options}),
+    () => chainedParentPropsForSampleContainer(
+      apolloConfig, {runParentContainerQueries, ...options}, {render}),
     // Get the Apollo queries for the container since we can run the props through them and get the
     // structured query results that the component expect
     filterForQueryContainers(apolloContainersSample(apolloConfig)),

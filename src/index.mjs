@@ -7,7 +7,7 @@ export {
   testState,
   mountWithApolloClient,
   testPropsTaskMaker,
-  parentPropsForContainerTask,
+  parentPropsForContainer,
   makeTestPropsFunction
 } from './componentTestHelpers';
 

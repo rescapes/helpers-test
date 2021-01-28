@@ -22,6 +22,7 @@ import {SchemaLink} from 'apollo-link-schema';
 import {e, getClass} from '@rescapes/helpers-component';
 import {onError} from "apollo-link-error";
 import T from 'folktale/concurrency/task';
+import {composeWithComponentMaybeOrTaskChain} from '@rescapes/apollo';
 
 const {of, rejected} = T;
 import Result from 'folktale/result';
@@ -29,6 +30,8 @@ import {v} from '@rescapes/validate';
 import * as R from 'ramda';
 import {ApolloProvider} from "react-apollo";
 import apolloReactHooks from '@apollo/react-hooks';
+import {getRenderPropFunction} from '@rescapes/apollo/src/helpers/componentHelpersMonadic';
+import {containerForApolloType} from '@rescapes/apollo/src/helpers/containerHelpers';
 
 const {ApolloProvider: ApolloHookProvider} = apolloReactHooks;
 
@@ -176,7 +179,12 @@ export const classifyChildClassName = childClassName => {
  * @returns {Task} A task that returns the component matching childClassName or if an error
  * occurs return an Error with the message and dump of the props
  */
-export const waitForChildComponentRenderTask = v(({componentName, childClassName, alreadyChildClassName, waitLength = 10000}, wrapper) => {
+export const waitForChildComponentRenderTask = v(({
+                                                    componentName,
+                                                    childClassName,
+                                                    alreadyChildClassName,
+                                                    waitLength = 10000
+                                                  }, wrapper) => {
     const component = wrapper.find(componentName);
     const childClassNameStr = classifyChildClassName(childClassName);
 
@@ -261,18 +269,27 @@ export const testPropsTaskMaker = (mapStateToProps, mapDispatchToProps) =>
  * @param parentComponentViews A function expecting props that returns an object keyed by view names
  * and valued by view props, where views are the child containers/components of the component
  * @param viewName The viewName in the parent component of the target container
- * @returns {Task} A Task to resolve the parentContainer props passed to the given viewName
+ * @returns {Task|Function} A Task to resolve the parentContainer props passed to the given viewName
+ * or a component function for component queries
  */
-export const parentPropsForContainerTask = v((apolloConfig, apolloConfigToSamplePropsTask, parentComponentViews, viewName) => {
-    return R.map(
-      props => reqPathThrowing(
-        // Get the the parent component's view that renders the calling container
-        ['views', viewName],
-        // Leave out the parent component's key property, it was only used to key the component
-        parentComponentViews(R.omit(['key'], props))
-      ),
-      apolloConfigToSamplePropsTask(apolloConfig).map(x => x)
-    );
+export const parentPropsForContainer = v((apolloConfig, apolloConfigToSamplePropsContainer, parentComponentViews, viewName) => {
+    return composeWithComponentMaybeOrTaskChain([
+      props => {
+        return containerForApolloType(
+          apolloConfig,
+          {
+            render: getRenderPropFunction(props),
+            response: reqPathThrowing(
+              // Get the the parent component's view that renders the calling container
+              ['views', viewName],
+              // Leave out the parent component's key property, it was only used to key the component
+              parentComponentViews(R.omit(['key'], props))
+            )
+          }
+        );
+      },
+      () => apolloConfigToSamplePropsContainer(apolloConfig)
+    ])();
   },
   [
     ['apolloConfig', PropTypes.shape({
@@ -282,7 +299,7 @@ export const parentPropsForContainerTask = v((apolloConfig, apolloConfigToSample
     ['parentComponentViews', PropTypes.func.isRequired],
     ['viewName', PropTypes.string.isRequired]
   ],
-  'parentPropsForContainerTask');
+  'parentPropsForContainer');
 
 /**
  * Given a container's mapStateToProps and mapDispatchToProps, returns a function that accepts a sample state

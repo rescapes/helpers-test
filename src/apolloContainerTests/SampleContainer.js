@@ -108,6 +108,25 @@ export const apolloContainersSample = (apolloConfig = {}) => {
 
       // Mutate the user region
       mutateUserRegion: props => {
+        const propsWithUserRegion = R.merge(props, {
+            userRegion: R.compose(
+              ({userRegions, region}) => {
+                return R.find(
+                  userRegion => {
+                    return R.eqProps('id', region, reqStrPathThrowing('region', userRegion)), userRegions;
+                  },
+                  userRegions
+                );
+              },
+              toNamedResponseAndInputs('region',
+                props => reqStrPathThrowing('region', props)
+              ),
+              toNamedResponseAndInputs('userRegions',
+                props => strPathOr([], 'userState.data.userRegions', props)
+              )
+            )(props)
+          }
+        );
         return userStateRegionMutationContainer(
           R.merge(apolloConfig, {
             options: {
@@ -120,24 +139,7 @@ export const apolloContainersSample = (apolloConfig = {}) => {
           {
             userRegionOutputParams: userStateRegionOutputParams()
           }
-        )(
-          R.merge(
-            props,
-            {
-              userRegion: R.compose(
-                ({userRegions, region}) => R.find(
-                  userRegion => R.eqProps('id', region, reqStrPathThrowing('region', userRegion)), userRegions
-                ),
-                toNamedResponseAndInputs('region',
-                  props => reqStrPathThrowing('region', props)
-                ),
-                toNamedResponseAndInputs('userRegions',
-                  props => strPathOr([], 'userState.data.userRegions', props)
-                )
-              )(props)
-            }
-          )
-        );
+        )(propsWithUserRegion);
       }
     }]);
 };
