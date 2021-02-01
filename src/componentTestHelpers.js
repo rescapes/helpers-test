@@ -242,6 +242,8 @@ export const waitForChildComponentRenderTask = v(({
     ['wrapper', PropTypes.shape().isRequired]
   ], 'waitForChildComponentRenderTask');
 
+
+
 /**
  * Calls makeTestPropsFunction on a non Apollo container. This is a synchronous but wrapped in a
  * Task to match calls to apolloTestPropsTaskMaker
@@ -263,16 +265,23 @@ export const testPropsTaskMaker = (mapStateToProps, mapDispatchToProps) =>
  * receive {foo: 1}
  * @param {Object} apolloConfig
  * @param {Object} apolloConfig.apolloClient Client for requests
- * @param {Function} apolloConfigToSamplePropsTask Function expecting the Apollo config as the unary argument.
+ * @param {Object} config
+ * @param {Function} config.apolloConfigToSamplePropsTask Function expecting the Apollo config as the unary argument.
  * Returns a task that resolves to the parent container props in a Result.Ok for success or Result.Error if
  * and error occurs
- * @param parentComponentViews A function expecting props that returns an object keyed by view names
+ * @param {Object} config.parentComponentViews A function expecting props that returns an object keyed by view names
  * and valued by view props, where views are the child containers/components of the component
- * @param viewName The viewName in the parent component of the target container
+ * @param {Object} config.viewName The viewName in the parent component of the target container
+ * @param {Object} props
+ * @param {Object} props.render The render prop for component requests
  * @returns {Task|Function} A Task to resolve the parentContainer props passed to the given viewName
  * or a component function for component queries
  */
-export const parentPropsForContainer = v((apolloConfig, apolloConfigToSamplePropsContainer, parentComponentViews, viewName) => {
+export const parentPropsForContainer = v((apolloConfig, {
+    apolloConfigToSamplePropsContainer,
+    parentComponentViews,
+    viewName
+  }, {render}) => {
     return composeWithComponentMaybeOrTaskChain([
       props => {
         return containerForApolloType(
@@ -288,16 +297,21 @@ export const parentPropsForContainer = v((apolloConfig, apolloConfigToSampleProp
           }
         );
       },
-      () => apolloConfigToSamplePropsContainer(apolloConfig)
-    ])();
+      ({render}) => apolloConfigToSamplePropsContainer(apolloConfig, {render})
+    ])({render});
   },
   [
     ['apolloConfig', PropTypes.shape({
-      apolloClient: PropTypes.shape().isRequired
+      apolloClient: PropTypes.shape()
     }).isRequired],
-    ['schemaToSamplePropsTaskFunction', PropTypes.func.isRequired],
-    ['parentComponentViews', PropTypes.func.isRequired],
-    ['viewName', PropTypes.string.isRequired]
+    ['config', PropTypes.shape({
+      apolloConfigToSamplePropsContainer: PropTypes.func.isRequired,
+      parentComponentViews: PropTypes.func.isRequired,
+      viewName: PropTypes.string.isRequired
+    }).isRequired],
+    ['props', PropTypes.shape({
+      render: PropTypes.func
+    }).isRequired]
   ],
   'parentPropsForContainer');
 

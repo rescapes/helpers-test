@@ -9,6 +9,7 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+import {createWaitForElement} from 'enzyme-wait';
 import testUtils from 'react-dom/test-utils';
 import {
   classifyChildClassName,
@@ -30,7 +31,8 @@ import {
   mapToNamedResponseAndInputs,
   omitDeep,
   reqStrPathThrowing,
-  strPathOr
+  strPathOr,
+  promiseToTask
 } from '@rescapes/ramda';
 import * as R from 'ramda';
 import Result from 'folktale/result';
@@ -234,20 +236,15 @@ export const apolloContainerTests = v((context, container, component, configToCh
       )(apolloConfigContainer);
     };
 
-    // A no-arg Task function or component function that resolves props all the way up the hierarchy chain, ending with props for this
+    // A task function or component function that resolves props all the way up the hierarchy chain, ending with props for this
     // container based on the ancestor Containers/Components
-    const resolvedPropsContainer = composeWithComponentMaybeOrTaskChain([
-      apolloConfig => {
-        return configToChainedPropsForSampleContainer(
-          apolloConfig,
-          {runParentContainerQueries: true},
-          {}
-        );
-      },
-      () => {
-        return apolloConfigOptionalFunctionContainer('Top');
-      }
-    ]);
+    const resolvedPropsContainer = (apolloConfig, {render}) => {
+      return configToChainedPropsForSampleContainer(
+        apolloConfig,
+        {runParentContainerQueries: true},
+        {render}
+      );
+    };
 
     /**
      * Tests that we can mount the composed request container
@@ -269,12 +266,12 @@ export const apolloContainerTests = v((context, container, component, configToCh
               })
           )
         )),
+        mapToNamedResponseAndInputs('props',
+          ({apolloClient}) => resolvedPropsContainer({apolloClient}, {})
+        ),
         mapToMergedResponseAndInputs(
           // Resolves to {schema, apolloClient}
           () => apolloConfigOptionalFunctionContainer('testComposeRequests')
-        ),
-        mapToNamedResponseAndInputs('props',
-          () => resolvedPropsContainer
         )
       ])({}).run().listen(
         defaultRunConfig({
@@ -586,11 +583,14 @@ const _testQueries = (
         return of(R.pick(R.keys(keyToQueryTask), responses));
       },
       mapToNamedResponseAndInputs('responses',
-        ({keyToQueryTask}) => {
+        ({apolloConfig, keyToQueryTask}) => {
           // Resolves to <key, response> plus all the props
           return apolloQueryResponsesContainer(
-            resolvedPropsContainer,
-            keyToQueryTask
+            apolloConfig,
+            {
+              resolvedPropsContainer,
+              keyToQueryTask
+            }
           );
         }
       ),
@@ -730,7 +730,7 @@ export const apolloMutationResponsesTask = ({
               return composeWithChain([
                 ({mutationExpectingProps, preMutationApolloRenderProps, postMutationApolloRenderProps}) => {
                   if (!preMutationApolloRenderProps || !postMutationApolloRenderProps) {
-                    throw new Error(`For mutation ${mutationName}, either the preMutationApolloRenderProps or postMutationApolloRenderProps or both are null`)
+                    throw new Error(`For mutation ${mutationName}, either the preMutationApolloRenderProps or postMutationApolloRenderProps or both are null`);
                   }
                   return of({
                     mutationName,
@@ -758,16 +758,17 @@ export const apolloMutationResponsesTask = ({
           )
         );
       },
+
+      // Resolve the props from the task
+      mapToNamedResponseAndInputs('props',
+        ({apolloClient}) => {
+          return resolvedPropsContainer({apolloClient});
+        }
+      ),
       // Resolve the apolloConfigContainer
       mapToMergedResponseAndInputs(
         ({}) => {
           return apolloConfigContainer;
-        }
-      ),
-      // Resolve the props from the task
-      mapToNamedResponseAndInputs('props',
-        () => {
-          return resolvedPropsContainer();
         }
       )
     ])({apolloConfigContainer, resolvedPropsContainer, apolloConfigToMutationTasks});
@@ -848,7 +849,7 @@ const _testRenderContainer = (
     ),
     // Render component, calling queries
     mapToMergedResponseAndInputs(
-      ({apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName, props}) => {
+      ({apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName}) => {
         return _testRenderComponentTask(
           {
             apolloClient,
@@ -861,7 +862,7 @@ const _testRenderContainer = (
           },
           container,
           component,
-          props
+          resolvedPropsContainer
         );
       }
     ),
@@ -869,12 +870,6 @@ const _testRenderContainer = (
     mapToMergedResponseAndInputs(
       ({apolloConfigContainer}) => {
         return apolloConfigContainer;
-      }
-    ),
-    mapToNamedResponseAndInputs('props',
-      // Resolve the props
-      ({resolvedPropsContainer}) => {
-        return resolvedPropsContainer();
       }
     )
   ])({
@@ -943,21 +938,30 @@ const _testRenderComponentTask = v((
     childClassDataName,
     waitLength,
     theme
-  }, container, component, props) => {
+  }, container, component, resolvedPropsContainer) => {
 
     // Create the React element from container, passing the props and component via a render function.
     // The react-adopt container expects to be given a render function so it can pass the results of the
     // Apollo request components
-    const containerInstance = e(
-      container,
-      props,
-      // These props contains the results of the Apollo queries and the mutation functions
-      // Merge them with the original props, which can return values unrelated to the apollo requests
-      responseProps => {
-        return e(
-          component,
-          R.merge(props, responseProps)
-        );
+    const containerInstance = resolvedPropsContainer(
+      // Don't pass the apolloClient to the resolved props container.
+      // We want to treat that latter as a component
+      {},
+      {
+        render: props => {
+          return e(
+            container,
+            props,
+            // These props contains the results of the Apollo queries and the mutation functions
+            // Merge them with the original props, which can return values unrelated to the apollo requests
+            responseProps => {
+              return e(
+                component,
+                R.merge(props, responseProps)
+              );
+            }
+          );
+        }
       }
     );
     // Wrap the componentInstance in mock Apollo providers.
@@ -969,9 +973,7 @@ const _testRenderComponentTask = v((
         containerInstance
       )
     );
-    // Find the top-level componentInstance. This is always rendered in any Apollo status (loading, error, store data)
-    const foundContainer = wrapper.find(container);
-    expect(foundContainer.length).toEqual(1);
+
 
     return composeWithChain([
       ({render: {wrapper, component, childComponent}}) => {
@@ -1008,6 +1010,7 @@ const _testRenderComponentTask = v((
       ),
       mapToNamedResponseAndInputs('loading',
         ({waitLength, wrapper, childClassLoadingName, childClassDataName, container}) => {
+          expect(foundContainer.length).toEqual(1);
           // Make sure the componentInstance props are consistent since the last test run
           let tsk = null;
           act(() => {
@@ -1021,8 +1024,17 @@ const _testRenderComponentTask = v((
             }, wrapper);
           });
           return tsk;
+        }),
+      mapToNamedResponseAndInputs('foundContainer',
+        ({wrapper, container}) => {
+          // Find the top-level componentInstance. This is always rendered in any Apollo status (loading, error, store data)
+          const waitForChild = createWaitForElement(
+            container,
+            waitLength
+          );
+          return promiseToTask(waitForChild(wrapper));
         })
-    ])({waitLength, wrapper, foundContainer, childClassLoadingName, childClassDataName, container});
+    ])({waitLength, wrapper, childClassLoadingName, childClassDataName, container});
   },
   [
     ['config', PropTypes.shape({
@@ -1034,7 +1046,7 @@ const _testRenderComponentTask = v((
     })],
     ['container', PropTypes.func.isRequired],
     ['component', PropTypes.func.isRequired],
-    ['props', PropTypes.shape().isRequired]
+    ['resolvedPropsContainer', PropTypes.func.isRequired]
   ], '_testRenderComponentTask'
 );
 

@@ -16,7 +16,7 @@ const {of} = T;
 import {parentPropsForContainer} from '../componentTestHelpers.js';
 import {composeWithChain, mapMonadByConfig, reqStrPathThrowing} from '@rescapes/ramda';
 import {
-  apolloQueryResponsesContainer, containerForApolloType,
+  apolloQueryResponsesContainer, composeWithComponentMaybeOrTaskChain, containerForApolloType,
   currentUserQueryContainer, getRenderPropFunction,
   mapTaskOrComponentToNamedResponseAndInputs,
   userOutputParams
@@ -45,68 +45,73 @@ import {mutateSampleUserStateWithProjectsAndRegionsContainer} from '@rescapes/pl
 export const chainedParentPropsForSampleContainer = (apolloConfig, {runParentContainerQueries = false}, {render}) => {
   return parentPropsForContainer(
     apolloConfig,
-    // Fake the parent
-    apolloConfig => composeWithChain([
-      ({userState, regions, projects}) => of({
-        // Some props
-        style: {
-          width: '500px',
-          height: '500px'
+    {
+      // Fake the parent
+      apolloConfigToSamplePropsContainer: apolloConfig => composeWithComponentMaybeOrTaskChain([
+        // Mutate the UserState to get cache-only data stored
+        ({sampleResponses: {userStateResponse, regions, projects, locations}, render}) => {
+          return containerForApolloType(
+            apolloConfig,
+            {
+              render: getRenderPropFunction({render}),
+              response: {
+                // Some props
+                style: {
+                  width: '500px',
+                  height: '500px'
+                },
+                // Sample paging params
+                page: 1,
+                pageSize: 1,
+
+                // Authentication with the test user
+                username: 'test',
+                password: 'testpass',
+
+                regionFilter: {idIn: R.map(R.prop('id'), regions)},
+                userState: reqStrPathThrowing('data.mutate.userState', userStateResponse),
+                region: R.head(regions),
+                project: R.head(projects),
+                // scope limits queryUserRegions to these params
+                scope: {name: 'Earth'},
+                // In testing we use a memory router to change routes
+                // Pretend the user had been trying to access the protected path, so that we redirect
+                // unauthorized users to login
+                memoryRouterInitialEntries: [
+                  {pathname: '/protected', key: 'protected'}
+                ],
+                // Sample paths for authentication
+                loginPath: '/login',
+                protectedPath: '/protected',
+                locations
+              }
+            }
+          );
         },
-        // Sample paging params
-        page: 1,
-        pageSize: 1,
-
-        // Authentication with the test user
-        username: 'test',
-        password: 'testpass',
-
-        regionFilter: {idIn: R.map(R.prop('id'), regions)},
-        userState,
-        region: R.head(regions),
-        project: R.head(projects),
-        // scope limits queryUserRegions to these params
-        scope: {name: 'Earth'},
-        // In testing we use a memory router to change routes
-        // Pretend the user had been trying to access the protected path, so that we redirect
-        // unauthorized users to login
-        memoryRouterInitialEntries: [
-          {pathname: '/protected', key: 'protected'}
-        ],
-        // Sample paths for authentication
-        loginPath: '/login',
-        protectedPath: '/protected'
-      }),
-      // Mutate the UserState to get cache-only data stored
-      ({sampleResponses: {userStateResponse, regions, projects, locations}, render}) => {
-        return containerForApolloType(
-          apolloConfig,
-          {
-            render: getRenderPropFunction({render}),
-            response: {userState: reqStrPathThrowing('data.mutate.userState', userStateResponse), regions, projects, locations}
+        mapTaskOrComponentToNamedResponseAndInputs(apolloConfig, 'sampleResponses',
+          ({userResponse, render}) => {
+            const user = reqStrPathThrowing('data.currentUser', userResponse);
+            // Resolves to {userStateResponse, regions, projects, locations}
+            return mutateSampleUserStateWithProjectsAndRegionsContainer(
+              apolloConfig, {
+                user: R.pick(['id'], user),
+                regionKeys: ['earth', 'zorgon'],
+                projectKeys: ['shrangrila', 'pangea'],
+                render
+              }
+            );
+          }),
+        mapTaskOrComponentToNamedResponseAndInputs(apolloConfig, 'userResponse',
+          ({render}) => {
+            return currentUserQueryContainer(apolloConfig, userOutputParams, {render});
           }
-        );
-      },
-      mapTaskOrComponentToNamedResponseAndInputs(apolloConfig, 'sampleResponses',
-      ({userResponse}) => {
-        const user = reqStrPathThrowing('data.currentUser', userResponse);
-        // Resolves to {userStateResponse, regions, projects, locations}
-        return mutateSampleUserStateWithProjectsAndRegionsContainer(
-          apolloConfig, {
-            user: R.pick(['id'], user),
-            regionKeys: ['earth', 'zorgon'],
-            projectKeys: ['shrangrila', 'pangea']
-          });
-      }),
-      mapTaskOrComponentToNamedResponseAndInputs(apolloConfig, 'userResponse',
-        ({render}) => {
-          return currentUserQueryContainer(apolloConfig, userOutputParams, {render});
-        }
-      )
-    ])({render}),
-    // Normally this is the parent views function
-    props => ({views: {currentRegion: props}}),
-    'currentRegion'
+        )
+      ])({render}),
+      // Normally this is the parent views function
+      parentComponentViews: props => ({views: {currentRegion: props}}),
+      viewName: 'currentRegion'
+    },
+    {render}
   );
 };
 
@@ -120,7 +125,7 @@ export const chainedParentPropsForSampleContainer = (apolloConfig, {runParentCon
  * parent containers run their queries to give us the props we expect. For instance, a parent container
  * might fetch the userState for us and from that user state we know what regions to query
  * happen automatically when we test rendered the component
- * @param {Object} props
+ * @param {Object} props Juest the render prop. Other props c
  * @param {Function} props.render render function for component calls
  * @returns {Task|Function} The task or component that resolves/renders the query respnose
  */
@@ -132,12 +137,18 @@ export const configToChainedPropsForSampleContainer = (
   }, {render}
 ) => {
   return apolloQueryResponsesContainer(
-    // Apply these props from the "parent" to the queries
-    () => chainedParentPropsForSampleContainer(
-      apolloConfig, {runParentContainerQueries, ...options}, {render}),
-    // Get the Apollo queries for the container since we can run the props through them and get the
-    // structured query results that the component expect
-    filterForQueryContainers(apolloContainersSample(apolloConfig)),
-    runContainerQueries
+    apolloConfig, {
+      // Apply these props from the "parent" to the queries
+      resolvedPropsContainer: () => chainedParentPropsForSampleContainer(
+        apolloConfig,
+        {runParentContainerQueries, ...options},
+        {render}
+      ),
+      // Get the Apollo queries for the container since we can run the props through them and get the
+      // structured query results that the component expect
+      queryContainers: filterForQueryContainers(apolloContainersSample(apolloConfig)),
+      runContainerQueries
+    },
+    {render}
   );
 };
