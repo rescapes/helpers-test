@@ -241,7 +241,10 @@ export const apolloContainerTests = v((context, container, component, configToCh
     const resolvedPropsContainer = (apolloConfig, {render}) => {
       return configToChainedPropsForSampleContainer(
         apolloConfig,
-        {runParentContainerQueries: true},
+        {
+          containerName: componentName,
+          runParentContainerQueries: true
+        },
         {render}
       );
     };
@@ -289,6 +292,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
     const testQueries = done => {
       return _testQueries(
         {
+          containerName: componentName,
           apolloConfigContainer: apolloConfigOptionalFunctionContainer('testQueries'),
           resolvedPropsContainer,
           omitKeysFromSnapshots
@@ -553,9 +557,9 @@ export const apolloContainerTests = v((context, container, component, configToCh
 
 /**
  * Runs an apollo queries test and asserts results
+ * @param {String} containerName  For debugging, to label the container with a name
  * @param apolloConfigContainer
  * @param resolvedPropsContainer
- * @param mapStateToProps
  * @param {Function} apolloConfigToQueryTasks Function expecting an apolloConfig and returning the query tasks
  * @param done
  * @return void
@@ -563,6 +567,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
  */
 const _testQueries = (
   {
+    containerName,
     apolloConfigContainer,
     resolvedPropsContainer,
     omitKeysFromSnapshots
@@ -588,6 +593,7 @@ const _testQueries = (
           return apolloQueryResponsesContainer(
             apolloConfig,
             {
+              containerName,
               resolvedPropsContainer,
               keyToQueryTask
             }
@@ -974,7 +980,6 @@ const _testRenderComponentTask = v((
       )
     );
 
-
     return composeWithChain([
       ({render: {wrapper, component, childComponent}}) => {
         return of({
@@ -1030,7 +1035,8 @@ const _testRenderComponentTask = v((
           // Find the top-level componentInstance. This is always rendered in any Apollo status (loading, error, store data)
           const waitForChild = createWaitForElement(
             container,
-            waitLength
+            100000,
+            //waitLength
           );
           return promiseToTask(waitForChild(wrapper));
         })

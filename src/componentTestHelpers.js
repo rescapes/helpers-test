@@ -22,7 +22,7 @@ import {SchemaLink} from 'apollo-link-schema';
 import {e, getClass} from '@rescapes/helpers-component';
 import {onError} from "apollo-link-error";
 import T from 'folktale/concurrency/task';
-import {composeWithComponentMaybeOrTaskChain} from '@rescapes/apollo';
+import {composeWithComponentMaybeOrTaskChain, nameComponent} from '@rescapes/apollo';
 
 const {of, rejected} = T;
 import Result from 'folktale/result';
@@ -243,7 +243,6 @@ export const waitForChildComponentRenderTask = v(({
   ], 'waitForChildComponentRenderTask');
 
 
-
 /**
  * Calls makeTestPropsFunction on a non Apollo container. This is a synchronous but wrapped in a
  * Task to match calls to apolloTestPropsTaskMaker
@@ -283,7 +282,7 @@ export const parentPropsForContainer = v((apolloConfig, {
     viewName
   }, {render}) => {
     return composeWithComponentMaybeOrTaskChain([
-      props => {
+      nameComponent(`parentPropsOf${viewName}`, props => {
         return containerForApolloType(
           apolloConfig,
           {
@@ -296,8 +295,10 @@ export const parentPropsForContainer = v((apolloConfig, {
             )
           }
         );
-      },
-      ({render}) => apolloConfigToSamplePropsContainer(apolloConfig, {render})
+      }),
+      ({render}) => {
+        return apolloConfigToSamplePropsContainer(apolloConfig, {render});
+      }
     ])({render});
   },
   [
