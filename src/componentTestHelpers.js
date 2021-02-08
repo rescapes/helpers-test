@@ -16,14 +16,14 @@ import PropTypes from 'prop-types';
 import enzyme from 'enzyme';
 import {promiseToTask, reqPathThrowing, reqStrPathThrowing} from '@rescapes/ramda';
 import * as apolloTestUtils from 'apollo-test-utils';
-import ApolloClient from 'apollo-client';
-import {InMemoryCache} from 'apollo-client-preset';
-import {SchemaLink} from 'apollo-link-schema';
+import * as AC from '@apollo/client';
+import { SchemaLink } from '@apollo/client/link/schema';
+import { onError } from "@apollo/client/link/error";
 import {e, getClass} from '@rescapes/helpers-component';
-import {onError} from "apollo-link-error";
 import T from 'folktale/concurrency/task';
 import {composeWithComponentMaybeOrTaskChain, nameComponent} from '@rescapes/apollo';
 
+const {InMemoryCache, ApolloClient} = AC
 const {of, rejected} = T;
 import Result from 'folktale/result';
 import {v} from '@rescapes/validate';

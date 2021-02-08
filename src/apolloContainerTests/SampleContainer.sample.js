@@ -11,19 +11,23 @@
 
 import * as R from 'ramda';
 import T from 'folktale/concurrency/task';
-
-const {of} = T;
 import {parentPropsForContainer} from '../componentTestHelpers.js';
-import {composeWithChain, mapMonadByConfig, reqStrPathThrowing} from '@rescapes/ramda';
+import {reqStrPathThrowing} from '@rescapes/ramda';
 import {
-  apolloQueryResponsesContainer, composeWithComponentMaybeOrTaskChain, containerForApolloType,
-  currentUserQueryContainer, getRenderPropFunction,
-  mapTaskOrComponentToNamedResponseAndInputs, nameComponent,
+  apolloQueryResponsesContainer,
+  composeWithComponentMaybeOrTaskChain,
+  containerForApolloType,
+  currentUserQueryContainer,
+  getRenderPropFunction,
+  mapTaskOrComponentToNamedResponseAndInputs,
+  nameComponent,
   userOutputParams
 } from '@rescapes/apollo';
 import {filterForQueryContainers} from '../apolloContainerTestHelpers.js';
 import {apolloContainersSample} from './SampleContainer.js';
 import {mutateSampleUserStateWithProjectsAndRegionsContainer} from '@rescapes/place';
+
+const {of} = T;
 
 /**
  * @file Normally links sample props from a parent component to a Region component. In this case
@@ -52,7 +56,7 @@ export const chainedParentPropsForSampleContainer = (apolloConfig, {runParentCon
           // Mutate the UserState to get cache-only data stored
           nameComponent('sampleDataComponent',
             ({
-               sampleResponses: {userStateResponse, regions, projects, locations},
+               sampleResponses: {userState, regions, projects, locations},
                render
              }) => {
               return containerForApolloType(
@@ -74,7 +78,7 @@ export const chainedParentPropsForSampleContainer = (apolloConfig, {runParentCon
                     password: 'testpass',
 
                     regionFilter: {idIn: R.map(R.prop('id'), regions)},
-                    userState: reqStrPathThrowing('data.mutate.userState', userStateResponse),
+                    userState,
                     region: R.head(regions),
                     project: R.head(projects),
                     // scope limits queryUserRegions to these params
