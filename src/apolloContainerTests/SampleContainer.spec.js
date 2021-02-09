@@ -18,14 +18,15 @@ const container = SampleContainer;
 // Test container with this render component
 const component = Sample;
 
+const containerId = 'sampleContainer';
 // Find this React component
-const componentName = 'Sample';
-// Find this class in the data renderer. Use button. Since the styled wrappers shares the classname
-const childClassDataName = `button.${cLogout.logoutButton}`;
+const componentId = cLogout.logout;
+// Find this class in the data renderer.
+const childDataId = cLogout.logoutButton;
 // Find this class in the loading renderer
-const childClassLoadingName = c.sampleLoading;
+const childLoadingId = c.sampleLoading;
 // Find this class in the error renderer
-const childClassErrorName = c.sampleError;
+const childErrorId = c.sampleError;
 const childClassNoAuthenticationName = `button.${cLogin.loginButton}`;
 // Error maker creates an unknown id that can't be queried
 // Error maker creates an unknown id that can't be queried
@@ -56,11 +57,12 @@ describe('SampleContainer', () => {
   const {testComposeRequests, testQueries, testMutations, testRenderError, testRender, testRenderAuthentication} = apolloContainerTests(
     {
       componentContext: {
-        name: componentName,
+        componentId,
+        containerId,
         statusClasses: {
-          data: childClassDataName,
-          loading: childClassLoadingName,
-          error: childClassErrorName,
+          data: childDataId,
+          loading: childLoadingId,
+          error: childErrorId,
           noAuthentication: childClassNoAuthenticationName
         },
         // The Chakra theme

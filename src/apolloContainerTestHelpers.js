@@ -10,7 +10,7 @@
  */
 
 import RT from 'react';
-import {createWaitForElement} from 'enzyme-wait';
+import TLR from '@testing-library/react';
 import testUtils from 'react-dom/test-utils';
 import {
   classifyChildClassName,
@@ -31,8 +31,7 @@ import {
   mapToNamedResponseAndInputs,
   omitDeep,
   reqStrPathThrowing,
-  strPathOr,
-  promiseToTask
+  strPathOr
 } from '@rescapes/ramda';
 import * as R from 'ramda';
 import Result from 'folktale/result';
@@ -54,7 +53,7 @@ const {fromPromised, of, waitAll} = T;
 const {ChakraProvider} = defaultNode(chakra);
 
 const {act} = testUtils;
-
+const {waitFor} = TLR;
 const log = loggers.get('rescapeDefault');
 
 
@@ -122,7 +121,7 @@ export const defaultUpdatePathsForMutationContainers = (apolloContainers, overri
  * @param {Object} context
  * {
       componentContext: {
-        name: componentName,
+        name: componentId,
         statusClasses: {
           // A classname rendered in the component renderData
           data: ...
@@ -147,15 +146,16 @@ export const defaultUpdatePathsForMutationContainers = (apolloContainers, overri
         deauathorizeMutationKey
       }
     }
- * @param {String} context.componentContext.name The name of the React component that the container wraps.
+ * @param {String} context.componentContext.containerId The data-testid of the React container.
+ * @param {String} context.componentContext.componentId The data-testid of the React component that the container wraps.
  * This can be any combination of class and component name that Enzyme can find.
- * @param {String} context.componentContext.statusClasses.data.childClassDataName A class used in a React component in the named
+ * @param {String} context.componentContext.statusClasses.data.childDataId A class used in a React component in the named
  * This can be any combination of class and component name that Enzyme can find.
- * @param {String} [context.componentContext.statusClasses.data.childClassLoadingName] Optional. A class used in a React component in the named
+ * @param {String} [context.componentContext.statusClasses.data.childLoadingId] Optional. A class used in a React component in the named
  * This can be any combination of class and component name that Enzyme can find.
  * component's renderLoading method--or any render code called when apollo loading is true. Normally
  * only needed for components with queries.
- * @param {String} [context.componentContext.statusClasses.data..childClassErrorName] Optional. A class used in a React component in the named
+ * @param {String} [context.componentContext.statusClasses.data..childErrorId] Optional. A class used in a React component in the named
  * component's renderError method--or any render code called when apollo error is true. Normally only
  * needed for components with queries.
  * This can be any combination of class and component name that Enzyme can find.
@@ -206,11 +206,12 @@ export const defaultUpdatePathsForMutationContainers = (apolloContainers, overri
 export const apolloContainerTests = v((context, container, component, configToChainedPropsForSampleContainer) => {
     const {
       componentContext: {
-        name: componentName,
+        containerId,
+        componentId,
         statusClasses: {
-          data: childClassDataName,
-          loading: childClassLoadingName,
-          error: childClassErrorName,
+          data: childDataId,
+          loading: childLoadingId,
+          error: childErrorId,
 
           // If we are testing login with, set the classname that shows when the user needs to login:
           // testRenderAuthentication
@@ -253,7 +254,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
       return configToChainedPropsForSampleContainer(
         apolloConfig,
         {
-          containerName: componentName,
+          containerName: componentId,
           runParentContainerQueries: true
         },
         {render}
@@ -303,7 +304,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
     const testQueries = done => {
       return _testQueries(
         {
-          containerName: componentName,
+          containerName: componentId,
           apolloConfigContainer: apolloConfigOptionalFunctionContainer('testQueries'),
           resolvedPropsContainer,
           omitKeysFromSnapshots
@@ -344,9 +345,10 @@ export const apolloContainerTests = v((context, container, component, configToCh
           {
             apolloConfigContainer: apolloConfigOptionalFunctionContainer('testRender'),
             resolvedPropsContainer,
-            componentName,
-            childClassDataName,
-            childClassLoadingName,
+            containerId,
+            componentId,
+            childDataId,
+            childLoadingId,
             omitKeysFromSnapshots,
             mutationComponents,
             updatedPaths,
@@ -374,10 +376,11 @@ export const apolloContainerTests = v((context, container, component, configToCh
             {
               apolloConfigContainer: apolloConfigOptionalFunctionContainer('testRenderAuthenticationNoAuth'),
               resolvedPropsContainer,
-              componentName,
-              childClassDataName: childClassNoAuthName,
+              containerId,
+              componentId,
+              childDataId: childClassNoAuthName,
               // No loading state for no auth
-              childClassLoadingName: childClassNoAuthName,
+              childLoadingId: childClassNoAuthName,
               omitKeysFromSnapshots,
               mutationComponents,
               updatedPaths,
@@ -394,7 +397,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
           ({wrapper}) => {
             const {mutation} = reqStrPathThrowing(
               deauthorizeMutationKey,
-              wrapper.find(logoutComponentName).props()
+              wrapper.findByTestId(logoutComponentName).props()
             );
             return fromPromised(() => {
               let m = null;
@@ -416,10 +419,11 @@ export const apolloContainerTests = v((context, container, component, configToCh
                 {
                   apolloConfigContainer: apolloConfigOptionalFunctionContainer('testRenderAuthentication'),
                   resolvedPropsContainer,
-                  componentName,
-                  childClassDataName,
+                  containerId,
+                  componentId,
+                  childDataId,
                   // No loading state for no auth
-                  childClassLoadingName,
+                  childLoadingId,
                   omitKeysFromSnapshots,
                   // Filter out mutations that are used for auth and de-auth
                   mutationComponents: R.compose(
@@ -445,7 +449,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
           ({wrapper, props}) => {
             const {mutation} = reqStrPathThrowing(
               authorizeMutationKey,
-              wrapper.find(loginComponentName).props()
+              wrapper.findByTestId(loginComponentName).props()
             );
             // Pass the username and password from the props
             return fromPromised(() => {
@@ -462,10 +466,11 @@ export const apolloContainerTests = v((context, container, component, configToCh
               {
                 apolloConfigContainer: apolloConfigOptionalFunctionContainer('testRenderAuthenticationNoAuth'),
                 resolvedPropsContainer,
-                componentName,
-                childClassDataName: childClassNoAuthName,
+                containerId,
+                componentId,
+                childDataId: childClassNoAuthName,
                 // No loading state for no auth
-                childClassLoadingName: childClassNoAuthName,
+                childLoadingId: childClassNoAuthName,
                 omitKeysFromSnapshots,
                 mutationComponents: filterForMutationContainers(apolloContainers({})),
                 updatedPaths,
@@ -495,15 +500,15 @@ export const apolloContainerTests = v((context, container, component, configToCh
           // This will update the component with the mutated data.
           // We don't actually change the values explicitly when we mutate here, so we assert it worked
           // by checking the object's update timestamp at the end of the test
-          ({mutationComponents, wrapper, component, componentName, props}) => {
+          ({mutationComponents, wrapper, component, componentId, props}) => {
             return skipMutationTests ?
               // No tests
               of({}) :
               _testRenderComponentMutationsContainer({
                 mutationComponents,
-                componentName,
-                childClassDataName,
-                childClassErrorName,
+                componentId,
+                childDataId,
+                childErrorId,
                 waitLength
               }, wrapper, component);
           }
@@ -513,10 +518,10 @@ export const apolloContainerTests = v((context, container, component, configToCh
               errorMaker,
               apolloConfigContainer: apolloConfigOptionalFunctionContainer('testRenderError'),
               resolvedPropsContainer,
-              componentName,
-              childClassLoadingName,
-              childClassDataName,
-              childClassErrorName,
+              componentId,
+              childLoadingId,
+              childDataId,
+              childErrorId,
               mutationComponents: filterForMutationContainers(apolloContainers({})),
               waitLength,
               theme
@@ -540,7 +545,8 @@ export const apolloContainerTests = v((context, container, component, configToCh
   [
     ['config', PropTypes.shape({
         componentContext: PropTypes.shape({
-          name: PropTypes.string.isRequired,
+          containerId: PropTypes.string.isRequired,
+          componentId: PropTypes.string.isRequired,
           statusClasses: PropTypes.shape({
             data: PropTypes.string.isRequired,
             loading: PropTypes.string,
@@ -560,8 +566,8 @@ export const apolloContainerTests = v((context, container, component, configToCh
         })
       }
     )],
-    ['container', PropTypes.func.isRequired],
-    ['component', PropTypes.func.isRequired],
+    ['container', PropTypes.oneOfType([PropTypes.func, PropTypes.object]).isRequired],
+    ['component', PropTypes.oneOfType([PropTypes.func, PropTypes.object]).isRequired],
     ['propsResultTask', PropTypes.func.isRequired]
   ], 'apolloContainerTests');
 
@@ -802,10 +808,11 @@ export const apolloMutationResponsesTask = ({
  * is used to create an Apollo Provider component
  * @param {Task} config.resolvedPropsContainer Task that resolves to test props to pass to the container. These
  * are in turned passed to the composed Apollo components and reach the component itself
- * @param {String} config.componentName The name of the component that receives the Apollo request results and mutate
+ * @param {String} container.componentId The data-testid of the container
+ * @param {String} config.componentId The containerId of the component that receives the Apollo request results and mutate
  * functions from the componsed Apollo Containers
- * @param {String} config.childClassDataName Then mame of the top-level class created by the component when it is ready
- * @param {String} config.childClassLoadingName The name of the top-level class created by the component when loading
+ * @param {String} config.childDataId Then containerId of the top-level class created by the component when it is ready
+ * @param {String} config.childLoadingId The containerId of the top-level class created by the component when loading
  * @param [{Function}] config.mutationComponents Apollo Mutation component functions expecting props
  * @param {Boolean} [config.skipMutationTests] Default false. Set false for unauthenticated users,
  * since they can't mutate
@@ -820,11 +827,11 @@ export const apolloMutationResponsesTask = ({
  * Example: {mutationRegion: ['queryRegions.data.regions.0.updatedAt']} means "when I call mutatRegion, queryRegion's
  * result should update"
  * @param {Object} theme The Chakra theme
- * @param {Object} container The composed Apollo container. We create a react elmenet from this
+ * @param {Object} container The composed Apollo container. We create a react element from this
  * with component as the children prop. component
  * props to create a component instance. The container is already composed with Apollo Query/Mutation components.
  * and it's render function passes the Apollo component results by name to its component
- * (which must be named componentName)
+ * (which must be named componentId)
  * @param {Object} component The component that receives the results of queries and mutations and displays
  * loading, error, or data states
  * @param {Function} done jest done function
@@ -835,10 +842,11 @@ const _testRenderContainer = (
   {
     apolloConfigContainer,
     resolvedPropsContainer,
-    componentName,
-    childClassDataName,
-    childClassErrorName,
-    childClassLoadingName,
+    containerId,
+    componentId,
+    childDataId,
+    childErrorId,
+    childLoadingId,
     mutationComponents,
     updatedPaths,
     waitLength,
@@ -864,22 +872,23 @@ const _testRenderContainer = (
           ) :
           _testRenderComponentMutationsContainer({
             mutationComponents,
-            componentName,
-            childClassDataName,
+            componentId,
+            childDataId,
             waitLength
           }, wrapper, component, render);
       }
     ),
     // Render component, calling queries
     mapToMergedResponseAndInputs(
-      ({apolloClient, componentName, childClassLoadingName, childClassDataName, childClassErrorName}) => {
+      ({apolloClient, containerId, componentId, childLoadingId, childDataId, childErrorId}) => {
         return _testRenderComponentTask(
           {
             apolloClient,
-            componentName,
-            childClassLoadingName,
-            childClassDataName,
-            childClassErrorName,
+            containerId,
+            componentId,
+            childLoadingId,
+            childDataId,
+            childErrorId,
             waitLength,
             theme,
             authenticate: true
@@ -899,10 +908,11 @@ const _testRenderContainer = (
   ])({
     apolloConfigContainer,
     resolvedPropsContainer,
-    componentName,
-    childClassLoadingName,
-    childClassDataName,
-    childClassErrorName,
+    containerId,
+    componentId,
+    childLoadingId,
+    childDataId,
+    childErrorId,
     mutationComponents
   });
 };
@@ -936,13 +946,13 @@ const _testRenderRunConfig = (updatedPaths, errors, done = null) => {
 
 /**
  * Tests rendering a component where Apollo query responses must be awaited.
- * We first check for the childClassLoadingName component to be loaded and then childClassDataName,
+ * We first check for the childLoadingId component to be loaded and then childDataId,
  * which is either the data ready or error component, depending on which result we are expeciting
  * @param {Object} config
  * @param config.apolloClient
- * @param config.componentName
- * @param {String} config.childClassLoadingName
- * @param {String} config.childClassDataName
+ * @param config.componentId
+ * @param {String} config.childLoadingId
+ * @param {String} config.childDataId
  * @param {Number} config.waitLength Optional number of milliseconds to wait for asynchronous operations. Defaults to 10000
  * @param {Object} config.theme Chakra theme
  * @param {Object} container The apollo container to test
@@ -951,15 +961,16 @@ const _testRenderRunConfig = (updatedPaths, errors, done = null) => {
  * @return {Task} A Task resolving to {wrapper, childComponent, component},
  * where wrapper is the mounted ApolloProvider->ReadAdopt->Containers->Component
  * and component is the Component within that stack. This result can be used to test mutations.
- * childComponent is the child of component that has the class name of childClassDataName
+ * childComponent is the child of component that has the class containerId of childDataId
  * @private
  */
 const _testRenderComponentTask = v((
   {
     apolloClient,
-    componentName,
-    childClassLoadingName,
-    childClassDataName,
+    containerId,
+    componentId,
+    childLoadingId,
+    childDataId,
     waitLength,
     theme,
     authenticate
@@ -981,7 +992,7 @@ const _testRenderComponentTask = v((
     };
 
     const samplePropsContainer = composeWithComponentMaybeOrTaskChain([
-      ({render}) => {
+      ({tokenAuth, render}) => {
         // Create the React element from container, passing the props and component via a render function.
         // The react-adopt container expects to be given a render function so it can pass the results of the
         // Apollo request components
@@ -1002,11 +1013,11 @@ const _testRenderComponentTask = v((
       },
       // Login in to the server so the apolloClient is authenticated
       mapTaskOrComponentToNamedResponseAndInputs({}, 'tokenAuth',
-        (props) => {
+        ({noAuthContainerInstance, ...props}) => {
           return tokenAuthMutationContainer(
-            {},
+            {mutationOnMount: true},
             {outputParams: tokenAuthOutputParams},
-            props
+            noAuthContainerInstance
           );
         }
       ),
@@ -1025,6 +1036,7 @@ const _testRenderComponentTask = v((
       )
     ])({render});
 
+    // Mount the sample props container, whose render method renders the component
     const wrapper = mountWithApolloClient(
       {apolloClient},
       e(ChakraProvider, {theme},
@@ -1032,7 +1044,7 @@ const _testRenderComponentTask = v((
       )
     );
 
-    return composeWithComponentMaybeOrTaskChain([
+    return composeWithChain([
       ({rendered: {wrapper, component, childComponent}}) => {
         return of({
           wrapper,
@@ -1041,69 +1053,59 @@ const _testRenderComponentTask = v((
         });
       },
       mapToNamedResponseAndInputs('rendered',
-        ({wrapper, childClassLoadingName, childClassDataName, loading}) => {
-          const foundComponent = wrapper.find(componentName);
+        ({wrapper, childLoadingId, childDataId, loading}) => {
+          const foundComponent = wrapper.find(componentId);
           // If either loading or data component is found, we've succeeded
-          const loadedComponent = foundComponent.find(classifyChildClassName(childClassLoadingName));
-          const dataComponent = foundComponent.find(classifyChildClassName(childClassDataName));
+          const loadedComponent = foundComponent.find(classifyChildClassName(childLoadingId));
+          const dataComponent = foundComponent.find(classifyChildClassName(childDataId));
           // Make sure we have at least one match. There can be > 1 if child components inherit the className
           expect(R.length(loadedComponent) || R.length(dataComponent)).toBeGreaterThan(0);
 
           // TODO act doesn't suppress the warning as it should
-          // If we have an Apollo componentInstance, we use enzyme-wait to await the query to run and the the child
+          // If we have an Apollo componentInstance, we use testing-library to await the query to run and the the child
           // componentInstance that is dependent on the query result to render. If we don't have an Apollo componentInstance,
           // this child will be rendered immediately without delay
-          let tsk = null;
-          act(() => {
-            tsk = waitForChildComponentRenderTask({
-              componentName,
-              childClassName: childClassDataName,
-              waitLength
-            }, wrapper);
-          });
           // resolves to {wrapper, component, render: {childComponent}}
-          return tsk;
+          return waitForChildComponentRenderTask({
+            componentId,
+            childId: childDataId,
+            waitLength
+          }, wrapper);
         }
       ),
       mapToNamedResponseAndInputs('loading',
-        ({waitLength, wrapper, childClassLoadingName, childClassDataName, container}) => {
+        ({waitLength, wrapper, childLoadingId, childDataId, container}) => {
           expect(foundContainer.length).toEqual(1);
           // Make sure the componentInstance props are consistent since the last test run
-          let tsk = null;
-          act(() => {
-            tsk = waitForChildComponentRenderTask({
-              componentName,
-              childClassName: childClassLoadingName,
-              // Some components go to data state immediately because there is nothing to load,
-              // so check this before waiting for loading state
-              alreadyChildClassName: childClassDataName,
-              waitLength
-            }, wrapper);
-          });
-          return tsk;
-        }),
+          return waitForChildComponentRenderTask({
+            componentId,
+            childId: childLoadingId,
+            // Some components go to data state immediately because there is nothing to load,
+            // so check this before waiting for loading state
+            alreadyChildId: childDataId,
+            waitLength
+          }, wrapper);
+        }
+      ),
       mapToNamedResponseAndInputs('foundContainer',
-        ({wrapper, container}) => {
-          // Find the top-level componentInstance. This is always rendered in any Apollo status (loading, error, store data)
-          const waitForChild = createWaitForElement(
-            container,
-            100000
-            //waitLength
-          );
-          return promiseToTask(waitForChild(wrapper));
-        })
-    ])({wrapper, container});
+        ({wrapper, container, containerId}) => {
+          return fromPromised(() => wrapper.findByTestId(containerId, {
+            timeout: 100000
+          }))();
+        }
+      )
+    ])({wrapper, container,containerId});
   },
   [
     ['config', PropTypes.shape({
       authenticate: PropTypes.bool,
-      componentName: PropTypes.string.isRequired,
-      childClassLoadingName: PropTypes.string.isRequired,
-      childClassDataName: PropTypes.string.isRequired,
+      componentId: PropTypes.string.isRequired,
+      childLoadingId: PropTypes.string.isRequired,
+      childDataId: PropTypes.string.isRequired,
       waitLength: PropTypes.number
     })],
-    ['container', PropTypes.func.isRequired],
-    ['component', PropTypes.func.isRequired],
+    ['container', PropTypes.oneOfType([PropTypes.func, PropTypes.object]).isRequired],
+    ['component', PropTypes.oneOfType([PropTypes.func, PropTypes.object]).isRequired],
     ['resolvedPropsContainer', PropTypes.func.isRequired]
   ], '_testRenderComponentContainer'
 );
@@ -1111,9 +1113,9 @@ const _testRenderComponentTask = v((
 const _testRenderComponentMutationsContainer = (
   {
     mutationComponents,
-    componentName,
-    childClassDataName,
-    childClassErrorName,
+    componentId,
+    childDataId,
+    childErrorId,
     waitLength
   }, wrapper, component, render) => {
   // Store the state of the component's prop before the mutation
@@ -1158,7 +1160,7 @@ const _testRenderComponentMutationsContainer = (
                     {
                       render: getRenderPropFunction({render}),
                       response: {
-                        foundComponent: wrapper.find(componentName)
+                        foundComponent: wrapper.find(componentId)
                       }
                     }
                   );
@@ -1169,8 +1171,8 @@ const _testRenderComponentMutationsContainer = (
               mapTaskOrComponentToNamedResponseAndInputs({}, 'childRendered',
                 ({}) => {
                   return waitForChildComponentRenderTask({
-                      componentName,
-                      childClassName: childClassErrorName || childClassDataName,
+                      componentId,
+                      childId: childErrorId || childDataId,
                       waitLength
                     },
                     wrapper);
@@ -1197,7 +1199,7 @@ const _testRenderComponentMutationsContainer = (
                         return getRenderPropFunction({render})(props);
                       },
                       response: {
-                        foundComponent: wrapper.find(componentName)
+                        foundComponent: wrapper.find(componentId)
                       }
                     }
                   );
@@ -1259,10 +1261,10 @@ const _testRenderError = (
     errorMaker,
     apolloConfigContainer,
     resolvedPropsContainer,
-    componentName,
-    childClassLoadingName,
-    childClassDataName,
-    childClassErrorName,
+    componentId,
+    childLoadingId,
+    childDataId,
+    childErrorId,
     mutationComponents,
     updatedPaths,
     waitLength,
@@ -1280,26 +1282,26 @@ const _testRenderError = (
       // This will update the component with the mutated data.
       // We don't actually change the values explicitly when we mutate here, so we assert it worked
       // by checking the object's update timestamp at the end of the test
-      ({mutationComponents, wrapper, component, componentName, childClassDataName, childClassErrorName, props}) => {
+      ({mutationComponents, wrapper, component, componentId, childDataId, childErrorId, props}) => {
         return _testRenderComponentMutationsContainer({
           mutationComponents,
-          componentName,
-          childClassDataName,
-          childClassErrorName,
+          componentId,
+          childDataId,
+          childErrorId,
           waitLength
         }, wrapper, component);
       }
     ),
     // Render component, calling queries
     mapToMergedResponseAndInputs(
-      ({apolloClient, componentName, childClassLoadingName, childClassErrorName, props}) => {
+      ({apolloClient, componentId, childLoadingId, childErrorId, props}) => {
         return _testRenderComponentContainer(
           {
             apolloClient,
-            componentName,
-            childClassLoadingName,
-            childClassDataName,
-            childClassErrorName,
+            componentId,
+            childLoadingId,
+            childDataId,
+            childErrorId,
             waitLength,
             theme
           },
@@ -1326,10 +1328,10 @@ const _testRenderError = (
   ])({
     apolloConfigContainer,
     resolvedPropsContainer,
-    componentName,
-    childClassLoadingName,
-    childClassDataName,
-    childClassErrorName,
+    componentId,
+    childLoadingId,
+    childDataId,
+    childErrorId,
     mutationComponents
   }).run().listen(
     defaultRunConfig({

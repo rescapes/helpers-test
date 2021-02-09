@@ -9,22 +9,17 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import testUtils from 'react-dom/test-utils';
 import {inspect} from 'util';
-import {createWaitForElement} from 'enzyme-wait';
+import TLR from '@testing-library/react';
 import PropTypes from 'prop-types';
-import enzyme from 'enzyme';
 import {promiseToTask, reqPathThrowing, reqStrPathThrowing} from '@rescapes/ramda';
 import * as apolloTestUtils from 'apollo-test-utils';
 import * as AC from '@apollo/client';
-import { SchemaLink } from '@apollo/client/link/schema';
-import { onError } from "@apollo/client/link/error";
+import {SchemaLink} from '@apollo/client/link/schema';
+import {onError} from "@apollo/client/link/error";
 import {e, getClass} from '@rescapes/helpers-component';
 import T from 'folktale/concurrency/task';
 import {composeWithComponentMaybeOrTaskChain, nameComponent} from '@rescapes/apollo';
-
-const {InMemoryCache, ApolloClient} = AC
-const {of, rejected} = T;
 import Result from 'folktale/result';
 import {v} from '@rescapes/validate';
 import * as R from 'ramda';
@@ -34,13 +29,10 @@ import {getRenderPropFunction} from '@rescapes/apollo/src/helpers/componentHelpe
 import {containerForApolloType} from '@rescapes/apollo/src/helpers/containerHelpers';
 
 const {ApolloProvider: ApolloHookProvider} = apolloReactHooks;
+const {render, waitFor} = TLR
+const {InMemoryCache, ApolloClient} = AC;
+const {of, rejected} = T;
 
-const {act} = testUtils;
-
-const {mount, shallow} = enzyme;
-
-
-const middlewares = [];
 // Importing this way because rollup can't find it
 const mockNetworkInterfaceWithSchema = apolloTestUtils.mockNetworkInterfaceWithSchema;
 
@@ -104,21 +96,17 @@ export const mockApolloClientWithSamples = (state, resolvedSchema) => {
  * @return {*}
  */
 export const mountWithApolloClient = v((apolloConfig, componentElement) => {
-  let c;
-  act(() => {
-    c = mount(
+  return render(
+    e(
+      ApolloProvider,
+      {client: reqStrPathThrowing('apolloClient', apolloConfig)},
       e(
-        ApolloProvider,
+        ApolloHookProvider,
         {client: reqStrPathThrowing('apolloClient', apolloConfig)},
-        e(
-          ApolloHookProvider,
-          {client: reqStrPathThrowing('apolloClient', apolloConfig)},
-          componentElement
-        )
+        componentElement
       )
-    );
-  });
-  return c;
+    )
+  );
 }, [
   ['apolloConfig', PropTypes.shape({
     apolloClient: PropTypes.shape().isRequired
@@ -127,29 +115,30 @@ export const mountWithApolloClient = v((apolloConfig, componentElement) => {
 ], 'mountWithApolloClient');
 
 /**
- * Wrap a component factory with the given props in a shallow enzyme wrapper
+ * Wrap a component factory with the given props in a shallow wrapper
+ * TODO no longer relevant
  * @param componentFactory
  * @param props
  */
 export const shallowWrap = (componentFactory, props) => {
-  return shallow(
+  return render(
     componentFactory(props)
   );
 };
 
-export const classifyChildClassName = childClassName => {
+export const classifyChildClassName = childId => {
   return R.cond([
     [
       // If it starts with a capital, assume it's a component name and leave it alone
-      childClassName => R.test(/^[A-Z]/, childClassName),
+      childId => R.test(/^[A-Z]/, childId),
       R.identity
     ],
     [
       // This matches a component type followed by classes, such as button.className.className2
       //
-      childClassName => R.includes('.', childClassName),
-      childClassName => {
-        const parts = R.split('.', childClassName);
+      childId => R.includes('.', childId),
+      childId => {
+        const parts = R.split('.', childId);
         return R.join('.',
           R.concat(
             [R.head(parts)],
@@ -160,9 +149,9 @@ export const classifyChildClassName = childClassName => {
     // Just add . to make it a class
     [
       R.T,
-      childClassName => R.concat('.', getClass(childClassName))
+      childId => R.concat('.', getClass(childId))
     ]
-  ])(childClassName);
+  ])(childId);
 };
 
 /**
@@ -170,56 +159,44 @@ export const classifyChildClassName = childClassName => {
  * 3, since Enzyme 3 doesn't keep it's wrapper synced with all DOM changes, and Apollo doesn't expose
  * any event that announces when the network status changes to 7 (loaded)
  * @param {Object} config
- * @param {String|Object} config.componentName The component name or component of the wrapper whose render method will render the child component
- * @param {String} config.childClassName The child class name to search for periodically
- * @param {String} [config.alreadyChildClassName] A child class to check for. If it already exists,
- * skip waiting for childclassName. This is handy to look for the ready state when a component is never actually in the loading state
+ * @param {String|Object} config.componentId The component name or component of the wrapper whose render method will render the child component
+ * @param {String} config.childId The child class name to search for periodically
+ * @param {String} [config.alreadyChildId] A child class to check for. If it already exists,
+ * skip waiting for childId. This is handy to look for the ready state when a component is never actually in the loading state
  * @param {Number} [config.waitLength] Default 10000 ms. Set longer for longer queries
- * @param {Object} wrapper The mounted enzyme Component
- * @returns {Task} A task that returns the component matching childClassName or if an error
+ * @param {Object} wrapper The mounted Component
+ * @returns {Task} A task that returns the component matching childId or if an error
  * occurs return an Error with the message and dump of the props
  */
 export const waitForChildComponentRenderTask = v(({
-                                                    componentName,
-                                                    childClassName,
-                                                    alreadyChildClassName,
+                                                    componentId,
+                                                    childId,
+                                                    alreadyChildId,
                                                     waitLength = 10000
                                                   }, wrapper) => {
-    const component = wrapper.find(componentName);
-    const childClassNameStr = classifyChildClassName(childClassName);
+    const component = wrapper.findByTestId(componentId);
+    const childIdStr = classifyChildClassName(childId);
 
-    // If alreadyChildClassName already exists, return it.
+    // If alreadyChildId already exists, return it.
     // This happens when the component never was in the loading state but went straight to the ready/data state
-    if (alreadyChildClassName && R.length(component.find(classifyChildClassName(alreadyChildClassName)))) {
-      return of({wrapper, component, childComponent: component.find(childClassNameStr)});
+    if (alreadyChildId && R.length(component.findByTestId(classifyChildClassName(alreadyChildId)))) {
+      return of({wrapper, component, childComponent: component.findByTestId(childIdStr)});
     }
 
     // Wait for the child component to render, which indicates that data loading completed
-    const waitForChild = createWaitForElement(
-      childClassNameStr,
+    const waitForChild = waitFor(
+      {container: childIdStr},
       waitLength
     );
-    const find = component.find;
-    // Override find to call update each time we poll for an update
-    // Enzyme 3 doesn't stay synced with React DOM changes without update
-    component.find = (...args) => {
-      try {
-        wrapper.update();
-      } catch (e) {
-        console.warn("Couldn't update wrapper. Assuming that render failed.");
-        // If update failed because of a component error, just quit
-      }
-      // Find the component with the updated wrapper, otherwise we get the old component
-      return find.apply(wrapper.find(componentName), args);
-    };
+
     return promiseToTask(waitForChild(component)).map(
       component => {
         // We need to get the updated reference to the component that has all requests finished
-        const updatedComponent = wrapper.find(componentName);
-        return {wrapper, component: updatedComponent, childComponent: updatedComponent.find(childClassNameStr)};
+        const updatedComponent = wrapper.findByTestId(componentId);
+        return {wrapper, component: updatedComponent, childComponent: updatedComponent.findByTestId(childIdStr)};
       }).orElse(
       error => {
-        const comp = wrapper.find(componentName);
+        const comp = wrapper.findByTestId(componentId);
         if (comp.length) {
           const errorMessage = `${error.message}
         \n${error.stack}
@@ -235,8 +212,8 @@ export const waitForChildComponentRenderTask = v(({
   },
   [
     ['config', PropTypes.shape({
-      componentName: PropTypes.string.isRequired,
-      childClassName: PropTypes.string.isRequired,
+      componentId: PropTypes.string.isRequired,
+      childId: PropTypes.string.isRequired,
       waitLength: PropTypes.number
     }).isRequired],
     ['wrapper', PropTypes.shape().isRequired]

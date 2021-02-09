@@ -96,7 +96,8 @@ export const chainedParentPropsForSampleContainer = (apolloConfig, {runParentCon
                   }
                 }
               );
-            }),
+            }
+          ),
           mapTaskOrComponentToNamedResponseAndInputs(apolloConfig, 'sampleResponses',
             ({userResponse, render}) => {
               const user = reqStrPathThrowing('data.currentUser', userResponse);
