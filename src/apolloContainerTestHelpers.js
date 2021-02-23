@@ -190,10 +190,10 @@ export const defaultUpdatePathsForMutationContainers = (apolloContainers, overri
  * @param {String} [deauthorizeMutationKey] The name of the mutation key in the result of testContext.apolloContainersLogout
  * functions for deauthorizing when we run testRenderAuthentication. Props from configToChainedPropsForSampleContainer
  * are passed although typically no props are needed
- * @param {String} testContext.loginComponentName For the authentication test, a component that is expected on the login component
+ * @param {String} testContext.loginComponentId For the authentication test, a component that is expected on the login component
  * This is sought and the mutation with key authorizeMutationKey is expected in its props
  * This can be any combination of class and component name that Enzyme can find.
- * @param {String} testContext.logoutComponentName For the authentication test, a component that is expected on the logout component
+ * @param {String} testContext.logoutComponentId For the authentication test, a component that is expected on the logout component
  * This is sought and the mutation with key deauthorizeMutationKey is expected in its props
  * This can be any combination of class and component name that Enzyme can find.
  * @param {Object} HOC Apollo container created by calling react-adopt or similar
@@ -232,8 +232,8 @@ export const apolloContainerTests = v((context, container, component, configToCh
         updatedPaths,
         authorizeMutationKey,
         deauthorizeMutationKey,
-        loginComponentName,
-        logoutComponentName
+        loginComponentId,
+        logoutComponentId
       }
     } = context;
 
@@ -399,9 +399,10 @@ export const apolloContainerTests = v((context, container, component, configToCh
         },
         // Deathorize
         ({wrapper}) => {
+          const logoutIdSearch = R.test(/^[A-Z]\S+/, logoutComponentId) ? logoutComponentId : `[data-testid='${logoutComponentId}']`;
           const {mutation} = reqStrPathThrowing(
             deauthorizeMutationKey,
-            wrapper.find(`[data-testid='${logoutComponentName}']`).props()
+            wrapper.find(logoutIdSearch).first().props()
           );
           return fromPromised(() => {
             return mutation();
@@ -447,9 +448,10 @@ export const apolloContainerTests = v((context, container, component, configToCh
         },
         // Authorize
         ({wrapper, props}) => {
+          const loginIdSearch = R.test(/^[A-Z]\S+/, loginComponentId) ? loginComponentId : `[data-testid='${loginComponentId}']`;
           const {mutation} = reqStrPathThrowing(
             authorizeMutationKey,
-            wrapper.find(`[data-testid='${loginComponentName}']`).props()
+            wrapper.find(loginIdSearch).first().props()
           );
           // Pass the username and password from the props
           return fromPromised(() => {
@@ -851,9 +853,9 @@ const _testRenderTask = (
         return skipMutationTests ?
           // No tests
           containerForApolloType(
-            {},
+            {apolloClient},
             {
-              render: getRenderPropFunction({render}),
+              render: getRenderPropFunction({}),
               response: null
             }
           ) :
@@ -1094,7 +1096,7 @@ const _testRenderComponentTask = v((
           return waitForChildComponentRenderTask({
             componentId: 'ChakraProvider',
             childId: containerId,
-            waitLength: waitLength * 10
+            waitLength: waitLength
           }, wrapper);
         }
       )

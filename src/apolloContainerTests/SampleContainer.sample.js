@@ -107,9 +107,7 @@ export const chainedParentPropsForSampleContainer = (apolloConfig, {runParentCon
                   apolloConfig,
                   {
                     render: getRenderPropFunction({render}),
-                    response: {
-                      sampleResponses: {userStates: [], regions: [], projects: [], locations: []}
-                    }
+                    response: {userStates: [], regions: [], projects: [], locations: []}
                   }
                 ) :
                 mutateSampleUserStateWithProjectsAndRegionsContainer(

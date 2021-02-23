@@ -29,6 +29,7 @@ import apolloReactHooks from '@apollo/react-hooks';
 import {getRenderPropFunction} from '@rescapes/apollo/src/helpers/componentHelpersMonadic';
 import {containerForApolloType} from '@rescapes/apollo/src/helpers/containerHelpers';
 
+const {of} = T;
 const {ApolloProvider: ApolloHookProvider} = apolloReactHooks;
 
 const {mount, shallow} = enzyme;
@@ -177,10 +178,10 @@ export const waitForChildComponentRenderTask = v(({
                                                     waitLength = 10000
                                                   }, wrapper) => {
 
-    const componentIdSearch =  R.test(/^[A-Z]\S+/, componentId) ? componentId : `[data-testid='${componentId}']`;
-    const alreadyChildIIdSearch =  alreadyChildId &&  R.test(/^[A-Z]\S+/, alreadyChildId) ? alreadyChildId : `[data-testid='${alreadyChildId}']`;
-    const childIIdSearch =  R.test(/^[A-Z]\S+/, childId) ? childId : `[data-testid='${childId}']`;
-    const component = wrapper.find(componentIdSearch)
+    const componentIdSearch = R.test(/^[A-Z]\S+/, componentId) ? componentId : `[data-testid='${componentId}']`;
+    const alreadyChildIIdSearch = alreadyChildId && R.test(/^[A-Z]\S+/, alreadyChildId) ? alreadyChildId : `[data-testid='${alreadyChildId}']`;
+    const childIIdSearch = R.test(/^[A-Z]\S+/, childId) ? childId : `[data-testid='${childId}']`;
+    const component = wrapper.find(componentIdSearch);
 
     // If alreadyChildId already exists, return it.
     // This happens when the component never was in the loading state but went straight to the ready/data state

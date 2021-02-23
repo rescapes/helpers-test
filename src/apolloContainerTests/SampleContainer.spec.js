@@ -28,7 +28,7 @@ const childDataId = c.sampleLogout;
 const childLoadingId = c.sampleLoading;
 // Find this class in the error renderer
 const childErrorId = c.sampleError;
-const childClassNoAuthenticationName = `button.${cLogin.loginButton}`;
+const childClassNoAuthenticationName = cLogin.loginButton;
 // Error maker creates an unknown id that can't be queried
 // Error maker creates an unknown id that can't be queried
 const errorMaker = parentProps => {
@@ -87,8 +87,8 @@ describe('SampleContainer', () => {
         updatedPaths,
         authorizeMutationKey: 'mutateTokenAuth',
         deauthorizeMutationKey: 'mutateDeleteTokenCookie',
-        loginComponentName: 'LoginComponent',
-        logoutComponentName: 'LogoutComponent'
+        loginComponentId: 'LoginComponent',
+        logoutComponentId: 'LogoutComponent'
       }
     },
     container,

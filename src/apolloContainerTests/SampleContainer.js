@@ -95,6 +95,8 @@ export const apolloContainersSample = (apolloConfig = {}) => {
         return makeRegionMutationContainer(
           R.merge(apolloConfig, {
             options: {
+              // We can't mutate without a props.region
+              skip: R.propOr(null, 'region', props),
               variables: (props) => {
                 return R.propOr({}, 'region', props);
               },
@@ -109,28 +111,33 @@ export const apolloContainersSample = (apolloConfig = {}) => {
 
       // Mutate the user region
       mutateUserRegion: props => {
-        const propsWithUserRegion = R.merge(props, {
-            userRegion: R.compose(
-              ({userRegions, region}) => {
-                return R.find(
-                  userRegion => {
-                    return R.eqProps('id', region, reqStrPathThrowing('region', userRegion)), userRegions;
-                  },
-                  userRegions
-                );
+        const userRegion = R.compose(
+          ({userRegions, region}) => {
+            if (R.length(userRegions) || !region) {
+              return null;
+            }
+            return R.find(
+              userRegion => {
+                return R.eqProps('id', region, reqStrPathThrowing('region', userRegion)), userRegions;
               },
-              toNamedResponseAndInputs('region',
-                props => reqStrPathThrowing('region', props)
-              ),
-              toNamedResponseAndInputs('userRegions',
-                props => strPathOr([], 'userState.data.userRegions', props)
-              )
-            )(props)
-          }
-        );
+              userRegions
+            );
+          },
+          toNamedResponseAndInputs('region',
+            props => strPathOr(null, 'region', props)
+          ),
+          toNamedResponseAndInputs('userRegions',
+            props => strPathOr([], 'userState.data.userRegions', props)
+          )
+        )(props);
+
+        const propsWithUserRegion = R.merge(props, {userRegion});
         return userStateRegionMutationContainer(
           R.merge(apolloConfig, {
             options: {
+              // We can't mutate if there is no userRegion. This happens when there is no authenticated user
+              // or no userRegions in the props that matches props.region
+              skip: !userRegion,
               variables: (props) => {
                 return R.pick(['id'], reqStrPathThrowing('userScope.region', props));
               },
