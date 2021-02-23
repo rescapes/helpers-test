@@ -56,7 +56,7 @@ export const chainedParentPropsForSampleContainer = (apolloConfig, {runParentCon
           // Mutate the UserState to get cache-only data stored
           nameComponent('sampleDataComponent',
             ({
-               sampleResponses: {userState, regions, projects, locations},
+               sampleResponses: {userStates, regions, projects, locations},
                render
              }) => {
               return containerForApolloType(
@@ -78,7 +78,7 @@ export const chainedParentPropsForSampleContainer = (apolloConfig, {runParentCon
                     password: 'testpass',
 
                     regionFilter: {idIn: R.map(R.prop('id'), regions)},
-                    userState,
+                    userState: R.head(userStates),
                     region: R.head(regions),
                     project: R.head(projects),
                     // scope limits queryUserRegions to these params
@@ -110,7 +110,8 @@ export const chainedParentPropsForSampleContainer = (apolloConfig, {runParentCon
                   render
                 }
               );
-            }),
+            }
+          ),
           mapTaskOrComponentToNamedResponseAndInputs(apolloConfig, 'userResponse',
             ({render}) => {
               return currentUserQueryContainer(apolloConfig, userOutputParams, {render});

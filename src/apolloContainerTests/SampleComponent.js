@@ -148,7 +148,8 @@ Sample.choicepoint = p => {
       onLoading: renderLoadingDefault(c.sampleLoading),
       onData: Sample.renderData,
       // If not authenticated, simply render
-      onUnauthenticated: Sample.renderData
+      onUnauthenticated: Sample.renderData,
+      componentName: 'Sample'
     },
     {
       // Bypass other checks and call onData unless authenticated

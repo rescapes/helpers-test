@@ -16,7 +16,7 @@ import {
   containerForApolloType,
   deleteTokenCookieMutationRequestContainer,
   getRenderPropFunction,
-  isAuthenticatedLocal, queryLocalTokenAuthContainer, tokenAuthMutationContainer
+  isAuthenticatedLocal, nameComponent, queryLocalTokenAuthContainer, tokenAuthMutationContainer
 } from '@rescapes/apollo';
 import {e, getClassAndStyle} from '@rescapes/helpers-component';
 
@@ -148,6 +148,6 @@ export const apolloContainersSample = (apolloConfig = {}) => {
 // This produces a component class that expects a props object keyed by the keys in apolloContainersLogout
 // The value at each key is the result of the corresponding query container or the mutate function of the corresponding
 // mutation container
-const AdoptedApolloContainer = e('div', getClassAndStyle('sampleContainer'), adopt(apolloContainersSample()));
+const AdoptedApolloContainer = nameComponent('SampleContainer', adopt(apolloContainersSample()));
 // Wrap AdoptedApolloContainer in
 export default AdoptedApolloContainer;

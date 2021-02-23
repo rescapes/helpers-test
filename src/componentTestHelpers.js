@@ -10,8 +10,9 @@
  */
 
 import {inspect} from 'util';
-import TLR from '@testing-library/react';
+import {createWaitForElement} from 'enzyme-wait';
 import PropTypes from 'prop-types';
+import enzyme from 'enzyme';
 import {promiseToTask, reqPathThrowing, reqStrPathThrowing} from '@rescapes/ramda';
 import * as apolloTestUtils from 'apollo-test-utils';
 import * as AC from '@apollo/client';
@@ -29,9 +30,9 @@ import {getRenderPropFunction} from '@rescapes/apollo/src/helpers/componentHelpe
 import {containerForApolloType} from '@rescapes/apollo/src/helpers/containerHelpers';
 
 const {ApolloProvider: ApolloHookProvider} = apolloReactHooks;
-const {render, waitFor} = TLR
-const {InMemoryCache, ApolloClient} = AC;
-const {of, rejected} = T;
+
+const {mount, shallow} = enzyme;
+
 
 // Importing this way because rollup can't find it
 const mockNetworkInterfaceWithSchema = apolloTestUtils.mockNetworkInterfaceWithSchema;
@@ -96,7 +97,7 @@ export const mockApolloClientWithSamples = (state, resolvedSchema) => {
  * @return {*}
  */
 export const mountWithApolloClient = v((apolloConfig, componentElement) => {
-  return render(
+  return mount(
     e(
       ApolloProvider,
       {client: reqStrPathThrowing('apolloClient', apolloConfig)},
@@ -115,13 +116,12 @@ export const mountWithApolloClient = v((apolloConfig, componentElement) => {
 ], 'mountWithApolloClient');
 
 /**
- * Wrap a component factory with the given props in a shallow wrapper
- * TODO no longer relevant
+ * Wrap a component factory with the given props in a shallow enzyme wrapper
  * @param componentFactory
  * @param props
  */
 export const shallowWrap = (componentFactory, props) => {
-  return render(
+  return shallow(
     componentFactory(props)
   );
 };
@@ -159,12 +159,14 @@ export const classifyChildClassName = childId => {
  * 3, since Enzyme 3 doesn't keep it's wrapper synced with all DOM changes, and Apollo doesn't expose
  * any event that announces when the network status changes to 7 (loaded)
  * @param {Object} config
- * @param {String|Object} config.componentId The component name or component of the wrapper whose render method will render the child component
- * @param {String} config.childId The child class name to search for periodically
+ * @param {String|Object|Function} config.componentId or The component name or component or anything that can be found
+ * of the wrapper whose render method will render the child component. This is search for by
+ * wrapper.find(componentId) and failing that wrapper.find(`[data-testid'=${componentId}`])
+ * @param {String} config.childId The child class id  to search for periodically
  * @param {String} [config.alreadyChildId] A child class to check for. If it already exists,
- * skip waiting for childId. This is handy to look for the ready state when a component is never actually in the loading state
+ * skip waiting for childclassName. This is handy to look for the ready state when a component is never actually in the loading state
  * @param {Number} [config.waitLength] Default 10000 ms. Set longer for longer queries
- * @param {Object} wrapper The mounted Component
+ * @param {Object} wrapper The mounted enzyme Component
  * @returns {Task} A task that returns the component matching childId or if an error
  * occurs return an Error with the message and dump of the props
  */
@@ -174,29 +176,44 @@ export const waitForChildComponentRenderTask = v(({
                                                     alreadyChildId,
                                                     waitLength = 10000
                                                   }, wrapper) => {
-    const component = wrapper.findByTestId(componentId);
-    const childIdStr = classifyChildClassName(childId);
+
+    const componentIdSearch =  R.test(/^[A-Z]\S+/, componentId) ? componentId : `[data-testid='${componentId}']`;
+    const alreadyChildIIdSearch =  alreadyChildId &&  R.test(/^[A-Z]\S+/, alreadyChildId) ? alreadyChildId : `[data-testid='${alreadyChildId}']`;
+    const childIIdSearch =  R.test(/^[A-Z]\S+/, childId) ? childId : `[data-testid='${childId}']`;
+    const component = wrapper.find(componentIdSearch)
 
     // If alreadyChildId already exists, return it.
     // This happens when the component never was in the loading state but went straight to the ready/data state
-    if (alreadyChildId && R.length(component.findByTestId(classifyChildClassName(alreadyChildId)))) {
-      return of({wrapper, component, childComponent: component.findByTestId(childIdStr)});
+    if (alreadyChildId && R.length(component.find(alreadyChildIIdSearch))) {
+      return of({wrapper, component, childComponent: component.find(childIIdSearch)});
     }
 
     // Wait for the child component to render, which indicates that data loading completed
-    const waitForChild = waitFor(
-      {container: childIdStr},
+    const waitForChild = createWaitForElement(
+      childIIdSearch,
       waitLength
     );
-
+    const find = component.find;
+    // Override find to call update each time we poll for an update
+    // Enzyme 3 doesn't stay synced with React DOM changes without update
+    component.find = (...args) => {
+      try {
+        wrapper.update();
+      } catch (e) {
+        console.warn("Couldn't update wrapper. Assuming that render failed.");
+        // If update failed because of a component error, just quit
+      }
+      // Find the component with the updated wrapper, otherwise we get the old component
+      return find.apply(wrapper.find(componentIdSearch), args);
+    };
     return promiseToTask(waitForChild(component)).map(
       component => {
         // We need to get the updated reference to the component that has all requests finished
-        const updatedComponent = wrapper.findByTestId(componentId);
-        return {wrapper, component: updatedComponent, childComponent: updatedComponent.findByTestId(childIdStr)};
+        const updatedComponent = wrapper.find(componentIdSearch);
+        return {wrapper, component: updatedComponent, childComponent: updatedComponent.find(childIIdSearch)};
       }).orElse(
       error => {
-        const comp = wrapper.findByTestId(componentId);
+        const comp = wrapper.find(componentIdSearch);
         if (comp.length) {
           const errorMessage = `${error.message}
         \n${error.stack}
@@ -204,9 +221,9 @@ export const waitForChildComponentRenderTask = v(({
         \n${inspect(comp.props().data, {depth: 3})}
       `;
           console.log(errorMessage);
-          return rejected(new Error(errorMessage));
+          return new Error(errorMessage);
         } else {
-          throw rejected(error);
+          throw error;
         }
       });
   },

@@ -18,11 +18,11 @@ const container = SampleContainer;
 // Test container with this render component
 const component = Sample;
 
-const containerId = 'sampleContainer';
+const containerId = 'SampleContainer';
 // Find this React component
-const componentId = cLogout.logout;
-// Find this class in the data renderer.
-const childDataId = cLogout.logoutButton;
+const componentId = c.sample;
+// Find the id of this component that is rendered by sample when data is ready
+const childDataId = c.sampleLogout;
 // Find this class in the loading renderer
 const childLoadingId = c.sampleLoading;
 // Find this class in the error renderer
