@@ -12,7 +12,7 @@
 import * as R from 'ramda';
 import T from 'folktale/concurrency/task';
 import {parentPropsForContainer} from '../componentTestHelpers.js';
-import {reqStrPathThrowing} from '@rescapes/ramda';
+import {reqStrPathThrowing, strPathOr} from '@rescapes/ramda';
 import {
   apolloQueryResponsesContainer,
   composeWithComponentMaybeOrTaskChain,
@@ -100,16 +100,26 @@ export const chainedParentPropsForSampleContainer = (apolloConfig, {runParentCon
           ),
           mapTaskOrComponentToNamedResponseAndInputs(apolloConfig, 'sampleResponses',
             ({userResponse, render}) => {
-              const user = reqStrPathThrowing('data.currentUser', userResponse);
+              const user = strPathOr(null, 'data.currentUser', userResponse);
               // Resolves to {userStateResponse, regions, projects, locations}
-              return mutateSampleUserStateWithProjectsAndRegionsContainer(
-                apolloConfig, {
-                  user: R.pick(['id'], user),
-                  regionKeys: ['earth', 'zorgon'],
-                  projectKeys: ['shrangrila', 'pangea'],
-                  render
-                }
-              );
+              return !user ?
+                containerForApolloType(
+                  apolloConfig,
+                  {
+                    render: getRenderPropFunction({render}),
+                    response: {
+                      sampleResponses: {userStates: [], regions: [], projects: [], locations: []}
+                    }
+                  }
+                ) :
+                mutateSampleUserStateWithProjectsAndRegionsContainer(
+                  apolloConfig, {
+                    user: R.pick(['id'], user),
+                    regionKeys: ['earth', 'zorgon'],
+                    projectKeys: ['shrangrila', 'pangea'],
+                    render
+                  }
+                );
             }
           ),
           mapTaskOrComponentToNamedResponseAndInputs(apolloConfig, 'userResponse',

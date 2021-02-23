@@ -59,7 +59,7 @@
     "@chakra-ui/react": "1.3.3",
     "@rescapes/apollo": ">=0.1.392",
     "@rescapes/helpers": ">=1.1.109",
-    "@rescapes/helpers-component": ">=1.5.141",
+    "@rescapes/helpers-component": ">=1.5.142",
     "@rescapes/log": ">=0.1.11",
     "@rescapes/place": ">=0.0.382",
     "@rescapes/ramda": ">=1.6.170",

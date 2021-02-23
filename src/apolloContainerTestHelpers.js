@@ -344,7 +344,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
           testMutationChanges('component', updatedPaths, prePostMutationComparisons);
           return rest;
         },
-        _testRenderContainer(
+        _testRenderTask(
           {
             apolloConfigContainer: apolloConfigOptionalFunctionContainer('testRender'),
             resolvedPropsContainer,
@@ -374,27 +374,29 @@ export const apolloContainerTests = v((context, container, component, configToCh
       _testRenderExpectations({testingAuthentication: true}, mutationComponents, updatedPaths);
       composeWithChain([
         // Logout and render
-        () => _testRenderContainer(
-          {
-            apolloConfigContainer: apolloConfigOptionalFunctionContainer('testRenderAuthenticationNoAuth'),
-            resolvedPropsContainer,
-            containerId,
-            componentId,
-            childDataId: childClassNoAuthName,
-            // No loading state for no auth
-            childLoadingId: childClassNoAuthName,
-            omitKeysFromSnapshots,
-            mutationComponents,
-            updatedPaths,
-            waitLength,
-            // We can't mutate with an unauthenticated user
-            skipMutationTests: true,
-            theme
-          },
-          container,
-          component,
-          done
-        ),
+        () => {
+          return _testRenderTask(
+            {
+              apolloConfigContainer: apolloConfigOptionalFunctionContainer('testRenderAuthenticationNoAuth'),
+              resolvedPropsContainer,
+              containerId,
+              componentId,
+              childDataId: childClassNoAuthName,
+              // No loading state for no auth
+              childLoadingId: childClassNoAuthName,
+              omitKeysFromSnapshots,
+              mutationComponents,
+              updatedPaths,
+              waitLength,
+              // We can't mutate with an unauthenticated user
+              skipMutationTests: true,
+              theme
+            },
+            container,
+            component,
+            done
+          );
+        },
         // Deathorize
         ({wrapper}) => {
           const {mutation} = reqStrPathThrowing(
@@ -413,7 +415,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
               testMutationChanges('component', updatedPaths, prePostMutationComparisons);
               return rest;
             },
-            _testRenderContainer(
+            _testRenderTask(
               {
                 apolloConfigContainer: apolloConfigOptionalFunctionContainer('testRenderAuthentication'),
                 resolvedPropsContainer,
@@ -456,7 +458,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
         },
         // No auth login
         () => {
-          return _testRenderContainer(
+          return _testRenderTask(
             {
               apolloConfigContainer: apolloConfigOptionalFunctionContainer('testRenderAuthenticationNoAuth'),
               resolvedPropsContainer,
@@ -823,7 +825,7 @@ export const apolloMutationResponsesTask = ({
  * @return {*}
  * @private
  */
-const _testRenderContainer = (
+const _testRenderTask = (
   {
     apolloConfigContainer,
     resolvedPropsContainer,
@@ -839,13 +841,13 @@ const _testRenderContainer = (
     theme
   }, container, component, done) => {
 
-  return composeWithComponentMaybeOrTaskChain([
-    mapTaskOrComponentToNamedResponseAndInputs({}, 'prePostMutationComparisons',
+  return composeWithChain([
+    mapToNamedResponseAndInputs('prePostMutationComparisons',
       // Once we are loaded, we've already run queries, so only call mutation functions here.
       // This will update the component with the mutated data.
       // We don't actually change the values explicitly when we mutate here, so we assert it worked
       // by checking the object's update timestamp at the end of the test
-      ({apolloClient, wrapper, component, childComponent}) => {
+      ({apolloClient, wrapper, container, component}) => {
         return skipMutationTests ?
           // No tests
           containerForApolloType(
@@ -861,7 +863,7 @@ const _testRenderContainer = (
             componentId,
             childDataId,
             waitLength
-          }, wrapper, component, childComponent.first());
+          }, wrapper, component);
       }
     ),
     // Render component, calling queries
@@ -923,8 +925,8 @@ const _testRenderExpectations = ({testingAuthentication = false}, mutationCompon
 
 const _testRenderRunConfig = (updatedPaths, errors, done = null) => {
   return defaultRunConfig({
-    onResolved: ({childComponent, prePostMutationComparisons}) => {
-      expect(childComponent.length).toBeGreaterThan(0); // We found the child, meaning we loaded data and rendered
+    onResolved: ({component, prePostMutationComparisons}) => {
+      expect(component.length).toBeGreaterThan(0); // We found the child, meaning we loaded data and rendered
     }
   }, errors, done);
 };
@@ -963,17 +965,17 @@ const _testRenderComponentTask = v((
   }, container, component, resolvedPropsContainer) => {
 
     const render = props => {
-      const _props = R.omit(['render', 'children'], props)
+      const _props = R.omit(['render', 'children'], props);
       return e(
         container,
         _props,
         // These props contains the results of the Apollo queries and the mutation functions
         // Merge them with the original props, which can return values unrelated to the apollo requests
         responseProps => {
-          return e(
+          return nameComponent('testComponent', e(
             component,
             R.omit(['render', 'children'], R.merge(props, responseProps))
-          );
+          ));
         }
       );
     };
@@ -1042,19 +1044,22 @@ const _testRenderComponentTask = v((
     );
 
     return composeWithChain([
-      ({rendered: {wrapper, component, childComponent}}) => {
+      ({rendered: {wrapper, component: container, childComponent: component}}) => {
         return of({
           wrapper,
-          component,
-          childComponent
+          container,
+          component: component.first()
         });
       },
       mapToNamedResponseAndInputs('rendered',
         ({wrapper, childLoadingId, childDataId, loading}) => {
-          const foundComponent = wrapper.find(componentId);
+          const componentIdSearch = R.test(/^[A-Z]\S+/, componentId) ? componentId : `[data-testid='${componentId}']`;
+          const childLoadingIdSearch = R.test(/^[A-Z]\S+/, childLoadingId) ? childLoadingId : `[data-testid='${childLoadingId}']`;
+          const childDataIdSearch = R.test(/^[A-Z]\S+/, childDataId) ? childDataId : `[data-testid='${childDataId}']`;
+          const foundComponent = wrapper.find(componentIdSearch);
           // If either loading or data component is found, we've succeeded
-          const loadedComponent = foundComponent.find(childLoadingId);
-          const dataComponent = foundComponent.find(childDataId);
+          const loadedComponent = foundComponent.find(childLoadingIdSearch);
+          const dataComponent = foundComponent.find(childDataIdSearch);
           // Make sure we have at least one match. There can be > 1 if child components inherit the className
           expect(R.length(loadedComponent) || R.length(dataComponent)).toBeGreaterThan(0);
 
@@ -1111,18 +1116,19 @@ const _testRenderComponentTask = v((
 
 const _testRenderComponentMutationsTask = (
   {
+    apolloConfig,
     mutationComponents,
-    componentName,
+    componentId,
     childDataId,
     childErrorId,
     waitLength
-  }, wrapper, childComponent, component) => {
+  }, wrapper, childComponent) => {
   // Store the state of the component's prop before the mutation
   // Store the state of the component's prop before the mutation
   const apolloRenderProps = childComponent.first().props();
-  return R.map(
-    mutationResponseObjects => {
-      return R.map(mutationResponseObject => {
+  return composeWithChain([
+    ({mutationResponseObjects}) => {
+      return of(R.map(mutationResponseObject => {
         const {mutationName, mutationResponse, updatedComponent} = mutationResponseObject;
         return {
           mutationName,
@@ -1134,58 +1140,60 @@ const _testRenderComponentMutationsTask = (
           // This isn't really needed. It just shows the return value of the mutation
           mutationResponse
         };
-      }, mutationResponseObjects);
+      }, mutationResponseObjects));
     },
     // Call the mutate function of each mutation container. This will update the state of the mounted components
-    // Then find the components and r
-    mapTaskOrComponentToConcattedNamedResponseAndInputs({}, 'mutationResponseObjects',
-      ...mapObjToValues(
-        (mutationComponent, mutationName) => {
-          // Get the mutate function that was returned in the props sent to the component's render function
-          // This mutate function is what HOC passes via render to the component for each composed
-          // mutation component
-          const {mutation, result, skip} = reqStrPathThrowing(mutationName, apolloRenderProps);
-          return composeWithChain([
-              mapToNamedResponseAndInputs('updatedComponent',
-                ({}) => of(wrapper.find(componentId))
-              ),
-              // Wait for render again--this might be immediate
-              mapToNamedResponseAndInputs('childRendered',
-                ({}) => {
-                  return waitForChildComponentRenderTask({
-                      componentId,
-                      childId: childErrorId || childDataId,
-                      waitLength
-                    },
-                    wrapper);
-                }
-              ),
-              // Call the mutate function
-              mapToNamedResponseAndInputs('mutationResponse',
-                ({mutation, skip}) => {
-                  const task = fromPromised(() => {
-                    // TODO act doesn't suppress the warning as it should
-                    return act(() => {
+    // Then find the components
+    ...mapObjToValues(
+      (mutationComponent, mutationName) => {
+        return mapTaskOrComponentToConcattedNamedResponseAndInputs(apolloConfig, 'mutationResponseObjects',
+          () => {
+            // Get the mutate function that was returned in the props sent to the component's render function
+            // This mutate function is what HOC passes via render to the component for each composed
+            // mutation component
+            const {mutation, result, skip} = reqStrPathThrowing(mutationName, apolloRenderProps);
+            return composeWithChain([
+                mapToNamedResponseAndInputs('updatedComponent',
+                  ({}) => {
+                    const componentIdSearch = R.test(/^[A-Z]\S+/, componentId) ? componentId : `[data-testid='${componentId}']`;
+                    return of(wrapper.find(componentIdSearch).first());
+                  }
+                ),
+                // Wait for render again--this might be immediate
+                mapToNamedResponseAndInputs('childRendered',
+                  ({}) => {
+                    return waitForChildComponentRenderTask({
+                        componentId,
+                        childId: childErrorId || childDataId,
+                        waitLength
+                      },
+                      wrapper);
+                  }
+                ),
+                // Call the mutate function
+                mapToNamedResponseAndInputs('mutationResponse',
+                  ({mutation, skip}) => {
+                    const task = fromPromised(() => {
                       // We don't need to pass mutation variables because they are already set in the request
                       if (skip) {
                         throw Error(`Attempt to run a skipped mutation ${mutationName}, meaning its variables are not ready. This occurs when the component is ready before the mutation component is. Check the component renderChoicepoint settings to make sure the mutation component is awaited`);
                       }
                       return mutation();
+                    })();
+                    return task.orElse(error => {
+                      // If testing error, return the error
+                      return of(error);
                     });
-                  })();
-                  return task.orElse(error => {
-                    // If testing error, return the error
-                    return of(error);
-                  });
-                }
-              )
-            ]
-          )({mutation, skip});
-        },
-        mutationComponents
-      )
+                  }
+                )
+              ]
+            )({mutation, mutationName, skip});
+          }
+        );
+      },
+      mutationComponents
     )
-  )(_testRenderComponentTask);
+  ])({});
 };
 
 /**
@@ -1211,7 +1219,7 @@ const testMutationChanges = (clientOrComponent, updatedPaths, prePostMutationCom
         postMutationApolloRenderProps
       } = prePostMutationComparisons;
       // Make sure the mutation returned something
-      expect(R.head(R.values(R.prop('data', mutationResponse)))).toBeTruthy();
+      expect(R.head(R.values(strPathOr([], 'result.data', mutationResponse)))).toBeTruthy();
       const updatedPathsForMutaton = R.propOr({client: []}, mutationName, updatedPaths)[clientOrComponent];
       if (updatedPathsForMutaton) {
         R.forEach(

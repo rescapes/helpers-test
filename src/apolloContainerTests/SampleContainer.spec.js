@@ -19,8 +19,9 @@ const container = SampleContainer;
 const component = Sample;
 
 const containerId = 'SampleContainer';
-// Find this React component
-const componentId = c.sample;
+// Find this React component (by component class name. You could also assign a display name to a functional component
+// and fine that I think)
+const componentId = 'Sample'
 // Find the id of this component that is rendered by sample when data is ready
 const childDataId = c.sampleLogout;
 // Find this class in the loading renderer
@@ -71,6 +72,7 @@ describe('SampleContainer', () => {
       apolloContext: {
         state: {},
         apolloConfigContainer: testName => {
+          // Don't auth if we are testing authentication. We want to authenticate using mutation
           return R.includes(testName, ['testRenderAuthenticationNoAuth']) ? testNoAuthTask() : testAuthTask();
         },
         // This is called with one argument, null or and apolloConfig to return the containers
