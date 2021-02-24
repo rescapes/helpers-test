@@ -96,7 +96,7 @@ export const apolloContainersSample = (apolloConfig = {}) => {
           R.merge(apolloConfig, {
             options: {
               // We can't mutate without a props.region
-              skip: R.propOr(null, 'region', props),
+              skip: !R.propOr(false, 'region', props),
               variables: (props) => {
                 return R.propOr({}, 'region', props);
               },
@@ -113,7 +113,7 @@ export const apolloContainersSample = (apolloConfig = {}) => {
       mutateUserRegion: props => {
         const userRegion = R.compose(
           ({userRegions, region}) => {
-            if (R.length(userRegions) || !region) {
+            if (!R.length(userRegions) || !region) {
               return null;
             }
             return R.find(

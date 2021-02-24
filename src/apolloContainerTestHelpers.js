@@ -390,14 +390,15 @@ export const apolloContainerTests = v((context, container, component, configToCh
               waitLength,
               // We can't mutate with an unauthenticated user
               skipMutationTests: true,
-              theme
+              theme,
+              authenticate: false
             },
             container,
             component,
             done
           );
         },
-        // Deathorize
+        // Deauthorize
         ({wrapper}) => {
           const logoutIdSearch = R.test(/^[A-Z]\S+/, logoutComponentId) ? logoutComponentId : `[data-testid='${logoutComponentId}']`;
           const {mutation} = reqStrPathThrowing(
@@ -409,7 +410,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
           })();
         },
         // Authorized render
-        () => {
+        (tokenAuthResponse) => {
           return R.map(
             ({prePostMutationComparisons, ...rest}) => {
               // Test our mutation tests while authorized
@@ -447,7 +448,8 @@ export const apolloContainerTests = v((context, container, component, configToCh
             ));
         },
         // Authorize
-        ({wrapper, props}) => {
+        ({wrapper, container}) => {
+          const props = container.props();
           const loginIdSearch = R.test(/^[A-Z]\S+/, loginComponentId) ? loginComponentId : `[data-testid='${loginComponentId}']`;
           const {mutation} = reqStrPathThrowing(
             authorizeMutationKey,
@@ -475,7 +477,8 @@ export const apolloContainerTests = v((context, container, component, configToCh
               waitLength,
               // We can't mutate with an unauthenticated user
               skipMutationTests: true,
-              theme
+              theme,
+              authenticate: false
             },
             container,
             component,
@@ -840,7 +843,8 @@ const _testRenderTask = (
     updatedPaths,
     waitLength,
     skipMutationTests = false,
-    theme
+    theme,
+    authenticate = true
   }, container, component, done) => {
 
   return composeWithChain([
@@ -881,7 +885,7 @@ const _testRenderTask = (
             childErrorId,
             waitLength,
             theme,
-            authenticate: true
+            authenticate
           },
           container,
           component,
@@ -1015,7 +1019,6 @@ const _testRenderComponentTask = v((
         }),
       mapTaskOrComponentToNamedResponseAndInputs({}, 'tokenAuthResponse',
         props => {
-
           return tokenAuthMutationContainer(
             {},
             {outputParams: tokenAuthOutputParams},
@@ -1092,7 +1095,7 @@ const _testRenderComponentTask = v((
         }
       ),
       mapToNamedResponseAndInputs('foundContainer',
-        ({wrapper, container, containerId}) => {
+        ({wrapper, containerId}) => {
           return waitForChildComponentRenderTask({
             componentId: 'ChakraProvider',
             childId: containerId,
