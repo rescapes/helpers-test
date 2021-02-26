@@ -1339,7 +1339,7 @@ const _testRenderError = (
     defaultRunConfig({
       onResolved: ({component, prePostMutationComparisons}) => {
         // Just make sure the error child component exists. If there are no mutations, just check the component exists
-        expect(strPathOr(component, '0.updatedComponent', prePostMutationComparisons)).toBeGreaterThan(0)
+        expect(strPathOr(component, '0.updatedComponent', prePostMutationComparisons)).toBeTruthy()
       }
     }, errors, done)
   );
