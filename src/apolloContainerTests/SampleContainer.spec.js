@@ -96,7 +96,7 @@ describe('SampleContainer', () => {
     configToChainedPropsForSampleContainer
   );
   test('testComposeRequests', testComposeRequests, 10000);
-  test('testQueries', testQueries, 10000);
+  test('testQueries', testQueries, 100000);
   test('testMutations', testMutations, 1000000);
   test('testRender', testRender, 1000000);
   test('testRenderAuthentication', testRenderAuthentication, 1000000);
