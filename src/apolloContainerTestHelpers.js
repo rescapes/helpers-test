@@ -9,7 +9,11 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import {mountWithApolloClient, waitForChildComponentRenderTask} from './componentTestHelpers.js';
+import {
+  mountWithApolloClient,
+  parentPropsForContainer,
+  waitForChildComponentRenderTask
+} from './componentTestHelpers.js';
 import {e} from '@rescapes/helpers-component';
 import PropTypes from 'prop-types';
 import {v} from '@rescapes/validate';
@@ -1355,6 +1359,43 @@ export const propsFromParentPropsTask = v((chainedParentPropsTask, samplePropsTa
   'propsFromParentPropsTask'
 );
 
+/**
+ * Use this as the chainedParentPropsContainer function for chainSamplePropsForContainer
+ * when chaining to a parent component.
+ * Component or Task resolving to parent props from all the way up the view hierarchy
+ * @param {Function} chainedSamplePropsForParent This should be the parent component's
+ * call to chainSamplePropsForContainer
+ * @param {Object} parentComponentViews The parent Apollo containers c object that defines the view names
+ * @param {String} viewName The view name in parentComponentViews that refers to the child Apollo
+ * container we want to link to the parent
+ */
+export const chainParentPropContainer = (
+  {
+    chainedSamplePropsForParent,
+    parentComponentViews,
+    viewName
+  }) => {
+  return (
+    apolloConfig,
+    {runParentContainerQueries, ...options},
+    {render}
+  ) => {
+    return parentPropsForContainer(
+      apolloConfig, {
+        apolloConfigToSamplePropsContainer: (apolloConfig, {render}) => {
+          return chainedSamplePropsForParent(
+            apolloConfig,
+            {runParentContainerQueries, runContainerQueries: runParentContainerQueries, ...options},
+            {render}
+          );
+        },
+        parentComponentViews,
+        viewName
+      },
+      {render}
+    );
+  };
+};
 
 /**
  * Returns a function that resolves to a task or component that provides sample props for
