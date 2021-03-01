@@ -9,20 +9,15 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import RT from 'react';
-import {createWaitForElement} from 'enzyme-wait';
-import testUtils from 'react-dom/test-utils';
-import {
-  mountWithApolloClient,
-  waitForChildComponentRenderTask
-} from './componentTestHelpers.js';
+import {mountWithApolloClient, waitForChildComponentRenderTask} from './componentTestHelpers.js';
 import {e} from '@rescapes/helpers-component';
 import PropTypes from 'prop-types';
 import {v} from '@rescapes/validate';
 import T from 'folktale/concurrency/task';
 
 import {
-  composeWithChain, defaultNode,
+  composeWithChain,
+  defaultNode,
   defaultRunConfig,
   filterWithKeys,
   mapObjToValues,
@@ -34,14 +29,13 @@ import {
 } from '@rescapes/ramda';
 import * as R from 'ramda';
 import Result from 'folktale/result';
-import {loggers} from '@rescapes/log';
 import {
   apolloQueryResponsesContainer,
   composeWithComponentMaybeOrTaskChain,
-  containerForApolloType,
+  containerForApolloType, deleteTokenCookieMutationRequestContainer,
   getRenderPropFunction,
-  mapTaskOrComponentToMergedResponse,
-  mapTaskOrComponentToNamedResponseAndInputs, nameComponent
+  mapTaskOrComponentToNamedResponseAndInputs,
+  nameComponent
 } from '@rescapes/apollo';
 import * as chakra from "@chakra-ui/core";
 import {tokenAuthMutationContainer, tokenAuthOutputParams} from '@rescapes/apollo/src/stores/tokenAuthStore';
@@ -50,13 +44,8 @@ import {
   mutateOnceAndWaitContainer
 } from '@rescapes/apollo/src/helpers/containerHelpers';
 
-const {useEffect} = RT;
 const {fromPromised, of, waitAll} = T;
 const {ChakraProvider} = defaultNode(chakra);
-
-const {act} = testUtils;
-
-const log = loggers.get('rescapeDefault');
 
 
 /**
@@ -204,6 +193,14 @@ export const defaultUpdatePathsForMutationContainers = (apolloContainers, overri
  * not to call the containers apollo queries with the parent props and return the results. When we test rendering
  * we don't want to query ahead of time because the rendering process will invoke the queries.
  * If a container has no Apollo requests this function should return {}
+ * @returns {Object} Each of the available tests and a log out task that can run after each test if needed
+ *  {testComposeRequests,
+ testQueries,
+ testMutations,
+ testRenderError,
+ testRender,
+ testRenderAuthentication,
+ afterEachTask}
  */
 export const apolloContainerTests = v((context, container, component, configToChainedPropsForSampleContainer) => {
     const {
@@ -520,7 +517,12 @@ export const apolloContainerTests = v((context, container, component, configToCh
       testMutations,
       testRenderError,
       testRender,
-      testRenderAuthentication
+      testRenderAuthentication,
+      // Return this so we can logout and clear the cache after each test
+      afterEachTask: composeWithChain([
+        ({apolloClient}) => deleteTokenCookieMutationRequestContainer({apolloClient}, {}, {}),
+        () => apolloConfigOptionalFunctionContainer()
+      ])()
     };
   },
   [
@@ -722,7 +724,6 @@ export const apolloMutationResponsesTask = ({
           //render: props => null
         }
       );
-      log.debug(JSON.stringify(propsWithRender));
       return waitAll(
         mapObjToValues(
           (mutationExpectingProps, mutationName) => {
@@ -761,7 +762,7 @@ export const apolloMutationResponsesTask = ({
     // Resolve the props from the task
     mapToNamedResponseAndInputs('props',
       ({apolloClient}) => {
-        return resolvedPropsContainer({apolloClient});
+        return resolvedPropsContainer({apolloClient}, {});
       }
     ),
     // Resolve the apolloConfigContainer
@@ -1339,7 +1340,7 @@ const _testRenderError = (
     defaultRunConfig({
       onResolved: ({component, prePostMutationComparisons}) => {
         // Just make sure the error child component exists. If there are no mutations, just check the component exists
-        expect(strPathOr(component, '0.updatedComponent', prePostMutationComparisons)).toBeTruthy()
+        expect(strPathOr(component, '0.updatedComponent', prePostMutationComparisons)).toBeTruthy();
       }
     }, errors, done)
   );

@@ -34,36 +34,4 @@ describe('componentTestHelpers', () => {
     // Leave alone capitalized strings that seem to be component names, so enzyme can match on the name
     expect(classifyChildClassName('InteractiveSuperMapComponent')).toEqual('InteractiveSuperMapComponent')
   })
-
-  /*
-test('enzymeMountWithApolloClientAndReduxProvider', async done => {
-  TODO fix remote schema task or change this
-  const query = gql`
-      query regions {
-          regions {
-              id
-              name
-          }
-      }
-  `;
-
-  class Component extends React.Component {
-    render() {
-      return e('div');
-    }
-  }
-
-  const {schema, apolloClient} = await remoteSchemaTask(localTestConfig).run().promise();
-  // Wrap the component in apollo
-  const ContainerWithData = graphql(query)(Component);
-  // Instantiate
-  const wrapper = mountWithApolloClient(
-    {apolloClient},
-    e(ContainerWithData, {})
-  );
-  // Expect the apollo data prop, the redux dispatch, and the someProp we added
-  expect(R.keys(wrapper.find(Component).props()).sort()).toEqual(['data']);
-  done();
-  }, 20000);
-   */
 });

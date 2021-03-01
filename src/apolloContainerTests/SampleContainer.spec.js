@@ -1,6 +1,5 @@
 import * as R from 'ramda';
 import Sample, {c} from './SampleComponent.js';
-import {c as cLogout} from './logout/LogoutComponent.js';
 import {c as cLogin} from './login/LoginComponent.js';
 import SampleContainer, {apolloContainersSample} from './SampleContainer.js';
 import {configToChainedPropsForSampleContainer} from './SampleContainer.sample.js';
@@ -43,19 +42,20 @@ const omitKeysFromSnapshots = R.concat(['id', 'key', 'lastLogin', 'exp', 'origIa
 // We expect calling mutateRegion to update the updatedAt of the queryRegions response
 const updatedPaths = defaultUpdatePathsForMutationContainers(apolloContainersSample, {
   mutateRegion: {
-    // Check that mutation modified the query, we could likewise check the mutation result
+    // Check that mutation modified the query result, we could likewise check the mutation result,
+    // but this is more interesting since it shows the query responding to the mutation
     component: ['queryRegions.data.regions.0.updatedAt'],
-    client: ['data.mutate.region']
+    client: ['result.data.mutate.region']
   },
   mutateUserRegion: {
     component: ['mutateUserRegion.result.data.updateUserState.userState.updatedAt'],
-    client: ['data.mutate.userState']
+    client: ['result.data.mutate.userState']
   }
 });
 
 describe('SampleContainer', () => {
 
-  const {testComposeRequests, testQueries, testMutations, testRenderError, testRender, testRenderAuthentication} = apolloContainerTests(
+  const {testComposeRequests, testQueries, testMutations, testRenderError, testRender, testRenderAuthentication, afterEachTask} = apolloContainerTests(
     {
       componentContext: {
         componentId,
@@ -95,11 +95,15 @@ describe('SampleContainer', () => {
     component,
     configToChainedPropsForSampleContainer
   );
+  afterEach(async () => {
+    await afterEachTask.run().promise()
+  });
+
   test('testComposeRequests', testComposeRequests, 10000);
-  test('testQueries', testQueries, 100000);
-  test('testMutations', testMutations, 1000000);
-  test('testRender', testRender, 1000000);
-  test('testRenderAuthentication', testRenderAuthentication, 1000000);
-  test('testRenderError', testRenderError, 100000);
+  test('testQueries', testQueries, 10000);
+  test('testMutations', testMutations, 10000);
+  test('testRender', testRender, 10000);
+  test('testRenderAuthentication', testRenderAuthentication, 100000);
+  test('testRenderError', testRenderError, 10000);
 });
 
