@@ -1,6 +1,6 @@
 {
   "name": "@rescapes/helpers-test",
-  "version": "0.0.150",
+  "version": "0.0.151",
   "description": "Helpers for testing components",
   "main": "src/index.mjs",
   "module": "src/index.mjs",
