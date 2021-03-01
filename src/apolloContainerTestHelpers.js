@@ -137,7 +137,6 @@ export const defaultUpdatePathsForMutationContainers = (apolloContainers, overri
         deauathorizeMutationKey
       }
     }
- * @param {String} context.componentContext.containerId The data-testid of the React container.
  * @param {String} context.componentContext.componentId The data-testid of the React component that the container wraps.
  * This can be any combination of class and component name that Enzyme can find.
  * @param {String} context.componentContext.statusClasses.data.childDataId A class used in a React component in the named
@@ -205,7 +204,6 @@ export const defaultUpdatePathsForMutationContainers = (apolloContainers, overri
 export const apolloContainerTests = v((context, container, component, configToChainedPropsForSampleContainer) => {
     const {
       componentContext: {
-        containerId,
         componentId,
         statusClasses: {
           data: childDataId,
@@ -345,7 +343,6 @@ export const apolloContainerTests = v((context, container, component, configToCh
           {
             apolloConfigContainer: apolloConfigOptionalFunctionContainer('testRender'),
             resolvedPropsContainer,
-            containerId,
             componentId,
             childDataId,
             childLoadingId,
@@ -376,7 +373,6 @@ export const apolloContainerTests = v((context, container, component, configToCh
             {
               apolloConfigContainer: apolloConfigOptionalFunctionContainer('testRenderAuthenticationNoAuth'),
               resolvedPropsContainer,
-              containerId,
               componentId,
               childDataId: childClassNoAuthName,
               // No loading state for no auth
@@ -418,7 +414,6 @@ export const apolloContainerTests = v((context, container, component, configToCh
               {
                 apolloConfigContainer: apolloConfigOptionalFunctionContainer('testRenderAuthentication'),
                 resolvedPropsContainer,
-                containerId,
                 componentId,
                 childDataId,
                 // No loading state for no auth
@@ -463,7 +458,6 @@ export const apolloContainerTests = v((context, container, component, configToCh
             {
               apolloConfigContainer: apolloConfigOptionalFunctionContainer('testRenderAuthenticationNoAuth'),
               resolvedPropsContainer,
-              containerId,
               componentId,
               childDataId: childClassNoAuthName,
               // No loading state for no auth
@@ -496,7 +490,6 @@ export const apolloContainerTests = v((context, container, component, configToCh
           errorMaker,
           apolloConfigContainer: apolloConfigOptionalFunctionContainer('testRenderError'),
           resolvedPropsContainer,
-          containerId,
           componentId,
           childLoadingId,
           childDataId,
@@ -528,7 +521,6 @@ export const apolloContainerTests = v((context, container, component, configToCh
   [
     ['config', PropTypes.shape({
         componentContext: PropTypes.shape({
-          containerId: PropTypes.string.isRequired,
           componentId: PropTypes.string.isRequired,
           statusClasses: PropTypes.shape({
             data: PropTypes.string.isRequired,
@@ -784,10 +776,10 @@ export const apolloMutationResponsesTask = ({
  * @param {Task} config.resolvedPropsContainer Task that resolves to test props to pass to the container. These
  * are in turned passed to the composed Apollo components and reach the component itself
  * @param {String} container.componentId The data-testid of the container
- * @param {String} config.componentId The containerId of the component that receives the Apollo request results and mutate
+ * @param {String} config.componentId The componentIdId of the component that receives the Apollo request results and mutate
  * functions from the componsed Apollo Containers
- * @param {String} config.childDataId Then containerId of the top-level class created by the component when it is ready
- * @param {String} config.childLoadingId The containerId of the top-level class created by the component when loading
+ * @param {String} config.childDataId Then id of the top-level class created by the component when it is ready
+ * @param {String} config.childLoadingId The id of the top-level class created by the component when loading
  * @param [{Function}] config.mutationComponents Apollo Mutation component functions expecting props
  * @param {Boolean} [config.skipMutationTests] Default false. Set false for unauthenticated users,
  * since they can't mutate
@@ -817,7 +809,6 @@ const _testRenderTask = (
   {
     apolloConfigContainer,
     resolvedPropsContainer,
-    containerId,
     componentId,
     childDataId,
     childErrorId,
@@ -857,11 +848,10 @@ const _testRenderTask = (
     ),
     // Render component, calling queries
     mapToMergedResponseAndInputs(
-      ({apolloClient, resolvedPropsContainer, containerId, componentId, childLoadingId, childDataId, childErrorId}) => {
+      ({apolloClient, resolvedPropsContainer, componentId, childLoadingId, childDataId, childErrorId}) => {
         return _testRenderComponentTask(
           {
             apolloClient,
-            containerId,
             componentId,
             childLoadingId,
             childDataId,
@@ -885,7 +875,6 @@ const _testRenderTask = (
   ])({
     apolloConfigContainer,
     resolvedPropsContainer,
-    containerId,
     componentId,
     childLoadingId,
     childDataId,
@@ -945,7 +934,6 @@ const _testRenderRunConfig = (updatedPaths, errors, done = null) => {
 const _testRenderComponentTask = v((
   {
     apolloClient,
-    containerId,
     componentId,
     childLoadingId,
     childDataId,
@@ -958,7 +946,8 @@ const _testRenderComponentTask = v((
     const render = props => {
       const _props = R.omit(['render', 'children'], props);
       return e(
-        container,
+        // Name the container so we can find it by name
+        nameComponent('TestContainer', container),
         _props,
         // These props contains the results of the Apollo queries and the mutation functions
         // Merge them with the original props, which can return values unrelated to the apollo requests
@@ -1090,15 +1079,15 @@ const _testRenderComponentTask = v((
         }
       ),
       mapToNamedResponseAndInputs('foundContainer',
-        ({wrapper, containerId}) => {
+        ({wrapper}) => {
           return waitForChildComponentRenderTask({
             componentId: 'ChakraProvider',
-            childId: containerId,
+            childId: 'TestContainer',
             waitLength: waitLength
           }, wrapper);
         }
       )
-    ])({wrapper, container, containerId, childLoadingId, childDataId});
+    ])({wrapper, container, childLoadingId, childDataId});
   },
   [
     ['config', PropTypes.shape({
@@ -1246,7 +1235,6 @@ const _testRenderError = (
     errorMaker,
     apolloConfigContainer,
     resolvedPropsContainer,
-    containerId,
     componentId,
     childLoadingId,
     childDataId,
@@ -1294,7 +1282,6 @@ const _testRenderError = (
       ({
          apolloClient,
          resolvedPropsContainer,
-         containerId,
          componentId,
          childLoadingId,
          childDataId,
@@ -1304,7 +1291,6 @@ const _testRenderError = (
         return _testRenderComponentTask(
           {
             apolloClient,
-            containerId,
             componentId,
             childLoadingId,
             childDataId,
@@ -1330,7 +1316,6 @@ const _testRenderError = (
     apolloConfigContainer,
     resolvedPropsContainer,
     componentId,
-    containerId,
     childLoadingId,
     childDataId,
     childErrorId,

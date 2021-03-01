@@ -17,7 +17,6 @@ const container = SampleContainer;
 // Test container with this render component
 const component = Sample;
 
-const containerId = 'SampleContainer';
 // Find this React component (by component class name. You could also assign a display name to a functional component
 // and fine that I think)
 const componentId = 'Sample'
@@ -59,7 +58,6 @@ describe('SampleContainer', () => {
     {
       componentContext: {
         componentId,
-        containerId,
         statusClasses: {
           data: childDataId,
           loading: childLoadingId,
