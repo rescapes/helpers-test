@@ -12,7 +12,7 @@
 import * as R from 'ramda';
 import T from 'folktale/concurrency/task';
 import {parentPropsForContainer} from '../componentTestHelpers.js';
-import {reqStrPathThrowing, strPathOr} from '@rescapes/ramda';
+import {strPathOr} from '@rescapes/ramda';
 import {
   apolloQueryResponsesContainer,
   composeWithComponentMaybeOrTaskChain,
@@ -23,22 +23,15 @@ import {
   nameComponent,
   userOutputParams
 } from '@rescapes/apollo';
-import {filterForQueryContainers} from '../apolloContainerTestHelpers.js';
+import {chainSamplePropsForContainer, filterForQueryContainers} from '../apolloContainerTestHelpers.js';
 import {apolloContainersSample} from './SampleContainer.js';
 import {mutateSampleUserStateWithProjectsAndRegionsContainer} from '@rescapes/place';
 
-const {of} = T;
 
 /**
  * @file Normally links sample props from a parent component to a Region component. In this case
  * we just have a Region component with a fake parent
  */
-
-/**
- * Returns a function that expects state and parentProps for testing and returns a Task that resolves the props
- */
-//export const samplePropsTaskMaker = makeApolloTestPropsTaskFunction(mapStateToProps, mapDispatchToProps, queries.samples);
-
 
 /**
  * Task returning sample parent props from all the way up the view hierarchy
@@ -135,45 +128,13 @@ export const chainedParentPropsForSampleContainer = (apolloConfig, {runParentCon
   );
 };
 
-/**
- * Task combining result of chainedParentPropsForRegionTask
- * @param {Object} apolloConfig
- * @param {Object} options
- * @param {String} options.containerName For debugging only. Assigns a name to the container
- * @param {Boolean} options.runParentContainerQueries Default false, set true when not testing rendering so the
- * parent containers can run.
- * @param {Boolean} options.runContainerQueries Default false. Always set false, used internally to make parents run
- * parent containers run their queries to give us the props we expect. For instance, a parent container
- * might fetch the userState for us and from that user state we know what regions to query
- * happen automatically when we test rendered the component
- * @param {Object} props Juest the render prop. Other props c
- * @param {Function} props.render render function for component calls
- * @returns {Task|Function} The task or component that resolves/renders the query respnose
- */
-export const configToChainedPropsForSampleContainer = (
-  apolloConfig, {
-    containerName,
-    runParentContainerQueries = false,
-    runContainerQueries = false,
-    ...options
-  }, {render}
-) => {
-  return apolloQueryResponsesContainer(
-    apolloConfig, {
-      containerName,
-      // Apply these props from the "parent" to the queries
-      resolvedPropsContainer: (apolloConfig, {render}) => {
-        return chainedParentPropsForSampleContainer(
-          apolloConfig,
-          {runParentContainerQueries, ...options},
-          {render}
-        );
-      },
-      // Get the Apollo queries for the container since we can run the props through them and get the
-      // structured query results that the component expect
-      queryContainers: filterForQueryContainers(apolloContainersSample(apolloConfig)),
-      runContainerQueries
-    },
-    {render}
-  );
-};
+
+
+
+// Creates a function to supply the props for the container tests. See chainSamplePropsForContainer
+export const configToChainedPropsForSampleContainer = chainSamplePropsForContainer(
+  {
+    chainedParentPropsContainer: chainedParentPropsForSampleContainer,
+    containers: apolloContainersSample
+  }
+);

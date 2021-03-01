@@ -12,5 +12,9 @@ export {
 } from './componentTestHelpers';
 
 export {
-  apolloContainerTests, propsFromParentPropsTask, filterForQueryContainers, filterForMutationContainers
+  apolloContainerTests,
+  propsFromParentPropsTask,
+  filterForQueryContainers,
+  filterForMutationContainers,
+  chainSamplePropsForContainer
 } from './apolloContainerTestHelpers';

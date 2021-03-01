@@ -321,8 +321,9 @@ export const parentPropsForContainer = v((apolloConfig, {
  * @returns {Function} A function that expects a sample state and sample ownProps and returns a complete
  * sample props according to the functions of the container
  */
-export const makeTestPropsFunction = (mapStateToProps, mapDispatchToProps) =>
-  (sampleState, sampleOwnProps) => R.merge(
+export const makeTestPropsFunction = (mapStateToProps, mapDispatchToProps) => {
+  return (sampleState, sampleOwnProps) => R.merge(
     mapStateToProps(sampleState, sampleOwnProps),
     mapDispatchToProps(R.identity, sampleOwnProps)
   );
+}

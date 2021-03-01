@@ -26,7 +26,7 @@ const childDataId = c.sampleLogout;
 const childLoadingId = c.sampleLoading;
 // Find this class in the error renderer
 const childErrorId = c.sampleError;
-const childClassNoAuthenticationName = cLogin.loginButton;
+const childClassNoAuthenticationId = cLogin.loginButton;
 // Error maker creates an unknown id that can't be queried
 // Error maker creates an unknown id that can't be queried
 const errorMaker = parentProps => {
@@ -62,7 +62,7 @@ describe('SampleContainer', () => {
           data: childDataId,
           loading: childLoadingId,
           error: childErrorId,
-          noAuthentication: childClassNoAuthenticationName
+          noAuthentication: childClassNoAuthenticationId
         },
         // The Chakra theme
         theme

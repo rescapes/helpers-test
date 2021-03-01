@@ -1356,3 +1356,64 @@ export const propsFromParentPropsTask = v((chainedParentPropsTask, samplePropsTa
 );
 
 
+/**
+ * Returns a function that resolves to a task or component that provides sample props for
+ * Apollo component tests
+ * @param {Function} chainedParentPropsContainer
+ * Function expecting (apolloConfig, {runParentContainerQueries = false}, {render}), where
+ * the render function must be given for component tests, and runParentContainerQueries if true
+ * is passed to parent calls to chainSamplePropsForContainer to run the requests of the parent or not.
+ * TODO I think we always need to run the parents requests to get legit props, so I can't remember
+ * why this exists.
+ * @param {Function} containers Unary function expecting apolloConfig that returns the apollo
+ * requests for the container being testing
+ * @returns {Function} See docs below
+ */
+export const chainSamplePropsForContainer = (
+  {
+    chainedParentPropsContainer,
+    containers
+  }) => {
+  /**
+   * Task Or Component that resolves sample props for component tests
+   * @param {Object} apolloConfig
+   * @param {Object} options
+   * @param {String} options.containerName For debugging only. Assigns a name to the container
+   * @param {Boolean} options.runParentContainerQueries Default false, set true when not testing rendering so the
+   * parent containers can run.
+   * @param {Boolean} options.runContainerQueries Default false. Always set false, used internally to make parents run
+   * parent containers run their queries to give us the props we expect. For instance, a parent container
+   * might fetch the userState for us and from that user state we know what regions to query
+   * happen automatically when we test rendered the component
+   * @param {Object} props Just the render prop. Other props
+   * @param {Function} props.render render function for component calls
+   * @returns {Task|Function} The task or component that resolves/renders the query respnose
+   */
+  return (
+    apolloConfig, {
+      containerName,
+      runParentContainerQueries = false,
+      runContainerQueries = false,
+      ...options
+    }, {render}) => {
+
+    return apolloQueryResponsesContainer(
+      apolloConfig, {
+        containerName,
+        // Apply these props from the "parent" to the queries
+        resolvedPropsContainer: (apolloConfig, {render}) => {
+          return chainedParentPropsContainer(
+            apolloConfig,
+            {runParentContainerQueries, ...options},
+            {render}
+          );
+        },
+        // Get the Apollo queries for the container since we can run the props through them and get the
+        // structured query results that the component expect
+        queryContainers: filterForQueryContainers(containers(apolloConfig)),
+        runContainerQueries
+      },
+      {render}
+    );
+  };
+};
