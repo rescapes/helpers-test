@@ -1368,32 +1368,50 @@ export const propsFromParentPropsTask = v((chainedParentPropsTask, samplePropsTa
  * @param {Object} parentComponentViews The parent Apollo containers c object that defines the view names
  * @param {String} viewName The view name in parentComponentViews that refers to the child Apollo
  * container we want to link to the parent
+ * @param {Function} [simulateUserChoicesOnProps] Called after chainedSamplePropsForParent with props
+ * and returns a component or resolves a task with modifed props to simulate user selectoins. By default
+ * props are not filered
  */
 export const chainParentPropContainer = (
   {
     chainedSamplePropsForParent,
     parentComponentViews,
-    viewName
+    viewName,
+    simulateUserChoicesOnProps
   }) => {
   return (
     apolloConfig,
     {runParentContainerQueries, ...options},
     {render}
   ) => {
-    return parentPropsForContainer(
-      apolloConfig, {
-        apolloConfigToSamplePropsContainer: (apolloConfig, {render}) => {
-          return chainedSamplePropsForParent(
-            apolloConfig,
-            {runParentContainerQueries, runContainerQueries: runParentContainerQueries, ...options},
-            {render}
-          );
-        },
-        parentComponentViews,
-        viewName
+    return composeWithComponentMaybeOrTaskChain([
+      props => {
+        // Apply simulated user choices if defined
+        return containerForApolloType(
+          apolloConfig,
+          {
+            render,
+            response: simulateUserChoicesOnProps ? simulateUserChoicesOnProps(props) : props
+          }
+        );
       },
-      {render}
-    );
+      () => {
+        return parentPropsForContainer(
+          apolloConfig, {
+            apolloConfigToSamplePropsContainer: (apolloConfig, {render}) => {
+              return chainedSamplePropsForParent(
+                apolloConfig,
+                {runParentContainerQueries, runContainerQueries: runParentContainerQueries, ...options},
+                {render}
+              );
+            },
+            parentComponentViews,
+            viewName
+          },
+          {render}
+        );
+      }
+    ])();
   };
 };
 
