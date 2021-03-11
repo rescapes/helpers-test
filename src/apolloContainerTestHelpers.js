@@ -556,6 +556,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
  * @param {String} containerName  For debugging, to label the container with a name
  * @param apolloConfigContainer
  * @param resolvedPropsContainer
+ * @param omitKeysFromSnapshots
  * @param {Function} apolloConfigToQueryTasks Function expecting an apolloConfig and returning the query tasks
  * @param done
  * @return void
@@ -589,7 +590,13 @@ const _testQueries = (
           apolloConfig,
           {
             containerName,
-            resolvedPropsContainer,
+            resolvedPropsContainer: composeWithChain([
+              // queryVariationContainersTestAll makes queryVariationContainers
+              // run all queries for testing instead of just the one matching
+              // the allowRequestProp
+              props => of(R.merge(props, {queryVariationContainersTestAll: true})),
+              resolvedPropsContainer
+            ]),
             queryContainers
           },
           {}

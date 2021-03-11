@@ -222,7 +222,7 @@ export const waitForChildComponentRenderTask = v(({
         \n${inspect(comp.props().data, {depth: 3})}
       `;
           console.log(errorMessage);
-          return of(new Error(errorMessage));
+          throw new Error(errorMessage);
         } else {
           throw error;
         }

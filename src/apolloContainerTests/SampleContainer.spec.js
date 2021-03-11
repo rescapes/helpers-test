@@ -100,8 +100,8 @@ describe('SampleContainer', () => {
   test('testComposeRequests', testComposeRequests, 10000);
   test('testQueries', testQueries, 10000);
   test('testMutations', testMutations, 10000);
-  test('testRender', testRender, 10000);
+  test('testRender', testRender, 100000);
   test('testRenderAuthentication', testRenderAuthentication, 100000);
-  test('testRenderError', testRenderError, 10000);
+  test('testRenderError', testRenderError, 100000);
 });
 
