@@ -1,9 +1,8 @@
 import {
-  findUserScopeInstance,
-
+  findUserScopeInstance, isActive,
   regionMutationContainer,
-  regionOutputParams,
-  regionQueryVariationContainers,
+  regionOutputParams, regionOutputParamsMinimized,
+  regionQueryVariationContainers, regionsQueryContainer,
   userStateRegionMutationContainer,
   userStateRegionOutputParams,
   userStateRegionsQueryContainer,
@@ -11,15 +10,14 @@ import {
 } from '@rescapes/place';
 import {adopt} from 'react-adopt';
 import * as R from 'ramda';
-import {reqStrPathThrowing, strPathOr, toNamedResponseAndInputs} from '@rescapes/ramda';
+import {strPathOr, reqStrPathThrowing} from '@rescapes/ramda';
 import {
+  apolloResponseFilterOrEmpty,
   authenticatedUserLocalContainer,
   containerForApolloType,
-  deleteTokenCookieMutationRequestContainer,
   getRenderPropFunction,
-  isAuthenticatedLocal, nameComponent, queryLocalTokenAuthContainer, tokenAuthMutationContainer
+  queryLocalTokenAuthContainer
 } from '@rescapes/apollo';
-import {e, getClassAndStyle} from '@rescapes/helpers-component';
 
 /**
  * Each query and mutation expects a container to compose then props
@@ -54,7 +52,8 @@ export const apolloContainersSample = (apolloConfig = {}) => {
             }
           }
         )
-      )),
+      )
+    ),
     {
       // Test sequential queries
       queryUserRegions: props => {
@@ -86,6 +85,48 @@ export const apolloContainersSample = (apolloConfig = {}) => {
           props
         );
       },
+      // Query full detail for the active region in userRegions if any
+      queryActiveRegions: props => {
+        const userRegions = props => {
+          return R.compose(
+            queryUserStateRegions => {
+              return apolloResponseFilterOrEmpty(
+                'userStates.0.data.userRegions',
+                userRegion => isActive(userRegion),
+                queryUserStateRegions
+              );
+            },
+            props => R.prop('queryUserRegions', props)
+          )(props);
+        };
+
+        return regionsQueryContainer(
+          R.merge(apolloConfig,
+            {
+              options: {
+                skip: !R.length(userRegions(props)),
+                variables: props => {
+                  return {
+                    id: R.compose(
+                      reqStrPathThrowing('region.id'),
+                      R.head,
+                      props => userRegions(props)
+                    )(props)
+                  };
+                },
+                // Pass through error so we can handle it in the component
+                errorPolicy: 'all',
+                partialRefetch: true
+              }
+            }
+          ),
+          {
+            outputParams: regionOutputParamsMinimized
+          },
+          props
+        );
+      },
+
 
       mutateRegion: props => {
         return regionMutationContainer(
@@ -116,10 +157,10 @@ export const apolloContainersSample = (apolloConfig = {}) => {
             // Not sure what is better at this point.
             userRegion: findUserScopeInstance(
               {
-                userStatePropPath: 'queryCurrentUserState.data.userStates.0',
+                userStatePropPath: 'userState',
                 userScopeCollectName: 'userRegions',
                 scopeName: 'region',
-                scopeInstancePropPath: 'queryActiveRegions.data.regions.0',
+                scopeInstancePropPath: 'queryActiveRegions.data.regions.0'
               },
               props
             ),
@@ -137,8 +178,9 @@ export const apolloContainersSample = (apolloConfig = {}) => {
           }),
           {
             userRegionOutputParams: userStateRegionOutputParams()
-          }
-        )(mutateProps);
+          },
+          mutateProps
+        );
       }
     }]);
 };
