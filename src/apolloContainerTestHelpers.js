@@ -38,7 +38,7 @@ import {
   composeWithComponentMaybeOrTaskChain,
   containerForApolloType, deleteTokenCookieMutationRequestContainer,
   getRenderPropFunction,
-  mapTaskOrComponentToNamedResponseAndInputs,
+  mapTaskOrComponentToNamedResponseAndInputs, mutationParts,
   nameComponent
 } from '@rescapes/apollo';
 import * as chakra from "@chakra-ui/core";
@@ -500,6 +500,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
           childErrorId,
           mutationComponents: filterForMutationContainers(apolloContainers({})),
           waitLength,
+          authenticate: true,
           theme
         },
         container,
@@ -1001,7 +1002,8 @@ const _testRenderComponentTask = v((
                 response: props
               }
             );
-        }),
+        }
+      ),
       mapTaskOrComponentToNamedResponseAndInputs({}, 'tokenAuthResponse',
         props => {
           return tokenAuthMutationContainer(
@@ -1011,16 +1013,7 @@ const _testRenderComponentTask = v((
           );
         }
       ),
-      props => {
-        // If we want to make an error condition in the props, do it now
-        return containerForApolloType(
-          {},
-          {
-            render: getRenderPropFunction(props),
-            response: errorMaker ? errorMaker(props) : props
-          }
-        );
-      },
+
       ({render}) => {
         // Create the React element from container, passing the props and component via a render function.
         // The react-adopt container expects to be given a render function so it can pass the results of the
@@ -1121,7 +1114,8 @@ const _testRenderComponentMutationsTask = (
     componentId,
     childDataId,
     childErrorId,
-    waitLength
+    waitLength,
+    errorProps
   }, wrapper, childComponent) => {
   // Store the state of the component's prop before the mutation
   // Store the state of the component's prop before the mutation
@@ -1145,11 +1139,12 @@ const _testRenderComponentMutationsTask = (
       }, mutationResponseObjects));
     },
     // Call the mutate function of each mutation container. This will update the state of the mounted components
+    // If we have an errorMaker apply it
     // Then find the components
     ...mapObjToValues(
       (mutationComponent, mutationName) => {
         return mapTaskOrComponentToConcattedNamedResponseAndInputs(apolloConfig, 'mutationResponseObjects',
-          () => {
+          ({errorProps}) => {
             // Get the mutate function that was returned in the props sent to the component's render function
             // This mutate function is what HOC passes via render to the component for each composed
             // mutation component
@@ -1174,13 +1169,28 @@ const _testRenderComponentMutationsTask = (
                 ),
                 // Call the mutate function
                 mapToNamedResponseAndInputs('mutationResponse',
-                  ({mutation, skip}) => {
+                  ({errorProps, mutation, skip}) => {
                     const task = fromPromised(() => {
                       // We don't need to pass mutation variables because they are already set in the request
                       if (skip) {
                         throw Error(`Attempt to run a skipped mutation ${mutationName}, meaning its variables are not ready. This occurs when the component is ready before the mutation component is. Check the component renderChoicepoint settings to make sure the mutation component is awaited`);
                       }
-                      return mutation();
+                      // If we want to make an error condition in the props, do it now
+                      if (errorProps) {
+                        // Extract the mutation arg base name and error props
+                        const {name, props} = errorProps[mutationName]
+                        const {namedProps} = mutationParts(
+                          apolloConfig, {
+                            name, outputParams: {id: 1}
+                          },
+                          props
+                        );
+                        // Cause an error
+                        return mutation({variables: namedProps});
+                      }
+                      else {
+                        return mutation();
+                      }
                     })();
                     return task.orElse(error => {
                       // If testing error, return the error
@@ -1189,13 +1199,13 @@ const _testRenderComponentMutationsTask = (
                   }
                 )
               ]
-            )({mutation, mutationName, skip});
+            )({mutation, mutationName, skip, errorProps});
           }
         );
       },
       mutationComponents
     )
-  ])({});
+  ])({errorProps});
 };
 
 /**
@@ -1253,6 +1263,7 @@ const _testRenderError = (
     mutationComponents,
     updatedPaths,
     waitLength,
+    authenticate,
     theme
   }, container, component, done) => {
 
@@ -1271,14 +1282,15 @@ const _testRenderError = (
          apolloClient,
          mutationComponents,
          wrapper,
-         childComponent,
          component,
          componentId,
          childDataId,
          childErrorId,
-         props
+         errorMaker
        }) => {
+        const props = component.props();
         return _testRenderComponentMutationsTask({
+          errorProps: errorMaker ? errorMaker(props) : null,
           apolloConfig: {apolloClient},
           mutationComponents,
           componentId,
@@ -1296,8 +1308,7 @@ const _testRenderError = (
          componentId,
          childLoadingId,
          childDataId,
-         childErrorId,
-         errorMaker
+         authenticate
        }) => {
         return _testRenderComponentTask(
           {
@@ -1305,11 +1316,9 @@ const _testRenderError = (
             componentId,
             childLoadingId,
             childDataId,
-            childErrorId,
             waitLength,
             theme,
-            authenticate: true,
-            errorMaker
+            authenticate
           },
           container,
           component,
@@ -1331,6 +1340,7 @@ const _testRenderError = (
     childDataId,
     childErrorId,
     mutationComponents,
+    authenticate,
     errorMaker
   }).run().listen(
     defaultRunConfig({

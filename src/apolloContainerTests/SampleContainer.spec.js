@@ -9,8 +9,9 @@ import {testAuthTask, testNoAuthTask} from '@rescapes/place';
 import * as chakraReact from '@chakra-ui/react';
 import {defaultNode} from '@rescapes/ramda';
 
+import themeExtensions from './theme/index.js';
 const {extendTheme} = defaultNode(chakraReact);
-const theme = extendTheme({});
+const theme = extendTheme(themeExtensions);
 
 // Test this container
 const container = SampleContainer;
@@ -19,7 +20,7 @@ const component = Sample;
 
 // Find this React component (by component class name. You could also assign a display name to a functional component
 // and fine that I think)
-const componentId = 'Sample'
+const componentId = 'Sample';
 // Find the id of this component that is rendered by sample when data is ready
 const childDataId = c.sampleLogout;
 // Find this class in the loading renderer
@@ -27,15 +28,25 @@ const childLoadingId = c.sampleLoading;
 // Find this class in the error renderer
 const childErrorId = c.sampleError;
 const childClassNoAuthenticationId = cLogin.loginButton;
-// Error maker creates an unknown id that can't be queried
-// Error maker creates an unknown id that can't be queried
-const errorMaker = parentProps => {
-  return R.compose(
-    // Update both the region id and the userRegion's region id
-    parentProps => R.set(R.lensPath(['userState', 'data', 'userRegions', 0, 'region', 'id']), -1, parentProps),
-    parentProps => R.set(R.lensPath(['region', 'id']), -1, parentProps)
-  )(parentProps);
-};
+// Erroneous props to pass to mutate to override the props that the mutation was constructed with
+const errorMaker = props => ({
+  mutateRegion: {
+    props: R.pick(['region'], R.set(
+      R.lensPath(['region', 'id']),
+      -1,
+      props
+    )),
+    name: 'region'
+  },
+  mutateUserRegion: {
+    props: R.pick(['userState'], R.set(
+      R.lensPath(['userState', 'data', 'userRegions', 0, 'region', 'id']),
+      -1,
+      props
+    )),
+    name: 'userState'
+  }
+});
 
 const omitKeysFromSnapshots = R.concat(['id', 'key', 'lastLogin', 'exp', 'origIat', 'token'], VERSION_PROPS);
 // We expect calling mutateRegion to update the updatedAt of the queryRegions response
@@ -54,7 +65,15 @@ const updatedPaths = defaultUpdatePathsForMutationContainers(apolloContainersSam
 
 describe('SampleContainer', () => {
 
-  const {testComposeRequests, testQueries, testMutations, testRenderError, testRender, testRenderAuthentication, afterEachTask} = apolloContainerTests(
+  const {
+    testComposeRequests,
+    testQueries,
+    testMutations,
+    testRenderError,
+    testRender,
+    testRenderAuthentication,
+    afterEachTask
+  } = apolloContainerTests(
     {
       componentContext: {
         componentId,
@@ -94,7 +113,7 @@ describe('SampleContainer', () => {
     configToChainedPropsForSampleContainer
   );
   afterEach(async () => {
-    await afterEachTask.run().promise()
+    await afterEachTask.run().promise();
   });
 
   test('testComposeRequests', testComposeRequests, 10000);

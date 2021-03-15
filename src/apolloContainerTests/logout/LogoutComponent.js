@@ -9,12 +9,8 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 import * as R from 'ramda';
-import reactRouterDom from "react-router-dom";
-const {Redirect, useHistory, useLocation} = reactRouterDom
-import chakra from '@chakra-ui/core'
-const {Button} = chakra;
+import * as ReactRouterDom from "react-router-dom";
 import {
-  applyMatchingStyles,
   componentAndPropsFor,
   composeViews,
   e,
@@ -22,11 +18,17 @@ import {
   propsFor,
   renderChoicepoint,
   renderErrorDefault,
-  renderLoadingDefault,
-  styleMultiplier
+  renderLoadingDefault
 } from '@rescapes/helpers-component';
 import PropTypes from 'prop-types';
-import {reqStrPathThrowing, strPathOr} from '@rescapes/ramda';
+import * as RR from '@rescapes/ramda';
+import {defaultNode} from '@rescapes/ramda';
+import LogoutButtonComponent from './LogoutButtonComponent.js';
+import {AuthenticationBox} from '../themeComponents/authenticationBox';
+
+const {strPathOr, reqStrPathThrowing, strPathOrNullOk} = RR;
+
+const {Redirect, useHistory, useLocation} = defaultNode(ReactRouterDom)
 
 export const c = nameLookup({
   logout: true,
@@ -54,40 +56,29 @@ export default function LogoutComponent(props) {
  *
  * @param {Object} history History object from the useHistory hook
  * @param {Object} location Location object from the useLocation hook
+ * @param {Object} queryAuthenticatedUserLocalContainer Apollo query result about state of the user
  * @param views
  * @returns {Object}
  */
-LogoutComponent.renderData = ({history, location, queryAuthenticatedUserLocalContainer, views}) => {
+LogoutComponent.renderData = ({history, location, mutateDeleteTokenCookie, views}) => {
   const styledComponentAndProps = componentAndPropsFor(views);
 
-  const props = propsFor(views);
+  const propsOf = propsFor(views);
 
-  if (!strPathOr(false, 'data.currentUser', queryAuthenticatedUserLocalContainer)) {
+  // TODO Since refetchQueries doesn't work well (https://github.com/apollographql/apollo-client/issues/3633)
+  // just listen to the result of the mutation and redirect to the referring page or /
+  // Ideally we shouldn't have to redirect because the AppContainer's queries should rerun when the token goes
+  // is the cache, but I don't know how to get a cache write to trigger dependent queries.
+  if (strPathOr(false, 'result.data.deleteTokenCookie', mutateDeleteTokenCookie)) {
     return e(Redirect, {to: '/login'});
   }
 
-  return e(...styledComponentAndProps(c.logoutBody), [
-    e('h2', props(c.logoutHeader)),
-    e(...styledComponentAndProps(c.logoutButton))
+  return e(AuthenticationBox, propsOf(c.logoutBody), [
+    e('h2', propsOf(c.logoutHeader)),
+    e(LogoutButtonComponent, propsOf(c.logoutButton))
   ]);
 };
 
-
-const styledComponents = {
-  logoutButton: Button,
-  /*
-  styled.button`
-  border: 1px solid #000;
-`,
-   */
-
-  logoutBody: Button
-  /*
-  styled.div`
-  display: flex;
-`
-   */
-};
 
 /**
  * Merges parent and state styles into component styles
@@ -97,43 +88,42 @@ LogoutComponent.viewStyles = ({style}) => {
 
   return {
     [c.logout]: {},
-
-    [c.logoutBody]: {
-      component: reqStrPathThrowing('logoutBody', styledComponents),
-      style: {
-        ...applyMatchingStyles(style, {
-          width: styleMultiplier(1),
-          height: styleMultiplier(1)
-        })
-      }
-    },
-    [c.logoutButton]: {
-      component: reqStrPathThrowing('logoutButton', styledComponents)
-    }
+    [c.logoutButton]: {},
+    [c.logoutBody]: {}
   };
 };
 
 LogoutComponent.viewProps = props => {
   return {
     [c.logout]: {},
-    [c.logoutBody]: {},
+    [c.logoutBody]: {
+
+    },
     [c.logoutButton]: {
       children: 'Logout'
     }
   };
 };
 
-LogoutComponent.viewActions = () => {
-  return {};
+LogoutComponent.viewEventHandlers = props => {
+  return {
+    [c.logoutButton]: {
+      onClick: () => {
+        reqStrPathThrowing('mutateDeleteTokenCookie.mutation', props)({
+          variables: {}
+        });
+      }
+    }
+  };
 };
 
 /**
- * Adds to props.views for each component configured in viewActions, viewProps, and viewStyles
+ * Adds to props.views for each component configured in viewEventHandlers, viewProps, and viewStyles
  * @param {Object} props this.props or equivalent for testing
  * @returns {Object} modified props
  */
 LogoutComponent.views = composeViews(
-  LogoutComponent.viewActions(),
+  LogoutComponent.viewEventHandlers,
   LogoutComponent.viewProps,
   LogoutComponent.viewStyles
 );

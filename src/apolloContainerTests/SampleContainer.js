@@ -19,6 +19,19 @@ import {
   queryLocalTokenAuthContainer
 } from '@rescapes/apollo';
 
+const userRegions = props => {
+  return R.compose(
+    queryUserStateRegions => {
+      return apolloResponseFilterOrEmpty(
+        'userStates.0.data.userRegions',
+        userRegion => isActive(userRegion),
+        queryUserStateRegions
+      );
+    },
+    props => R.prop('queryUserRegions', props)
+  )(props);
+};
+
 /**
  * Each query and mutation expects a container to compose then props
  * @param {Object} apolloConfig Optionally supply {apolloClient} to run requests as tasks instead of components
@@ -73,6 +86,7 @@ export const apolloContainersSample = (apolloConfig = {}) => {
             {
               options: {
                 variables: props => {
+                  // These variables are used for the scope object query, not the userState
                   return R.pick(['id'], R.propOr({}, 'region', props));
                 },
                 // Pass through error so we can handle it in the component
@@ -82,24 +96,15 @@ export const apolloContainersSample = (apolloConfig = {}) => {
           {
             userRegionOutputParams: userStateRegionOutputParams()
           },
-          props
+          R.merge(
+            props,
+            // Pretend we are searching for the first userRegion details
+            {userRegion: R.head(userRegions(props))}
+          )
         );
       },
       // Query full detail for the active region in userRegions if any
       queryActiveRegions: props => {
-        const userRegions = props => {
-          return R.compose(
-            queryUserStateRegions => {
-              return apolloResponseFilterOrEmpty(
-                'userStates.0.data.userRegions',
-                userRegion => isActive(userRegion),
-                queryUserStateRegions
-              );
-            },
-            props => R.prop('queryUserRegions', props)
-          )(props);
-        };
-
         return regionsQueryContainer(
           R.merge(apolloConfig,
             {

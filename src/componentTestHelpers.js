@@ -207,6 +207,7 @@ export const waitForChildComponentRenderTask = v(({
       // Find the component with the updated wrapper, otherwise we get the old component
       return find.apply(wrapper.find(componentIdSearch), args);
     };
+    const _error = new Error()
     return promiseToTask(waitForChild(component)).map(
       component => {
         // We need to get the updated reference to the component that has all requests finished
@@ -221,8 +222,9 @@ export const waitForChildComponentRenderTask = v(({
         \n${comp.debug()}
         \n${inspect(comp.props().data, {depth: 3})}
       `;
-          console.log(errorMessage);
-          throw new Error(errorMessage);
+          console.error(errorMessage);
+          console.error(_error.stack);
+          throw error
         } else {
           throw error;
         }

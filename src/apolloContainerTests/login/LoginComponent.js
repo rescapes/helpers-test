@@ -8,32 +8,46 @@
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-import chakra from '@chakra-ui/core';
-import reactRouterDom from "react-router-dom";
+import * as chakra from "@chakra-ui/core";
+import * as chakraReact from "@chakra-ui/react";
+import * as reactRouterDom from "react-router-dom";
+import {useTranslation} from 'react-i18next';
+
 import {
-  applyMatchingStyles,
-  componentAndPropsFor,
   composeViews,
   e,
   nameLookup,
   propsFor,
   renderChoicepoint,
-  renderErrorDefault,
-  renderLoadingDefault,
-  styleMultiplier
+  renderLoadingDefault
 } from '@rescapes/helpers-component';
 import PropTypes from 'prop-types';
 import * as R from 'ramda';
-import {strPathOr} from '@rescapes/ramda';
+import * as RR from '@rescapes/ramda';
+import {useInput} from '../../helpers/hookHelpers.js';
+import {AuthenticationBox} from '../themeComponents/authenticationBox';
+import {AuthenticationInput} from '../themeComponents/authenticationInput';
+import {AuthenticationButton} from '../themeComponents/authenticationButton';
 
-const {Box, Input} = chakra;
+const {reqPathThrowing, strPathOr, reqStrPathThrowing, defaultNode} = RR;
 
-const {Redirect, useHistory, useLocation} = reactRouterDom;
+const {FormLabel} = defaultNode(chakra);
+const {Redirect, useHistory, useLocation} = defaultNode(reactRouterDom);
+const {Form} = defaultNode(chakraReact);
+
+export const isAuthenticated = props => {
+  return !strPathOr(false, 'mutateDeleteTokenCookie.result.data.deleteTokenCookie', props) && (
+    strPathOr(false, 'queryLocalTokenAuthContainer.data.token', props) ||
+    strPathOr(false, 'mutateTokenAuth.result.data.tokenAuth', props))
+}
 
 export const c = nameLookup({
   login: true,
   loginBody: true,
   loginHeader: true,
+  loginForm: true,
+  loginDataLabel: true,
+  loginErrorLabel: true,
   loginUsername: true,
   loginPassword: true,
   loginButton: true,
@@ -43,14 +57,21 @@ export const c = nameLookup({
   loginError: true
 });
 
+
 export default function LoginComponent(props) {
   // Browser history hook
   const history = useHistory();
   // Browser location hook
   const location = useLocation();
+  const {t} = useTranslation();
+  const hooks = {
+    [c.loginUsername]: useInput(''),
+    [c.loginPassword]: useInput('')
+  };
 
-  const allProps = LoginComponent.views(R.merge(props, {history, location}));
+  const allProps = LoginComponent.views(R.merge(props, {t, history, location, hooks}));
   const propsOf = propsFor(allProps.views);
+
   return e('div', propsOf(c.login),
     LoginComponent.choicepoint(allProps)
   );
@@ -60,91 +81,92 @@ export default function LoginComponent(props) {
  *
  * @param {Object} history History object from the useHistory hook
  * @param {Object} location Location object from the useLocation hook
- * @param views
+ * @param props
+ * @param props.history
+ * @param props.location
+ * @param props.loginPath
+ * @param props.mutateTokenAuth
+ * @param props.views
  * @returns {Object}
  */
-LoginComponent.renderData = ({history, location, queryAuthenticatedUserLocalContainer, views}) => {
+LoginComponent.renderData = (
+  {
+    history, t, loginPath, location,
+    queryLocalTokenAuthContainer, queryAuthenticatedUserLocalContainer, mutateTokenAuth, mutateDeleteTokenCookie,
+    views
+  }
+) => {
   const propsOf = propsFor(views);
-  const componentAndPropsOf = componentAndPropsFor(views);
-  const from = R.propOr('/', 'pathname', location);
+  return renderDataOrError(
+    {
+      history, loginPath, location,
+      queryLocalTokenAuthContainer, queryAuthenticatedUserLocalContainer, mutateTokenAuth, mutateDeleteTokenCookie,
+      views
+    },
+    () => {
+      return e(FormLabel, propsOf(c.loginDataLabel), t('Enter email and password'));
+    }
+  );
+};
 
-  if (strPathOr(false, 'data.currentUser', queryAuthenticatedUserLocalContainer)) {
+LoginComponent.renderError = (
+  keys,
+  {
+    history, t, loginPath, location,
+    queryLocalTokenAuthContainer, mutateTokenAuth,
+    views
+  }
+) => {
+  const propsOf = propsFor(views);
+
+  return renderDataOrError(
+    {history, loginPath, location, queryLocalTokenAuthContainer, mutateTokenAuth, views},
+    () => {
+      return e(FormLabel, propsOf(c.loginErrorLabel), t('Problem with your login'));
+    }
+  );
+};
+
+const renderDataOrError = (
+  {
+    history, loginPath, location,
+    views,
+    ...props
+  },
+  renderLabel
+) => {
+  const propsOf = propsFor(views);
+  // TODO This should use history to redirect to the SoP path before login if one exists
+  const from = R.ifElse(
+    R.equals(loginPath),
+    () => '/',
+    () => '/'
+  )(R.prop('pathname', location));
+
+
+  if (isAuthenticated(props)) {
     return e(Redirect, {to: from});
   }
-
-  return e(...componentAndPropsOf(c.loginBody), [
+  return e(AuthenticationBox, propsOf(c.loginBody), [
     e('h2', propsOf(c.loginHeader)),
-    e(...componentAndPropsOf(c.loginUsername)),
-    e(...componentAndPropsOf(c.loginPassword)),
-    e('button', propsOf(c.loginButton))
+    e('form', propsOf(c.loginForm), [
+      renderLabel(),
+      e(AuthenticationInput, propsOf(c.loginUsername)),
+      e(AuthenticationInput, propsOf(c.loginPassword)),
+      e(AuthenticationButton, propsOf(c.loginButton))
+    ])
   ]);
 };
 
-const styledComponents = {
-  login: Box,
-  /*
-  styled.div`
-  display: flex;
-  align-items: center;
-  flex-flow: column;
-  width: 200px;
-  height: 200px;
-  margin: 0 auto;
-  border: 2px solid #000;
-  border-radius: 20px;
-  background: #eee;
-  h2 {
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 14px;
-  }
-  button {
-    background: green;
-    color: #fff;
-    padding: 10px;
-    margin: 5px;
-    width: 150px;
-    border: none;
-    border-radius: 10px;
-    box-sizing: border-box;
-  }
-`,
-*/
-  input: Input
-  /*
-  border: 1px solid #000;
-  border-radius: 10px;
-  padding: 10px;
-  margin: 5px;
-  width: 150px;
-  box-sizing: border-box;
-`
-  */
-};
 
 /**
  * Merges parent and state styles into component styles
  * @param style
  */
 LoginComponent.viewStyles = ({style}) => {
-
   return {
-    [c.login]: {},
-
-    [c.loginBody]: {
-      component: styledComponents.login,
-      style: applyMatchingStyles(style, {
-        width: styleMultiplier(1),
-        height: styleMultiplier(1)
-      })
-    },
-
-    [c.loginUsername]: {
-      component: styledComponents.input
-    },
-
-    [c.loginPassword]: {
-      component: styledComponents.input
-    }
+    [c.login]: {float: 'right'},
+    [c.loginBody]: {}
   };
 };
 
@@ -158,17 +180,41 @@ LoginComponent.viewProps = props => {
   };
 };
 
-LoginComponent.viewActions = () => {
-  return {};
+LoginComponent.viewEventHandlers = props => {
+  const hooks = props.hooks;
+  return {
+    [c.loginUsername]: {
+      onChange: e => reqPathThrowing(
+        [c.loginUsername, 'onChange'],
+        hooks
+      )(e)
+    },
+    [c.loginPassword]: {
+      onChange: e => reqPathThrowing(
+        [c.loginPassword, 'onChange'],
+        hooks
+      )(e)
+    },
+    [c.loginButton]: {
+      onClick: () => {
+        reqStrPathThrowing('mutateTokenAuth.mutation', props)({
+          variables: {
+            username: reqPathThrowing([c.loginUsername, 'value'], hooks),
+            password: reqPathThrowing([c.loginPassword, 'value'], hooks)
+          }
+        });
+      }
+    }
+  };
 };
 
 /**
- * Adds to props.views for each component configured in viewActions, viewProps, and viewStyles
+ * Adds to props.views for each component configured in viewEventHandlers, viewProps, and viewStyles
  * @param {Object} props this.props or equivalent for testing
  * @returns {Object} modified props
  */
 LoginComponent.views = composeViews(
-  LoginComponent.viewActions(),
+  LoginComponent.viewEventHandlers,
   LoginComponent.viewProps,
   LoginComponent.viewStyles
 );
@@ -176,15 +222,17 @@ LoginComponent.views = composeViews(
 /**
  * Loading, Error, or Data based on the props.
  */
-LoginComponent.choicepoint = p => {
+LoginComponent.choicepoint = props => {
   return renderChoicepoint(
     {
-      onError: renderErrorDefault(c.loginError),
+      onError: LoginComponent.renderError,
       onLoading: renderLoadingDefault(c.loginLoading),
       onData: LoginComponent.renderData
     },
-    {}
-  )(p);
+    {
+      mutateTokenAuth: true
+    }
+  )(props);
 };
 
 LoginComponent.propTypes = {

@@ -26,19 +26,12 @@ Error.stackTraceLimit = Infinity;
 // hack until we can upgrade to react@16.9.0
 const originalError = console.error;
 beforeAll(() => {
-  // this is here to silence a warning temporarily
-  // we'll fix it in the next exercise
-  const error = spyOn(console, 'error');
-  error.mockImplementation && error.mockImplementation((...args) => {
-    if (typeof args[0] === 'string' &&
-      (args[0].includes('Please upgrade to at least react-dom@16.9.0') ||
-        args[0].includes('motion.custom() is deprecated. Use motion() instead.')
-      )
-    ) {
-      return;
+  console.error = (...args) => {
+    if (typeof args[0] === 'string' && args[0].includes('was not wrapped in act')) {
+      return
     }
-    return originalError.call(console, args);
-  });
+    return originalError.call(console, ...args)
+  };
 });
 
 afterAll(() => {
