@@ -1428,7 +1428,7 @@ export const chainParentPropContainer = (
           {render}
         );
       }
-    ])();
+    ])({render});
   };
 };
 
