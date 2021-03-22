@@ -1118,10 +1118,9 @@ const _testRenderComponentMutationsTask = (
     errorProps
   }, wrapper, childComponent) => {
   // Store the state of the component's prop before the mutation
-  // Store the state of the component's prop before the mutation
-  const apolloRenderProps = childComponent.first().props();
+  const apolloRenderProps = wrapper.find(componentId).props();
   return composeWithChain([
-    ({mutationResponseObjects, updatedComponent}) => {
+    ({mutationResponseObjects}) => {
       return of(R.map(mutationResponseObject => {
         const {mutationName, mutationResponse, updatedComponent} = mutationResponseObject;
         return {
@@ -1132,9 +1131,7 @@ const _testRenderComponentMutationsTask = (
             updatedComponent.instance().props :
             updatedComponent.props(),
           // This isn't really needed. It just shows the return value of the mutation
-          mutationResponse,
-          // Just for testing
-          updatedComponent
+          mutationResponse
         };
       }, mutationResponseObjects));
     },
@@ -1205,7 +1202,8 @@ const _testRenderComponentMutationsTask = (
       },
       mutationComponents
     )
-  ])({errorProps});
+  // Default mutationResponseObjects in case there are no mutations
+  ])({errorProps, mutationResponseObjects: []});
 };
 
 /**
