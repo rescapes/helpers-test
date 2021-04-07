@@ -156,6 +156,8 @@ Sample.choicepoint = p => {
       queryAuthenticatedUserLocalContainer: bypassToDataIfUnauthenticated(
         'queryAuthenticatedUserLocalContainer.data.currentUser'
       ),
+      // Normally we'd only expect one of these to be active, but since we're testing well make them all run and wait
+      // for them.
       queryRegionsPaginatedAll: true,
       queryRegionsPaginated: true,
       queryRegionsMinimized: true,

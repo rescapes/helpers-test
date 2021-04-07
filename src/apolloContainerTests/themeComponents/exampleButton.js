@@ -10,7 +10,7 @@
  */
 // 1. Import useStyleConfig
 import {e} from '@rescapes/helpers-component';
-import * as  chakra from '@chakra-ui/core';
+import * as  chakra from '@chakra-ui/react';
 
 import {defaultNode} from '@rescapes/ramda';
 

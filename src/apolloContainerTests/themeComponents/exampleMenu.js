@@ -12,7 +12,7 @@
 // 1. Import the components and hook
 import * as chakraReact from "@chakra-ui/react";
 import {e} from '@rescapes/helpers-component';
-import * as chakraCore from '@chakra-ui/core';
+import * as chakraCore from '@chakra-ui/react';
 import {defaultNode} from '@rescapes/ramda';
 
 const {Flex, StylesProvider, useMultiStyleConfig, useStyles} = defaultNode(chakraReact)

@@ -11,7 +11,7 @@
 
 // Example of single part component with custom theming (https://chakra-ui.com/docs/theming/advanced)
 import * as chakraReact from "@chakra-ui/react";
-import * as chakra from "@chakra-ui/core";
+import * as chakra from "@chakra-ui/react";
 
 import {e, nameLookup, propsFor} from '@rescapes/helpers-component';
 import {defaultNode, strPathOr} from '@rescapes/ramda';
