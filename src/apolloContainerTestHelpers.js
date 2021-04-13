@@ -42,7 +42,7 @@ import {
   nameComponent
 } from '@rescapes/apollo';
 import * as chakra from "@chakra-ui/react";
-import {tokenAuthMutationContainer, tokenAuthOutputParams} from '@rescapes/apollo/src/stores/tokenAuthStore';
+import {tokenAuthMutationContainer, tokenAuthOutputParams} from '@rescapes/apollo'
 import {
   mapTaskOrComponentToConcattedNamedResponseAndInputs,
   mutateOnceAndWaitContainer

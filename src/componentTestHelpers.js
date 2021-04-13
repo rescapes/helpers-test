@@ -26,8 +26,8 @@ import {v} from '@rescapes/validate';
 import * as R from 'ramda';
 import {ApolloProvider} from "react-apollo";
 import apolloReactHooks from '@apollo/react-hooks';
-import {getRenderPropFunction} from '@rescapes/apollo/src/helpers/componentHelpersMonadic';
-import {containerForApolloType} from '@rescapes/apollo/src/helpers/containerHelpers';
+import {getRenderPropFunction} from '@rescapes/apollo'
+import {containerForApolloType} from '@rescapes/apollo'
 
 const {of} = T;
 const {ApolloProvider: ApolloHookProvider} = apolloReactHooks;
