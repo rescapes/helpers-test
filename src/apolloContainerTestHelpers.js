@@ -43,9 +43,9 @@ import {
   mutateOnceAndWaitContainer,
   tokenAuthMutationContainer
 } from '@rescapes/apollo';
-import * as chakra from "@chakra-ui/react";
+//import * as chakra from "@chakra-ui/react";
 const {fromPromised, of, waitAll} = T;
-const {ChakraProvider} = defaultNode(chakra);
+//const {ChakraProvider} = defaultNode(chakra);
 
 
 /**
@@ -268,7 +268,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
       composeWithChain([
         ({apolloClient, props}) => of(mountWithApolloClient(
           {apolloClient},
-          e(ChakraProvider, {theme},
+          //e(ChakraProvider, {theme},
             e(
               container,
               props,
@@ -277,7 +277,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
                 return e('div');
               }
             )
-          )
+          //)
         )),
         mapToNamedResponseAndInputs('props',
           ({apolloClient}) => resolvedPropsContainer({apolloClient}, {})
