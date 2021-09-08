@@ -41,7 +41,7 @@ import {
   mapTaskOrComponentToNamedResponseAndInputs, mutationParts,
   nameComponent,
   mutateOnceAndWaitContainer,
-  tokenAuthMutationContainer
+  tokenAuthMutationContainer, tokenAuthOutputParams
 } from '@rescapes/apollo';
 //import * as chakra from "@chakra-ui/react";
 const {fromPromised, of, waitAll} = T;
@@ -269,14 +269,14 @@ export const apolloContainerTests = v((context, container, component, configToCh
         ({apolloClient, props}) => of(mountWithApolloClient(
           {apolloClient},
           //e(ChakraProvider, {theme},
-            e(
-              container,
-              props,
-              responseProps => {
-                // Render anything. We're just testing request composition
-                return e('div');
-              }
-            )
+          e(
+            container,
+            props,
+            responseProps => {
+              // Render anything. We're just testing request composition
+              return e('div');
+            }
+          )
           //)
         )),
         mapToNamedResponseAndInputs('props',
@@ -940,16 +940,16 @@ const _testRenderRunConfig = (updatedPaths, errors, done = null) => {
  * @private
  */
 const _testRenderComponentTask = v((
-  {
-    apolloClient,
-    componentId,
-    childLoadingId,
-    childDataId,
-    waitLength,
-    theme,
-    authenticate,
-    errorMaker
-  }, container, component, resolvedPropsContainer) => {
+    {
+      apolloClient,
+      componentId,
+      childLoadingId,
+      childDataId,
+      waitLength,
+      theme,
+      authenticate,
+      errorMaker
+    }, container, component, resolvedPropsContainer) => {
 
     const render = props => {
       const _props = R.omit(['render', 'children'], props);
@@ -1027,9 +1027,10 @@ const _testRenderComponentTask = v((
     const wrapper = mountWithApolloClient(
       {apolloClient},
       nameComponent('ChakraProvider',
-        e(ChakraProvider, {theme},
-          samplePropsContainer
-        ))
+        //  e(ChakraProvider, {theme},
+        samplePropsContainer
+        //  )
+      )
     );
 
     return composeWithChain([
@@ -1180,8 +1181,7 @@ const _testRenderComponentMutationsTask = (
                         );
                         // Cause an error
                         return mutation({variables: namedProps});
-                      }
-                      else {
+                      } else {
                         return mutation();
                       }
                     })();
@@ -1198,7 +1198,7 @@ const _testRenderComponentMutationsTask = (
       },
       mutationComponents
     )
-  // Default mutationResponseObjects in case there are no mutations
+    // Default mutationResponseObjects in case there are no mutations
   ])({errorProps, mutationResponseObjects: []});
 };
 
