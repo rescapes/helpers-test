@@ -41,7 +41,7 @@ import {
   mapTaskOrComponentToNamedResponseAndInputs, mutationParts,
   nameComponent,
   mutateOnceAndWaitContainer,
-  tokenAuthMutationContainer
+  tokenAuthMutationContainer, tokenAuthOutputParams
 } from '@rescapes/apollo';
 //import * as chakra from "@chakra-ui/react";
 const {fromPromised, of, waitAll} = T;
@@ -1029,10 +1029,8 @@ const _testRenderComponentTask = v((
       // We're not currently using Chakra, but this is how the provider would be wrapped
       //nameComponent('ChakraProvider',
       //  e(ChakraProvider, {theme},
-      // The outer dive is named SamplePropsContainerParent for enzyme searching. It's otherwise non needed
-      nameComponent('SamplePropsContainerParent',
-        e('div', {}, samplePropsContainer)
-      )
+      // The outer dive is named samplePropsContainerParent for enzyme searching. It's otherwise non needed
+      e('div', {'data-testid':'samplePropsContainerParent'}, samplePropsContainer)
       //  ))
     );
 
@@ -1085,7 +1083,7 @@ const _testRenderComponentTask = v((
       mapToNamedResponseAndInputs('foundContainer',
         ({wrapper}) => {
           return waitForChildComponentRenderTask({
-            componentId: 'SamplePropsContainerParent',
+            componentId: 'samplePropsContainerParent',
             childId: 'TestContainer',
             waitLength: waitLength
           }, wrapper);
