@@ -182,6 +182,9 @@ export const waitForChildComponentRenderTask = v(({
     const alreadyChildIIdSearch = alreadyChildId && R.test(/^[A-Z]\S+/, alreadyChildId) ? alreadyChildId : `[data-testid='${alreadyChildId}']`;
     const childIIdSearch = R.test(/^[A-Z]\S+/, childId) ? childId : `[data-testid='${childId}']`;
     const component = wrapper.find(componentIdSearch);
+    if (!R.length(component)) {
+      throw new Error(`Can't find component of id ${componentIdSearch}.`)
+    }
 
     // If alreadyChildId already exists, return it.
     // This happens when the component never was in the loading state but went straight to the ready/data state
