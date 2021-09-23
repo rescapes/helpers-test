@@ -48,7 +48,7 @@ const errorMaker = props => ({
   }
 });
 
-const omitKeysFromSnapshots = R.concat(['id', 'key', 'lastLogin', 'exp', 'origIat', 'token'], VERSION_PROPS);
+const omitKeysFromSnapshots = R.concat(['id', 'key', 'lastLogin', 'exp', 'origIat', 'token', 'dateJoined'], VERSION_PROPS);
 // We expect calling mutateRegion to update the updatedAt of the queryRegions response
 const updatedPaths = defaultUpdatePathsForMutationContainers(apolloContainersSample, {
   mutateRegion: {

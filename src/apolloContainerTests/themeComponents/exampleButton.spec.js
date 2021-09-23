@@ -11,8 +11,8 @@
 // 1. Import useStyleConfig
 import enzyme from 'enzyme';
 import ExampleButton from './exampleButton';
-import {e, renderWithThemeForTest} from '@rescapes/helpers-component';
-
+import {renderWithThemeForTest} from "../theme/themeHelpers.js";
+import {e} from "@rescapes/apollo";
 
 describe('exampleButton', () => {
   test('exampleButton', () => {

@@ -24,13 +24,12 @@ import {composeWithComponentMaybeOrTaskChain, nameComponent} from '@rescapes/apo
 import Result from 'folktale/result';
 import {v} from '@rescapes/validate';
 import * as R from 'ramda';
-import {ApolloProvider} from "react-apollo";
-import apolloReactHooks from '@apollo/react-hooks';
+import apolloClient from '@apollo/client'
 import {getRenderPropFunction} from '@rescapes/apollo'
 import {containerForApolloType} from '@rescapes/apollo'
 
 const {of} = T;
-const {ApolloProvider: ApolloHookProvider} = apolloReactHooks;
+const {ApolloProvider} = apolloClient;
 
 const {mount, shallow} = enzyme;
 
@@ -102,11 +101,7 @@ export const mountWithApolloClient = v((apolloConfig, componentElement) => {
     e(
       ApolloProvider,
       {client: reqStrPathThrowing('apolloClient', apolloConfig)},
-      e(
-        ApolloHookProvider,
-        {client: reqStrPathThrowing('apolloClient', apolloConfig)},
-        componentElement
-      )
+      componentElement
     )
   );
 }, [

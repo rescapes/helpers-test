@@ -10,7 +10,8 @@
  */
 
 import {ExampleMenu, ExampleMenuItem} from './exampleMenu';
-import {e, renderWithThemeForTest} from '@rescapes/helpers-component';
+import {renderWithThemeForTest} from "../theme/themeHelpers.js";
+import {e} from "@rescapes/apollo";
 
 describe('exampleMenu', () => {
   test('exampleMen', () => {

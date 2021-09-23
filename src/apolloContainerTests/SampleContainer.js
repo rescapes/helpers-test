@@ -94,7 +94,7 @@ export const apolloContainersSample = (apolloConfig = {}) => {
               }
             }),
           {
-            userRegionOutputParams: userStateRegionOutputParams()
+            userRegionOutputParams: userStateRegionOutputParams({})
           },
           R.merge(
             props,
@@ -162,12 +162,13 @@ export const apolloContainersSample = (apolloConfig = {}) => {
             // Not sure what is better at this point.
             userRegion: findUserScopeInstance(
               {
-                userStatePropPath: 'userState',
-                userScopeCollectName: 'userRegions',
+                userStatePropPath: 'userStateResponse',
+                userScopeCollectionName: 'userRegions',
                 scopeName: 'region',
                 scopeInstancePropPath: 'queryActiveRegions.data.regions.0'
               },
-              props
+              // Normally we'd query the userState, so make it match that
+              R.merge(props, {userStateResponse: props.userState})
             ),
             userState: R.propOr(null, 'userState', props) ||
               strPathOr(null, 'queryCurrentUserState.data.userStates.0', props)
@@ -182,7 +183,7 @@ export const apolloContainersSample = (apolloConfig = {}) => {
             )
           }),
           {
-            userRegionOutputParams: userStateRegionOutputParams()
+            userRegionOutputParams: userStateRegionOutputParams({})
           },
           mutateProps
         );

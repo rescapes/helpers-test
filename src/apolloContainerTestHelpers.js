@@ -9,6 +9,7 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+import {adopt} from 'react-adopt';
 import {
   mountWithApolloClient,
   parentPropsForContainer,
@@ -63,19 +64,43 @@ export const filterForQueryContainers = apolloContainers => {
   );
 };
 
-/***
- * Filter for just the mutation containers of the given apolloContainersLogout
- * @param {Object} apolloContainers Keyed by request name and valued by apollo request container.
- * Only those beginning with 'mutat' are considered
- * @return {*}
- */
-export const filterForMutationContainers = apolloContainers => {
+export const filterForMutationContainers = (apolloContainers) => {
   return filterWithKeys(
     (_, key) => {
       return R.includes('mutat', key);
     },
     apolloContainers
   );
+}
+/***
+ * Filter for just the mutation containers of the given apolloContainersLogout
+ * @param {Object} apolloContainers Keyed by request name and valued by apollo request container.
+ * Only those beginning with 'mutat' are considered
+ * @return {[Task]} List of mutation tasks
+ */
+export const filterForMutationContainersWithQueriesRunFirst = apolloContainers => {
+  const queryContainers = filterForQueryContainers(apolloContainers)
+  const mutationContainers = filterForMutationContainers(apolloContainers);
+  return R.map(
+    (mutationContainer) => {
+      // Run all the queries before each mutation if queries exist in case the mutation needs the query results
+      return R.length(R.keys(queryContainers)) ? props => {
+        return composeWithChain([
+          props => {
+            return mutationContainer(props)
+          },
+          // Run all the queries in their original order, assigning the results to their key
+          ...R.reverse(mapObjToValues(
+            (queryContainer, key) => {
+              return mapToNamedResponseAndInputs(key, queryContainer)
+            },
+            queryContainers
+          ))
+        ])(props)
+      } : mutationContainer
+    },
+    mutationContainers
+  )
 };
 
 /**
@@ -321,7 +346,9 @@ export const apolloContainerTests = v((context, container, component, configToCh
         resolvedPropsContainer,
         updatedPaths
       },
-      apolloConfig => filterForMutationContainers(apolloContainers(apolloConfig)),
+      // Because mutations might rely on props from queries, this actually creates tasks to run all
+      // queries before each mutation task
+      apolloConfig => filterForMutationContainersWithQueriesRunFirst(apolloContainers(apolloConfig)),
       done
     );
 
@@ -463,7 +490,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
               // No loading state for no auth
               childLoadingId: childClassNoAuthName,
               omitKeysFromSnapshots,
-              mutationComponents: filterForMutationContainers(apolloContainers({})),
+              mutationComponents: apolloConfig => filterForMutationContainers(apolloContainers(apolloConfig)),
               updatedPaths,
               waitLength,
               // We can't mutate with an unauthenticated user
@@ -788,7 +815,8 @@ export const apolloMutationResponsesTask = ({
  * functions from the componsed Apollo Containers
  * @param {String} config.childDataId Then id of the top-level class created by the component when it is ready
  * @param {String} config.childLoadingId The id of the top-level class created by the component when loading
- * @param [{Function}] config.mutationComponents Apollo Mutation component functions expecting props
+ * @param {Function} config.mutationComponents function expecting apolloConfig that returns
+ * Apollo Mutation component functions expecting props
  * @param {Boolean} [config.skipMutationTests] Default false. Set false for unauthenticated users,
  * since they can't mutate
  * that then return a Mutation component. The mutation function of these is called by storing the
@@ -1030,7 +1058,7 @@ const _testRenderComponentTask = v((
       //nameComponent('ChakraProvider',
       //  e(ChakraProvider, {theme},
       // The outer dive is named samplePropsContainerParent for enzyme searching. It's otherwise non needed
-      e('div', {'data-testid':'samplePropsContainerParent'}, samplePropsContainer)
+      e('div', {'data-testid': 'samplePropsContainerParent'}, samplePropsContainer)
       //  ))
     );
 
@@ -1197,7 +1225,7 @@ const _testRenderComponentMutationsTask = (
           }
         );
       },
-      mutationComponents
+      mutationComponents(apolloConfig)
     )
     // Default mutationResponseObjects in case there are no mutations
   ])({errorProps, mutationResponseObjects: []});
