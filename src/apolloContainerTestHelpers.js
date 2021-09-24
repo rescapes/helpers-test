@@ -1225,7 +1225,8 @@ const _testRenderComponentMutationsTask = (
           }
         );
       },
-      mutationComponents(apolloConfig)
+      // Pass the apolloConfig if needed because we generated the apolloClient after the mutationComponents
+      R.when(R.is(Function), mutationComponents => mutationComponents(apolloConfig))(mutationComponents)
     )
     // Default mutationResponseObjects in case there are no mutations
   ])({errorProps, mutationResponseObjects: []});
