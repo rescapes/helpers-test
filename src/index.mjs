@@ -1,8 +1,6 @@
 export {
   waitForChildComponentRenderTask,
   propsFromSampleStateAndContainer,
-  mockApolloClient,
-  mockApolloClientWithSamples,
   shallowWrap,
   testState,
   mountWithApolloClient,

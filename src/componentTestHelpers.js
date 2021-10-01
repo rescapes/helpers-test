@@ -14,28 +14,23 @@ import {createWaitForElement} from 'enzyme-wait';
 import PropTypes from 'prop-types';
 import enzyme from 'enzyme';
 import {promiseToTask, reqPathThrowing, reqStrPathThrowing} from '@rescapes/ramda';
-import * as apolloTestUtils from 'apollo-test-utils';
-import * as AC from '@apollo/client';
-import {SchemaLink} from '@apollo/client/link/schema';
-import {onError} from "@apollo/client/link/error";
+import apolloClient from '@apollo/client';
 import {e, getClass} from '@rescapes/helpers-component';
 import T from 'folktale/concurrency/task';
-import {composeWithComponentMaybeOrTaskChain, nameComponent} from '@rescapes/apollo';
+import {
+  composeWithComponentMaybeOrTaskChain,
+  containerForApolloType,
+  getRenderPropFunction,
+  nameComponent
+} from '@rescapes/apollo';
 import Result from 'folktale/result';
 import {v} from '@rescapes/validate';
 import * as R from 'ramda';
-import apolloClient from '@apollo/client'
-import {getRenderPropFunction} from '@rescapes/apollo'
-import {containerForApolloType} from '@rescapes/apollo'
 
 const {of} = T;
 const {ApolloProvider} = apolloClient;
 
 const {mount, shallow} = enzyme;
-
-
-// Importing this way because rollup can't find it
-const mockNetworkInterfaceWithSchema = apolloTestUtils.mockNetworkInterfaceWithSchema;
 
 /**
  * Create an initial test state based on the sampleConfig for tests to use.
@@ -58,35 +53,6 @@ export const testState = (createInitialState, sampleConfig) => createInitialStat
  */
 export const propsFromSampleStateAndContainer = (initialState, containerPropMaker, sampleParentProps = {}) =>
   containerPropMaker(initialState, sampleParentProps);
-
-export const mockApolloClient = (schema, context) => {
-  const mockNetworkInterface = mockNetworkInterfaceWithSchema({schema});
-
-  const errorLink = onError(({graphQLErrors, response, operation}) => {
-    //if (graphQLErrors) {
-    //graphQLErrors.map(({message, locations, path}) =>
-    //console.log(
-    //  `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
-    //)
-    //);
-    //}
-
-  });
-  const apolloCache = new InMemoryCache();
-  return new ApolloClient({
-    cache: apolloCache,
-    link: new SchemaLink({schema, context}),
-    networkInterface: mockNetworkInterface
-  });
-};
-
-/**
- * Creates a mockApolloClient
- */
-export const mockApolloClientWithSamples = (state, resolvedSchema) => {
-  const context = {options: {dataSource: state}};
-  return mockApolloClient(resolvedSchema, context);
-};
 
 /**
  * Wraps a component in an Apollo Provider for testing
