@@ -1014,7 +1014,7 @@ const _testRenderComponentTask = v((
           // Create the React element from container, passing the props and component via a render function.
           // The react-adopt container expects to be given a render function so it can pass the results of the
           // Apollo request components
-          return authenticate ?
+          return authenticate && R.has('mutation', tokenAuthResponse) ?
             // Login in to the server so the apolloClient is authenticated
             mutateOnceAndWaitContainer(
               {},
