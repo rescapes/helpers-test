@@ -42,7 +42,7 @@ import {
   mapTaskOrComponentToNamedResponseAndInputs, mutationParts,
   nameComponent,
   mutateOnceAndWaitContainer,
-  tokenAuthMutationContainer, tokenAuthOutputParams
+  tokenAuthMutationContainer, tokenAuthOutputParams, queryLocalTokenAuthContainer
 } from '@rescapes/apollo';
 //import * as chakra from "@chakra-ui/react";
 const {fromPromised, of, waitAll} = T;
@@ -702,6 +702,9 @@ const _testMutations = (
     )(updatedPaths)
   );
 
+  if (!R.length(assertions)) {
+    return
+  }
   expect.assertions(assertions);
 
   const errors = [];
@@ -1029,14 +1032,26 @@ const _testRenderComponentTask = v((
         }
       ),
       mapTaskOrComponentToNamedResponseAndInputs({}, 'tokenAuthResponse',
-        props => {
-          return tokenAuthMutationContainer(
+        ({tokenAuthResponse, ...props}) => {
+          return tokenAuthResponse ?
+            containerForApolloType({}, {render: getRenderPropFunction(props), response: tokenAuthResponse}) :
+            tokenAuthMutationContainer(
+              {},
+              {outputParams: tokenAuthOutputParams},
+              props
+            );
+        }
+      ),
+      mapTaskOrComponentToNamedResponseAndInputs({}, 'tokenAuthResponse',
+        ({render}) => {
+          // See if we're already authenticated so we don't have to pass auth props around
+          return queryLocalTokenAuthContainer(
             {},
-            {outputParams: tokenAuthOutputParams},
-            props
+            {render}
           );
         }
       ),
+
 
       ({render}) => {
         // Create the React element from container, passing the props and component via a render function.
