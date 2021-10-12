@@ -1544,6 +1544,7 @@ export const chainSamplePropsForContainer = (
       {
         runParentContainerQueries,
         containerName: compoundContainerName,
+        queryContainers: containers,
         ...options
       },
       {render}
