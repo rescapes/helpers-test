@@ -9,12 +9,7 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import {adopt} from 'react-adopt';
-import {
-  mountWithApolloClient,
-  parentPropsForContainer,
-  waitForChildComponentRenderTask
-} from './componentTestHelpers.js';
+import {mountWithApolloClient, waitForChildComponentRenderTask} from './componentTestHelpers.js';
 import {e} from '@rescapes/helpers-component';
 import PropTypes from 'prop-types';
 import {v} from '@rescapes/validate';
@@ -22,7 +17,6 @@ import T from 'folktale/concurrency/task';
 
 import {
   composeWithChain,
-  defaultNode,
   defaultRunConfig,
   filterWithKeys,
   mapObjToValues,
@@ -37,13 +31,18 @@ import Result from 'folktale/result';
 import {
   apolloQueryResponsesContainer,
   composeWithComponentMaybeOrTaskChain,
-  containerForApolloType, deleteTokenCookieMutationRequestContainer,
+  containerForApolloType,
+  deleteTokenCookieMutationRequestContainer,
   getRenderPropFunction,
-  mapTaskOrComponentToNamedResponseAndInputs, mutationParts,
-  nameComponent,
+  mapTaskOrComponentToNamedResponseAndInputs,
   mutateOnceAndWaitContainer,
-  tokenAuthMutationContainer, tokenAuthOutputParams, queryLocalTokenAuthContainer
+  mutationParts,
+  nameComponent,
+  queryLocalTokenAuthContainer, queryResponsesContainer,
+  tokenAuthMutationContainer,
+  tokenAuthOutputParams
 } from '@rescapes/apollo';
+import {reqPathThrowing} from '@rescapes/ramda'
 //import * as chakra from "@chakra-ui/react";
 const {fromPromised, of, waitAll} = T;
 //const {ChakraProvider} = defaultNode(chakra);
@@ -1421,48 +1420,72 @@ export const propsFromParentPropsTask = v((chainedParentPropsTask, samplePropsTa
  * Component or Task resolving to parent props from all the way up the view hierarchy
  * @param {Function} chainedSamplePropsForParent This should be the parent component's
  * call to chainSamplePropsForContainer
- * @param {Object} parentComponentViews The parent Apollo containers c object that defines the view names
+ * @param {Function} parentComponentViews The parent Apollo containers c object that defines the view names
  * @param {String} viewName The view name in parentComponentViews that refers to the child Apollo
  * container we want to link to the parent
  * @param {Function} [simulateUserChoicesOnProps] Called after chainedSamplePropsForParent with props
  * and returns a component or resolves a task with modifed props to simulate user selectoins. By default
- * props are not filered
+ * props are not filtered
+ * @param {Function} queryContainers Expects an apolloConfig and returnes the queryContainers
  */
 export const chainParentPropContainer = (
   {
     chainedSamplePropsForParent,
     parentComponentViews,
     viewName,
-    simulateUserChoicesOnProps
+    simulateUserChoicesOnProps,
+    queryContainers
   }) => {
   return (
     apolloConfig,
-    {runParentContainerQueries, ...options},
+    {
+      runParentContainerQueries,
+      containerName,
+      ...options
+    },
     {render}
   ) => {
     return composeWithComponentMaybeOrTaskChain([
+      nameComponent(`parentPropsOf${containerName}View${viewName}`, props => {
+        return containerForApolloType(
+          apolloConfig,
+          {
+            render: getRenderPropFunction(props),
+            response: reqPathThrowing(
+              // Get the the parent component's view that renders the calling container
+              ['views', viewName],
+              // Leave out the parent component's key property, it was only used to key the component
+              parentComponentViews(R.omit(['key'], props))
+            )
+          }
+        );
+      }),
       props => {
         // Apply simulated user choices if defined
         return containerForApolloType(
           apolloConfig,
           {
-            render,
+            render: getRenderPropFunction(props),
             response: simulateUserChoicesOnProps ? simulateUserChoicesOnProps(props) : props
           }
         );
       },
+      props => {
+        return queryResponsesContainer(apolloConfig, {
+          // Get the Apollo queries for the container since we can run the props through them and get the
+          // structured query results that the component expect
+          queryContainers: filterForQueryContainers(queryContainers(apolloConfig)),
+        }, props)
+      },
       () => {
-        return parentPropsForContainer(
-          apolloConfig, {
-            apolloConfigToSamplePropsContainer: (apolloConfig, {render}) => {
-              return chainedSamplePropsForParent(
-                apolloConfig,
-                {runParentContainerQueries, runContainerQueries: runParentContainerQueries, ...options},
-                {render}
-              );
-            },
-            parentComponentViews,
-            viewName
+        return chainedSamplePropsForParent(
+          apolloConfig,
+          {
+            runParentContainerQueries,
+            runContainerQueries: runParentContainerQueries,
+            containerName,
+            viewName,
+            ...options
           },
           {render}
         );
@@ -1480,6 +1503,7 @@ export const chainParentPropContainer = (
  * is passed to parent calls to chainSamplePropsForContainer to run the requests of the parent or not.
  * TODO I think we always need to run the parents requests to get legit props, so I can't remember
  * why this exists.
+ * @param {String} [parentContainerName] Labels the parent container for easier debugging
  * @param {Function} containers Unary function expecting apolloConfig that returns the apollo
  * requests for the container being testing
  * @returns {Function} See docs below
@@ -1487,6 +1511,7 @@ export const chainParentPropContainer = (
 export const chainSamplePropsForContainer = (
   {
     chainedParentPropsContainer,
+    parentContainerName = 'UnspecifiedParentContainer',
     containers
   }) => {
   /**
@@ -1509,24 +1534,17 @@ export const chainSamplePropsForContainer = (
       containerName,
       runParentContainerQueries = false,
       runContainerQueries = false,
+      viewName,
       ...options
     }, {render}) => {
 
-    return apolloQueryResponsesContainer(
-      apolloConfig, {
-        containerName,
-        // Apply these props from the "parent" to the queries
-        resolvedPropsContainer: (apolloConfig, {render}) => {
-          return chainedParentPropsContainer(
-            apolloConfig,
-            {runParentContainerQueries, ...options},
-            {render}
-          );
-        },
-        // Get the Apollo queries for the container since we can run the props through them and get the
-        // structured query results that the component expect
-        queryContainers: filterForQueryContainers(containers(apolloConfig)),
-        runContainerQueries
+    const compoundContainerName = `${parentContainerName} > ${containerName}`
+    return chainedParentPropsContainer(
+      apolloConfig,
+      {
+        runParentContainerQueries,
+        containerName: compoundContainerName,
+        ...options
       },
       {render}
     );

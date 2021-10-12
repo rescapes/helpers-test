@@ -137,6 +137,7 @@ export const chainedParentPropsForSampleContainer = (apolloConfig, {runParentCon
 export const configToChainedPropsForSampleContainer = chainSamplePropsForContainer(
   {
     chainedParentPropsContainer: chainedParentPropsForSampleContainer,
+    parentContainerName: 'SampleContainer',
     containers: apolloContainersSample
   }
 );

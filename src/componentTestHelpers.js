@@ -229,7 +229,7 @@ export const testPropsTaskMaker = (mapStateToProps, mapDispatchToProps) =>
  * @param {Function} config.apolloConfigToSamplePropsTask Function expecting the Apollo config as the unary argument.
  * Returns a task that resolves to the parent container props in a Result.Ok for success or Result.Error if
  * and error occurs
- * @param {Object} config.parentComponentViews A function expecting props that returns an object keyed by view names
+ * @param {Function} config.parentComponentViews A function expecting props that returns an object keyed by view names
  * and valued by view props, where views are the child containers/components of the component
  * @param {Object} config.viewName The viewName in the parent component of the target container
  * @param {Object} props
@@ -240,10 +240,11 @@ export const testPropsTaskMaker = (mapStateToProps, mapDispatchToProps) =>
 export const parentPropsForContainer = v((apolloConfig, {
     apolloConfigToSamplePropsContainer,
     parentComponentViews,
+    containerName,
     viewName
   }, {render}) => {
     return composeWithComponentMaybeOrTaskChain([
-      nameComponent(`parentPropsOf${viewName}`, props => {
+      nameComponent(`parentPropsOf${containerName}View${viewName}`, props => {
         return containerForApolloType(
           apolloConfig,
           {
