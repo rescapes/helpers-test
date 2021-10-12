@@ -1434,13 +1434,13 @@ export const chainParentPropContainer = (
     parentComponentViews,
     viewName,
     simulateUserChoicesOnProps,
-    containers
   }) => {
   return (
     apolloConfig,
     {
       runParentContainerQueries,
       containerName,
+      containers,
       ...options
     },
     {render}
