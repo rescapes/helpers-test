@@ -1476,7 +1476,7 @@ export const chainParentPropContainer = (
           // structured query results that the component expect
           queryContainers: filterForQueryContainers(containers(apolloConfig)),
           containerName,
-          queryResponsesContainer: true
+          runContainerQueries: true
         }, props)
       },
       ({render}) => {
