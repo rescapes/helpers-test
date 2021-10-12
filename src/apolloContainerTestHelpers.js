@@ -1477,7 +1477,7 @@ export const chainParentPropContainer = (
           queryContainers: filterForQueryContainers(containers(apolloConfig)),
         }, props)
       },
-      () => {
+      ({render}) => {
         return chainedSamplePropsForParent(
           apolloConfig,
           {
