@@ -1426,7 +1426,7 @@ export const propsFromParentPropsTask = v((chainedParentPropsTask, samplePropsTa
  * @param {Function} [simulateUserChoicesOnProps] Called after chainedSamplePropsForParent with props
  * and returns a component or resolves a task with modifed props to simulate user selectoins. By default
  * props are not filtered
- * @param {Function} queryContainers Expects an apolloConfig and returnes the queryContainers
+ * @param {Function} containers Expects an apolloConfig and returns the queryContainers
  */
 export const chainParentPropContainer = (
   {
@@ -1434,7 +1434,7 @@ export const chainParentPropContainer = (
     parentComponentViews,
     viewName,
     simulateUserChoicesOnProps,
-    queryContainers
+    containers
   }) => {
   return (
     apolloConfig,
@@ -1474,7 +1474,7 @@ export const chainParentPropContainer = (
         return queryResponsesContainer(apolloConfig, {
           // Get the Apollo queries for the container since we can run the props through them and get the
           // structured query results that the component expect
-          queryContainers: filterForQueryContainers(queryContainers(apolloConfig)),
+          queryContainers: filterForQueryContainers(containers(apolloConfig)),
         }, props)
       },
       () => {
@@ -1544,7 +1544,7 @@ export const chainSamplePropsForContainer = (
       {
         runParentContainerQueries,
         containerName: compoundContainerName,
-        queryContainers: containers,
+        containers,
         ...options
       },
       {render}
