@@ -1446,6 +1446,32 @@ export const chainParentPropContainer = (
     {render}
   ) => {
     return composeWithComponentMaybeOrTaskChain([
+      props => {
+        // Apply simulated user choices if defined. This changes the props to simulate a choice a user might make,
+        // like selected an item from a list that updates an API object somehow.
+        return containerForApolloType(
+          apolloConfig,
+          {
+            render: getRenderPropFunction(props),
+            response: simulateUserChoicesOnProps ? simulateUserChoicesOnProps(props) : props
+          }
+        );
+      },
+      // Third, get the Apollo queries for the current container since we can run the props through them and get the
+      // structured query results that the component expect.
+      // At this point we have everything from the parent containers (and above), everything from the parent component,
+      // and everything from the current container.
+      props => {
+        return queryResponsesContainer(apolloConfig, {
+          queryContainers: filterForQueryContainers(containers(apolloConfig)),
+          containerName,
+          runContainerQueries: true
+        }, props)
+      },
+      // Now get the parent component props that are passed to the current component.
+      // We're calling the parent component's props.views[viewName] where viewName contains
+      // the props needed to be passed to the current component. So if the parent is Foo and the current component
+      // is Bar, the parents props will have props.views.bar, which contain the props to pass to Bar
       nameComponent(`parentPropsOf${containerName}View${viewName}`, props => {
         return containerForApolloType(
           apolloConfig,
@@ -1460,25 +1486,9 @@ export const chainParentPropContainer = (
           }
         );
       }),
-      props => {
-        // Apply simulated user choices if defined
-        return containerForApolloType(
-          apolloConfig,
-          {
-            render: getRenderPropFunction(props),
-            response: simulateUserChoicesOnProps ? simulateUserChoicesOnProps(props) : props
-          }
-        );
-      },
-      props => {
-        return queryResponsesContainer(apolloConfig, {
-          // Get the Apollo queries for the container since we can run the props through them and get the
-          // structured query results that the component expect
-          queryContainers: filterForQueryContainers(containers(apolloConfig)),
-          containerName,
-          runContainerQueries: true
-        }, props)
-      },
+      // First ask the parent for its own props. This recursively goes up to the top parent.
+      // At the current component level, this delivers us all the props from the parent container
+      // but not the parent component that defines the current component. We'll get that above.
       ({render}) => {
         return chainedSamplePropsForParent(
           apolloConfig,
@@ -1486,6 +1496,7 @@ export const chainParentPropContainer = (
             runParentContainerQueries,
             runContainerQueries: runParentContainerQueries,
             containerName,
+            // TODO, is viewName still needed here?
             viewName,
             ...options
           },
