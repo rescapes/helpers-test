@@ -703,7 +703,7 @@ const _testMutations = (
   );
 
   if (!R.length(assertions)) {
-    return
+    done();
   }
   expect.assertions(assertions);
 
