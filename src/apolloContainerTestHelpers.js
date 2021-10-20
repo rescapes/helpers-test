@@ -190,6 +190,9 @@ export const defaultUpdatePathsForMutationContainers = (apolloContainers, overri
  * @param {Object} testContext
  * @param {Function} testContext.apolloContainersLogout Function expecting an optional apolloConfig and returning
  * @param {Function} [testContext.errorMaker] Optional unary function that expects the results of the
+ * @param {Function} [testContext.mutationPropsMaker] Optional function that takes props and returns a keyed
+ * object by mutation name where each value are the props to pass to the
+ * mutation() function itself. This is not need if the test passes all the needed props to the container.
  * @param {[String]} testContext.omitKeysFromSnapshots Keys to not snapshot test because
  * values aren't deterministic. This must at least include id and should include dates that change.
  * The keys are omitted from all result objects deep prior to snapshot testing
@@ -253,7 +256,8 @@ export const apolloContainerTests = v((context, container, component, configToCh
         authorizeMutationKey,
         deauthorizeMutationKey,
         loginComponentId,
-        logoutComponentId
+        logoutComponentId,
+        mutationPropsMaker
       }
     } = context;
 
@@ -377,7 +381,8 @@ export const apolloContainerTests = v((context, container, component, configToCh
             mutationComponents,
             updatedPaths,
             waitLength,
-            theme
+            theme,
+            mutationPropsMaker
           },
           container,
           component,
@@ -515,6 +520,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
       _testRenderError(
         {
           errorMaker,
+          mutationPropsMaker,
           apolloConfigContainer: apolloConfigOptionalFunctionContainer('testRenderError'),
           resolvedPropsContainer,
           componentId,
@@ -524,7 +530,7 @@ export const apolloContainerTests = v((context, container, component, configToCh
           mutationComponents: filterForMutationContainers(apolloContainers({})),
           waitLength,
           authenticate: true,
-          theme
+          theme,
         },
         container,
         component,
@@ -857,7 +863,8 @@ const _testRenderTask = (
     waitLength,
     skipMutationTests = false,
     theme,
-    authenticate = true
+    authenticate = true,
+    mutationPropsMaker
   }, container, component, done) => {
 
   return composeWithChain([
@@ -867,6 +874,7 @@ const _testRenderTask = (
       // We don't actually change the values explicitly when we mutate here, so we assert it worked
       // by checking the object's update timestamp at the end of the test
       ({apolloClient, wrapper, container, component}) => {
+        const props = component.props();
         return skipMutationTests ?
           // No tests
           containerForApolloType(
@@ -881,7 +889,8 @@ const _testRenderTask = (
             mutationComponents,
             componentId,
             childDataId,
-            waitLength
+            waitLength,
+            mutationPropsMaker: mutationPropsMaker ? mutationPropsMaker(props) : null,
           }, wrapper, component);
       }
     ),
@@ -1156,7 +1165,8 @@ const _testRenderComponentMutationsTask = (
     childDataId,
     childErrorId,
     waitLength,
-    errorProps
+    mutationProps,
+    errorProps,
   }, wrapper, childComponent) => {
   // Store the state of the component's prop before the mutation
   const apolloRenderProps = wrapper.find(componentId).props();
@@ -1226,7 +1236,7 @@ const _testRenderComponentMutationsTask = (
                         // Cause an error
                         return mutation({variables: namedProps});
                       } else {
-                        return mutation();
+                        return mutation(mutationProps[mutationName]);
                       }
                     })();
                     return task.orElse(error => {
@@ -1293,6 +1303,7 @@ const testMutationChanges = (clientOrComponent, updatedPaths, prePostMutationCom
 const _testRenderError = (
   {
     errorMaker,
+    mutationPropsMaker,
     apolloConfigContainer,
     resolvedPropsContainer,
     componentId,
@@ -1303,7 +1314,7 @@ const _testRenderError = (
     updatedPaths,
     waitLength,
     authenticate,
-    theme
+    theme,
   }, container, component, done) => {
 
   expect.assertions(
@@ -1329,6 +1340,7 @@ const _testRenderError = (
        }) => {
         const props = component.props();
         return _testRenderComponentMutationsTask({
+          mutationProps: mutationPropsMaker ? mutationPropsMaker(props) : null,
           errorProps: errorMaker ? errorMaker(props) : null,
           apolloConfig: {apolloClient},
           mutationComponents,
