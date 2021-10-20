@@ -874,7 +874,7 @@ const _testRenderTask = (
       // We don't actually change the values explicitly when we mutate here, so we assert it worked
       // by checking the object's update timestamp at the end of the test
       ({apolloClient, wrapper, container, component}) => {
-        const props = component.props();
+        const props = container.props();
         return skipMutationTests ?
           // No tests
           containerForApolloType(
@@ -890,7 +890,7 @@ const _testRenderTask = (
             componentId,
             childDataId,
             waitLength,
-            mutationPropsMaker: mutationPropsMaker ? mutationPropsMaker(props) : null,
+            mutationProps: mutationPropsMaker ? mutationPropsMaker(props) : null,
           }, wrapper, component);
       }
     ),
@@ -1339,8 +1339,9 @@ const _testRenderError = (
          errorMaker
        }) => {
         const props = component.props();
+        const containerProps = container.props();
         return _testRenderComponentMutationsTask({
-          mutationProps: mutationPropsMaker ? mutationPropsMaker(props) : null,
+          mutationProps: mutationPropsMaker ? mutationPropsMaker(containerProps) : null,
           errorProps: errorMaker ? errorMaker(props) : null,
           apolloConfig: {apolloClient},
           mutationComponents,
