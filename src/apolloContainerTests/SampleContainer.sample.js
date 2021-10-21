@@ -23,7 +23,7 @@ import {
   nameComponent,
   userOutputParams
 } from '@rescapes/apollo';
-import {chainSamplePropsForContainer, filterForQueryContainers} from '../apolloContainerTestHelpers.js';
+import {chainSamplePropsForContainer} from '../apolloContainerTestHelpers.js';
 import {apolloContainersSample} from './SampleContainer.js';
 import {mutateSampleUserStateWithProjectsAndRegionsContainer} from '@rescapes/place';
 
