@@ -10,6 +10,7 @@
  */
 
 import {mountWithApolloClient, waitForChildComponentRenderTask} from './componentTestHelpers.js';
+import {loggers} from '@rescapes/log';
 import {
   e,
   filterForMutationContainers,
@@ -50,6 +51,7 @@ import {
 import {reqPathThrowing} from '@rescapes/ramda'
 import {mapTaskOrComponentToConcattedNamedResponseAndInputs} from "@rescapes/apollo/src/helpers/containerHelpers.js";
 //import * as chakra from "@chakra-ui/react";
+const log = loggers.get('rescapeDefault');
 const {fromPromised, of, waitAll} = T;
 //const {ChakraProvider} = defaultNode(chakra);
 
@@ -1244,9 +1246,10 @@ const testMutationChanges = (clientOrComponent, updatedPaths, prePostMutationCom
             // compare the pre mutation version to the post mutation.
             // if we are checking related query data, there should be no undefined values
             // If we are checking mutation results, the initial value can be undefined
-            expect(strPathOr('undefined', updatedPath, preMutationApolloRenderProps)).not.toEqual(
-              reqStrPathThrowing(updatedPath, postMutationApolloRenderProps)
-            );
+            const oldValue = strPathOr('undefined', updatedPath, preMutationApolloRenderProps);
+            const newValue =  reqStrPathThrowing(updatedPath, postMutationApolloRenderProps);
+            log.debug(`Comparing the following paths for inequality of ${updatedPath} before and after mutation`)
+            expect(oldValue).not.toEqual(newValue)
           },
           updatedPathsForMutaton
         );
