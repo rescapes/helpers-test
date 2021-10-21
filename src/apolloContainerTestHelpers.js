@@ -18,7 +18,7 @@ import T from 'folktale/concurrency/task';
 import {
   composeWithChain,
   defaultRunConfig,
-  filterWithKeys,
+  filterWithKeys, mapKeys,
   mapObjToValues,
   mapToMergedResponseAndInputs,
   mapToNamedResponseAndInputs,
@@ -47,61 +47,6 @@ import {mapTaskOrComponentToConcattedNamedResponseAndInputs} from "@rescapes/apo
 //import * as chakra from "@chakra-ui/react";
 const {fromPromised, of, waitAll} = T;
 //const {ChakraProvider} = defaultNode(chakra);
-
-
-/**
- * Filter for just the query containers of the given apolloContainersLogout
- * @param {Object} apolloContainers Keyed by request name and valued by apollo request container.
- * Only those beginning with 'query' are considered
- * @return {*}
- */
-export const filterForQueryContainers = apolloContainers => {
-  return filterWithKeys(
-    (_, key) => {
-      return R.includes('query', key);
-    },
-    apolloContainers
-  );
-};
-
-export const filterForMutationContainers = (apolloContainers) => {
-  return filterWithKeys(
-    (_, key) => {
-      return R.includes('mutat', key);
-    },
-    apolloContainers
-  );
-}
-/***
- * Filter for just the mutation containers of the given apolloContainersLogout
- * @param {Object} apolloContainers Keyed by request name and valued by apollo request container.
- * Only those beginning with 'mutat' are considered
- * @return {[Task]} List of mutation tasks
- */
-export const filterForMutationContainersWithQueriesRunFirst = apolloContainers => {
-  const queryContainers = filterForQueryContainers(apolloContainers)
-  const mutationContainers = filterForMutationContainers(apolloContainers);
-  return R.map(
-    (mutationContainer) => {
-      // Run all the queries before each mutation if queries exist in case the mutation needs the query results
-      return R.length(R.keys(queryContainers)) ? props => {
-        return composeWithChain([
-          props => {
-            return mutationContainer(props)
-          },
-          // Run all the queries in their original order, assigning the results to their key
-          ...R.reverse(mapObjToValues(
-            (queryContainer, key) => {
-              return mapToNamedResponseAndInputs(key, queryContainer)
-            },
-            queryContainers
-          ))
-        ])(props)
-      } : mutationContainer
-    },
-    mutationContainers
-  )
-};
 
 /**
  * Returns default empty updatePaths object for all mutation requests in the form
@@ -894,7 +839,7 @@ const _testRenderTask = (
           }, wrapper, component);
       }
     ),
-    // Render component, calling queries
+    // Render component, calling queries and mutation
     mapToMergedResponseAndInputs(
       ({apolloClient, resolvedPropsContainer, componentId, childLoadingId, childDataId, childErrorId}) => {
         return _testRenderComponentTask(
@@ -1170,6 +1115,12 @@ const _testRenderComponentMutationsTask = (
   }, wrapper, childComponent) => {
   // Store the state of the component's prop before the mutation
   const apolloRenderProps = wrapper.find(componentId).props();
+  const nameToMutationComponent = R.when(R.is(Function), mutationComponents => mutationComponents(apolloConfig))(mutationComponents)
+  if (R.any(mutationName => R.prop('skip', reqStrPathThrowing(mutationName, apolloRenderProps)), R.keys(nameToMutationComponent))) {
+    throw Error(`One or more mutation passed in was skipped (not ready to run). There is something wrong with the container or test: ${
+      JSON.stringify(R.mapObjIndexed((_, mutationName) => R.pick(['skip'], reqStrPathThrowing(mutationName, apolloRenderProps)), nameToMutationComponent))
+    }`)
+  }
   return composeWithChain([
     ({mutationResponseObjects}) => {
       return of(R.map(mutationResponseObject => {
@@ -1251,7 +1202,7 @@ const _testRenderComponentMutationsTask = (
         );
       },
       // Pass the apolloConfig if needed because we generated the apolloClient after the mutationComponents
-      R.when(R.is(Function), mutationComponents => mutationComponents(apolloConfig))(mutationComponents)
+      nameToMutationComponent
     )
     // Default mutationResponseObjects in case there are no mutations
   ])({errorProps, mutationResponseObjects: []});

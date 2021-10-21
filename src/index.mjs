@@ -12,8 +12,7 @@ export {
 export {
   apolloContainerTests,
   propsFromParentPropsTask,
-  filterForQueryContainers,
-  filterForMutationContainers, chainParentPropContainer,
+  chainParentPropContainer,
   chainSamplePropsForContainer,
   defaultUpdatePathsForMutationContainers
 } from './apolloContainerTestHelpers';
