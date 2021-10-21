@@ -10,7 +10,12 @@
  */
 
 import {mountWithApolloClient, waitForChildComponentRenderTask} from './componentTestHelpers.js';
-import {e, filterForQueryContainers} from '@rescapes/helpers-component';
+import {
+  e,
+  filterForMutationContainers,
+  filterForMutationContainersWithQueriesRunFirst,
+  filterForQueryContainers
+} from '@rescapes/helpers-component';
 import PropTypes from 'prop-types';
 import {v} from '@rescapes/validate';
 import T from 'folktale/concurrency/task';
