@@ -1194,7 +1194,7 @@ const _testRenderComponentMutationsTask = (
                         // Cause an error
                         return mutation({variables: namedProps});
                       } else {
-                        return mutation(strPathOr({}, mutationName, mutationProps));
+                        return mutation({variables: strPathOr({}, mutationName, mutationProps)});
                       }
                     })();
                     return task.orElse(error => {
