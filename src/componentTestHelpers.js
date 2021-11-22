@@ -132,16 +132,17 @@ export const classifyChildClassName = childId => {
  * @returns {Task} A task that returns the component matching childId or if an error
  * occurs return an Error with the message and dump of the props
  */
-export const waitForChildComponentRenderTask = v(({
-                                                    componentId,
-                                                    childId,
-                                                    alreadyChildId,
-                                                    waitLength = 10000
-                                                  }, wrapper) => {
+export const waitForChildComponentRenderTask = v(
+  ({
+     componentId,
+     childId,
+     alreadyChildId,
+     waitLength = 10000
+   }, wrapper) => {
 
     const componentIdSearch = R.test(/^[A-Z]\S+/, componentId) ? componentId : `[data-testid='${componentId}']`;
     const alreadyChildIIdSearch = alreadyChildId && R.test(/^[A-Z]\S+/, alreadyChildId) ? alreadyChildId : `[data-testid='${alreadyChildId}']`;
-    const childIIdSearch = R.test(/^[A-Z]\S+/, childId) ? childId : `[data-testid='${childId}']`;
+    const childIdSearch = R.test(/^[A-Z]\S+/, childId) ? childId : `[data-testid='${childId}']`;
     const component = wrapper.find(componentIdSearch);
     if (R.length(component) != 1) {
       throw new Error(`Expected exactly 1 ${componentIdSearch}, but got ${R.length(component)}.`)
@@ -150,12 +151,12 @@ export const waitForChildComponentRenderTask = v(({
     // If alreadyChildId already exists, return it.
     // This happens when the component never was in the loading state but went straight to the ready/data state
     if (alreadyChildId && R.length(component.find(alreadyChildIIdSearch))) {
-      return of({wrapper, component, childComponent: component.find(childIIdSearch)});
+      return of({wrapper, component, childComponent: component.find(childIdSearch)});
     }
 
     // Wait for the child component to render, which indicates that data loading completed
     const waitForChild = createWaitForElement(
-      childIIdSearch,
+      childIdSearch,
       waitLength
     );
     const find = component.find;
@@ -179,7 +180,11 @@ export const waitForChildComponentRenderTask = v(({
         if (R.length(updatedComponent) != 1) {
           throw new Error(`Expected exactly 1 ${componentIdSearch}, but got ${R.length(updatedComponent)}.`)
         }
-        return {wrapper, component: updatedComponent, childComponent: updatedComponent.find(childIIdSearch)};
+        const childComponent = updatedComponent.find(childIdSearch)
+        if (R.length(childComponent) != 1) {
+          throw new Error(`Expected exactly 1 ${childIdSearch}, but got ${R.length(childComponent)}.`)
+        }
+        return {wrapper, component: updatedComponent, childComponent};
       }).orElse(
       error => {
         const comp = wrapper.find(componentIdSearch);
