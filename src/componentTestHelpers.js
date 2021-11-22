@@ -144,14 +144,14 @@ export const waitForChildComponentRenderTask = v(
     const alreadyChildIIdSearch = alreadyChildId && R.test(/^[A-Z]\S+/, alreadyChildId) ? alreadyChildId : `[data-testid='${alreadyChildId}']`;
     const childIdSearch = R.test(/^[A-Z]\S+/, childId) ? childId : `[data-testid='${childId}']`;
     const component = wrapper.find(componentIdSearch);
-    if (R.length(component) != 1) {
-      throw new Error(`Expected exactly 1 ${componentIdSearch}, but got ${R.length(component)}.`)
+    if (!R.length(component)) {
+      throw new Error(`Can't find component of id ${componentIdSearch}.`)
     }
 
     // If alreadyChildId already exists, return it.
     // This happens when the component never was in the loading state but went straight to the ready/data state
     if (alreadyChildId && R.length(component.find(alreadyChildIIdSearch))) {
-      return of({wrapper, component, childComponent: component.find(childIdSearch)});
+      return of({wrapper, component, childComponent: component.find(childIdSearch).first()});
     }
 
     // Wait for the child component to render, which indicates that data loading completed
@@ -173,18 +173,11 @@ export const waitForChildComponentRenderTask = v(
       return find.apply(wrapper.find(componentIdSearch), args);
     };
     const _error = new Error()
-    return fromPromised(() => waitForChild(component))().map(
+    return promiseToTask(waitForChild(component)).map(
       component => {
         // We need to get the updated reference to the component that has all requests finished
-        const updatedComponent = wrapper.find(componentIdSearch);
-        if (R.length(updatedComponent) != 1) {
-          throw new Error(`Expected exactly 1 ${componentIdSearch}, but got ${R.length(updatedComponent)}.`)
-        }
-        const childComponent = updatedComponent.find(childIdSearch)
-        if (R.length(childComponent) != 1) {
-          throw new Error(`Expected exactly 1 ${childIdSearch}, but got ${R.length(childComponent)}.`)
-        }
-        return {wrapper, component: updatedComponent, childComponent};
+        const updatedComponent = wrapper.find(componentIdSearch).first();
+        return {wrapper, component: updatedComponent, childComponent: updatedComponent.find(childIdSearch).first()};
       }).orElse(
       error => {
         const comp = wrapper.find(componentIdSearch);
