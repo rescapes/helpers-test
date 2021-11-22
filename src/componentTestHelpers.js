@@ -27,7 +27,7 @@ import Result from 'folktale/result';
 import {v} from '@rescapes/validate';
 import * as R from 'ramda';
 
-const {of} = T;
+const {of, fromPromised} = T;
 const {ApolloProvider} = apolloClient;
 
 const {mount, shallow} = enzyme;
@@ -143,8 +143,8 @@ export const waitForChildComponentRenderTask = v(({
     const alreadyChildIIdSearch = alreadyChildId && R.test(/^[A-Z]\S+/, alreadyChildId) ? alreadyChildId : `[data-testid='${alreadyChildId}']`;
     const childIIdSearch = R.test(/^[A-Z]\S+/, childId) ? childId : `[data-testid='${childId}']`;
     const component = wrapper.find(componentIdSearch);
-    if (!R.length(component)) {
-      throw new Error(`Can't find component of id ${componentIdSearch}.`)
+    if (R.length(component) != 1) {
+      throw new Error(`Expected exactly 1 ${componentIdSearch}, but got ${R.length(component)}.`)
     }
 
     // If alreadyChildId already exists, return it.
@@ -172,10 +172,13 @@ export const waitForChildComponentRenderTask = v(({
       return find.apply(wrapper.find(componentIdSearch), args);
     };
     const _error = new Error()
-    return promiseToTask(waitForChild(component)).map(
+    return fromPromised(() => waitForChild(component))().map(
       component => {
         // We need to get the updated reference to the component that has all requests finished
         const updatedComponent = wrapper.find(componentIdSearch);
+        if (R.length(updatedComponent) != 1) {
+          throw new Error(`Expected exactly 1 ${componentIdSearch}, but got ${R.length(updatedComponent)}.`)
+        }
         return {wrapper, component: updatedComponent, childComponent: updatedComponent.find(childIIdSearch)};
       }).orElse(
       error => {
