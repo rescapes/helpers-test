@@ -20,14 +20,14 @@
 
 export const remoteConfig = {
   settings: {
-    domain: 'localhost',
+    domain: '127.0.0.1',
     api: {
       protocol: 'http',
-      host: 'localhost',
+      host: '127.0.0.1',
       port: '8008',
       path: '/graphql',
       // This is normally calculated from the pieces above
-      uri: 'http://localhost:8008/graphql'
+      uri: 'http://127.0.0.1:8008/graphql'
     },
     testAuthorization: {
       username: 'test',
