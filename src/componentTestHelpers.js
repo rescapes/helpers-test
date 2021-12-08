@@ -13,8 +13,8 @@ import {inspect} from 'util';
 import {createWaitForElement} from 'enzyme-wait';
 import PropTypes from 'prop-types';
 import enzyme from 'enzyme';
-import {promiseToTask, reqPathThrowing, reqStrPathThrowing} from '@rescapes/ramda';
-import apolloClient from '@apollo/client';
+import {promiseToTask, reqPathThrowing, reqStrPathThrowing, defaultNode} from '@rescapes/ramda';
+import * as AC from '@apollo/client';
 import {e, getClass} from '@rescapes/helpers-component';
 import T from 'folktale/concurrency/task';
 import {
@@ -28,7 +28,7 @@ import {v} from '@rescapes/validate';
 import * as R from 'ramda';
 
 const {of, fromPromised} = T;
-const {ApolloProvider} = apolloClient;
+const {ApolloProvider} = defaultNode(AC)
 
 const {mount, shallow} = enzyme;
 
