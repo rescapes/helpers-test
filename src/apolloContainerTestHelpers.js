@@ -605,8 +605,8 @@ const _testQueries = (
           },
           responsesByKey
         );
-        expect(R.map(
-          dataSet => {
+        expect(mapObjToValues(
+          (dataSet, key) => {
             return R.compose(
               data => {
                 // Remove keys that are not determinant, like update dates
@@ -615,11 +615,18 @@ const _testQueries = (
               dataSet => {
                 // Just extract the query result. We don't care about what props got through,
                 // because they might change over time if we are passing them down to new child components
-                return reqStrPathThrowing('data', dataSet);
+                const data = strPathOr(null, 'data', dataSet);
+                if (!data) {
+                  throw new Error(
+                    `Query response with key ${key} is null. 
+                    This usually happens because the query was skipped because a dependency wasn't ready.
+                    Response: ${JSON.stringify(dataSet)}`)
+                }
+                return data;
               }
             )(dataSet);
           },
-          R.values(responsesByKey)
+          responsesByKey
         )).toMatchSnapshot();
       }
     }, errors, done)
@@ -660,7 +667,7 @@ const _testMutations = (
     )(updatedPaths)
   );
 
-  if (!R.length(assertions)) {
+  if (!assertions) {
     done();
   }
   expect.assertions(assertions);
