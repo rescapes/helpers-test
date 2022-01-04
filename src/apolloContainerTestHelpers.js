@@ -300,7 +300,8 @@ export const apolloContainerTests = v((context, container, component, configToCh
       {
         apolloConfigContainer: apolloConfigOptionalFunctionContainer('testMutations'),
         resolvedPropsContainer,
-        updatedPaths
+        updatedPaths,
+        mutationPropsMaker
       },
       // Because mutations might rely on props from queries, this actually creates tasks to run all
       // queries before each mutation task
@@ -641,6 +642,8 @@ const _testQueries = (
  * @param config
  * @param config.apolloConfigContainer
  * @param config.resolvedPropsContainer
+ * @param {Function} [config.mutationPropsMaker] Optional function to add props specifically for mutation.
+ * Returns an object keyed by the mutation named and valued by the params
  * @param {Function} apolloConfigToMutationTasks Expects an apolloConfig and returns an object keyed by
  * mutation name and valued by mutation task
  * @param done
@@ -651,7 +654,8 @@ const _testMutations = (
   {
     apolloConfigContainer,
     resolvedPropsContainer,
-    updatedPaths
+    updatedPaths,
+    mutationPropsMaker
   },
   apolloConfigToMutationTasks,
   done
@@ -680,7 +684,8 @@ const _testMutations = (
   const mutationResponseTask = apolloMutationResponsesTask(
     {
       apolloConfigContainer,
-      resolvedPropsContainer
+      resolvedPropsContainer,
+      mutationPropsMaker
     },
     apolloConfigToMutationTasks
   );
@@ -696,32 +701,31 @@ const _testMutations = (
 
 /**
  * Runs the apollo mutations in mutationComponents
- * @param apolloConfigContainer
- * @param resolvedPropsContainer
+ * @param config
+ * @param config.apolloConfigContainer
+ * @param config.resolvedPropsContainer
+ * @param {Function} [config.mutationPropsMaker] Optional function to create props to pass to mutation()
  * @param {Function } apolloConfigToMutationTasks Expects an apolloConfig and returns and object keyed by mutation
  * name and valued by mutation tasks
  * @return {Task<[Object]>} A task resolving to a list of the mutation responses
  * @private
  */
-export const apolloMutationResponsesTask = ({
-                                              apolloConfigContainer,
-                                              resolvedPropsContainer
-                                            }, apolloConfigToMutationTasks) => {
+export const apolloMutationResponsesTask = (
+  {
+    apolloConfigContainer,
+    resolvedPropsContainer,
+    mutationPropsMaker
+  }, apolloConfigToMutationTasks) => {
   // Task Object -> Task
   return composeWithChain([
     // Wait for all the mutations to finish
     ({apolloConfigToMutationTasks, props, apolloClient}) => {
-      // Create variables for the current queryComponent by sending props to its configuration
-      const propsWithRender = R.merge(
-        props, {
-          // Normally render is a container's render function that receives the apollo request results
-          // and pass is as props to a child container
-          //render: props => null
-        }
-      );
+      // If mutationPropsMaker is defined, call it with props to get any props needed to pass to the mutation
+      const mutationNameToProps = mutationPropsMaker ? mutationPropsMaker(props) : {}
       return waitAll(
         mapObjToValues(
           (mutationExpectingProps, mutationName) => {
+            const propsWithMutationProps = R.merge(props, R.propOr({}, mutationName, mutationNameToProps))
             return composeWithChain([
               ({mutationExpectingProps, preMutationApolloRenderProps, postMutationApolloRenderProps}) => {
                 if (!preMutationApolloRenderProps || !postMutationApolloRenderProps) {
@@ -736,18 +740,18 @@ export const apolloMutationResponsesTask = ({
                 });
               },
               mapToNamedResponseAndInputs('postMutationApolloRenderProps',
-                ({mutationExpectingProps, propsWithRender, preMutationApolloRenderProps}) => {
+                ({mutationExpectingProps, props, preMutationApolloRenderProps}) => {
                   // Mutate again to get updated dates
-                  return mutationExpectingProps(propsWithRender);
+                  return mutationExpectingProps(props);
                 }
               ),
               mapToNamedResponseAndInputs('preMutationApolloRenderProps',
-                ({mutationExpectingProps, propsWithRender}) => {
+                ({mutationExpectingProps, props}) => {
                   // Mutate once
-                  return mutationExpectingProps(propsWithRender);
+                  return mutationExpectingProps(props);
                 }
               )
-            ])({mutationExpectingProps, propsWithRender});
+            ])({mutationExpectingProps, props: propsWithMutationProps});
           },
           apolloConfigToMutationTasks({apolloClient})
         )
@@ -1245,6 +1249,9 @@ const testMutationChanges = (clientOrComponent, updatedPaths, prePostMutationCom
         postMutationApolloRenderProps
       } = prePostMutationComparisons;
       // Make sure the mutation returned something
+      if (mutationResponse.skip) {
+        throw new Error(`Mutation ${mutationName} was skipped: true. ${inspect(mutationResponse, null, 2)}`)
+      }
       expect(R.head(R.values(strPathOr([], 'result.data', mutationResponse)))).toBeTruthy();
       const updatedPathsForMutaton = R.propOr({client: []}, mutationName, updatedPaths)[clientOrComponent];
       if (updatedPathsForMutaton) {
@@ -1254,7 +1261,7 @@ const testMutationChanges = (clientOrComponent, updatedPaths, prePostMutationCom
             // if we are checking related query data, there should be no undefined values
             // If we are checking mutation results, the initial value can be undefined
             const oldValue = strPathOr('undefined', updatedPath, preMutationApolloRenderProps);
-            const newValue =  reqStrPathThrowing(updatedPath, postMutationApolloRenderProps);
+            const newValue = reqStrPathThrowing(updatedPath, postMutationApolloRenderProps);
             log.debug(`Comparing the following paths for inequality of ${updatedPath} before and after mutation`)
             expect(oldValue).not.toEqual(newValue)
           },
