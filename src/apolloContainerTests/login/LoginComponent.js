@@ -37,7 +37,7 @@ const {Form} = defaultNode(chakraReact);
 
 export const isAuthenticated = props => {
   return !strPathOr(false, 'mutateDeleteTokenCookie.result.data.deleteTokenCookie', props) && (
-    strPathOr(false, 'queryLocalTokenAuthContainer.data.token', props) ||
+    strPathOr(false, 'queryLocalTokenAuthContainer.data.obtainJSONWebToken.token', props) ||
     strPathOr(false, 'mutateTokenAuth.result.data.tokenAuth', props))
 }
 
