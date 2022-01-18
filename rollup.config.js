@@ -21,7 +21,7 @@ const externals = [
 ];
 
 const configs = R.map(c => {
-  const x = R.merge(config, c);
+  const x = R.mergeRight(config, c);
   //console.warn(x);
   return x;
 }, [
