@@ -99,13 +99,13 @@ Sample.renderData = ({views}) => {
   const propsOf = propsFor(views);
   // Put routeProps in the routeProps key and merge with the props destined for the component of the given key
   const mergeWithRoute = (key, routeProps) => {
-    return R.merge(propsOf(key), {routeProps});
+    return R.mergeRight(propsOf(key), {routeProps});
   };
 
   return e(MemoryRouter, propsOf(c.sampleRouter),
     // Route to render Login if the user is not authenticated
     e(Route,
-      R.merge(
+      R.mergeRight(
         propsOf(c.sampleRouteLogin),
         {
           render: props => {
@@ -115,7 +115,7 @@ Sample.renderData = ({views}) => {
       )
     ),
     // Route to PrivateRouteComponent if logged in
-    e(PrivateRouteComponent, R.merge(propsOf(c.privateRouterComponent), {
+    e(PrivateRouteComponent, R.mergeRight(propsOf(c.privateRouterComponent), {
       render: routeProps => {
         // PrivateRoute redirects to authentication unless authenticated
         // If authenticated, render the authenticated page, which here is just a logout button

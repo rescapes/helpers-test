@@ -69,7 +69,7 @@ export default function LoginComponent(props) {
     [c.loginPassword]: useInput('')
   };
 
-  const allProps = LoginComponent.views(R.merge(props, {t, history, location, hooks}));
+  const allProps = LoginComponent.views(R.mergeRight(props, {t, history, location, hooks}));
   const propsOf = propsFor(allProps.views);
 
   return e('div', propsOf(c.login),

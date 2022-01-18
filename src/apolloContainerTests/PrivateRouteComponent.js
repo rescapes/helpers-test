@@ -35,7 +35,7 @@ export const c = nameLookup({
 export default function PrivateRouteComponent(props) {
   const history = useHistory();
   const location = useLocation();
-  const propViews = PrivateRouteComponent.views(R.merge(props, {location, history}));
+  const propViews = PrivateRouteComponent.views(R.mergeRight(props, {location, history}));
   return e('div', propsFor(propViews.views, c.privateRoute),
     PrivateRouteComponent.choicepoint(propViews)
   );
@@ -50,10 +50,10 @@ PrivateRouteComponent.renderData = ({render, views}) => {
   const {queryAuthenticatedUserLocalContainer, ...privateRouteBodyProps} = propsOf(c.privateRouteBody);
   // Put routeProps in the routeProps key and merge with the props destined for the component of the given key
   const mergeWithRoute = (key, routeProps) => {
-    return R.merge(propsOf(key), {routeProps});
+    return R.mergeRight(propsOf(key), {routeProps});
   };
   // Since Route has no path, it will always match here
-  return e(Route, R.merge(
+  return e(Route, R.mergeRight(
     privateRouteBodyProps, {
       render: routeProps => {
         return strPathOr(false, 'data.currentUser', queryAuthenticatedUserLocalContainer) ?

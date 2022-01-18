@@ -45,7 +45,7 @@ export default function LogoutComponent(props) {
   // Browser location hook
   const location = useLocation();
 
-  const allProps = LogoutComponent.views(R.merge(props, {history, location}));
+  const allProps = LogoutComponent.views(R.mergeRight(props, {history, location}));
   const propsOf = propsFor(allProps.views);
   return e('div', propsOf(c.logout),
     LogoutComponent.choicepoint(allProps)

@@ -72,7 +72,7 @@ const {fromPromised, of, waitAll} = T;
  */
 export const defaultUpdatePathsForMutationContainers = (apolloContainers, overrides) => {
   return R.compose(
-    defaults => R.merge(defaults, overrides),
+    defaults => R.mergeRight(defaults, overrides),
     apolloContainers => {
       return R.map(
         R.always({component: [], client: []}),
@@ -577,7 +577,7 @@ const _testQueries = (
               // queryVariationContainersTestAll makes queryVariationContainers
               // run all queries for testing instead of just the one matching
               // the allowRequestProp
-              props => of(R.merge(props, {queryVariationContainersTestAll: true})),
+              props => of(R.mergeRight(props, {queryVariationContainersTestAll: true})),
               resolvedPropsContainer
             ]),
             queryContainers
@@ -725,7 +725,7 @@ export const apolloMutationResponsesTask = (
       return waitAll(
         mapObjToValues(
           (mutationExpectingProps, mutationName) => {
-            const propsWithMutationProps = R.merge(props, R.propOr({}, mutationName, mutationNameToProps))
+            const propsWithMutationProps = R.mergeRight(props, R.propOr({}, mutationName, mutationNameToProps))
             return composeWithChain([
               ({mutationExpectingProps, preMutationApolloRenderProps, postMutationApolloRenderProps}) => {
                 if (!preMutationApolloRenderProps || !postMutationApolloRenderProps) {
@@ -965,7 +965,7 @@ const _testRenderComponentTask = v((
         responseProps => {
           return nameComponent('testComponent', e(
             component,
-            R.omit(['render', 'children'], R.merge(props, responseProps))
+            R.omit(['render', 'children'], R.mergeRight(props, responseProps))
           ));
         }
       );

@@ -25,7 +25,7 @@ export const apolloContainersLogout = (apolloConfig = {}) => {
   return {
     mutateDeleteTokenCookie: props => {
       return deleteTokenCookieMutationRequestContainer(
-        R.merge(apolloConfig,
+        R.mergeRight(apolloConfig,
           {
             options: {
               variables: () => {
@@ -42,7 +42,7 @@ export const apolloContainersLogout = (apolloConfig = {}) => {
     },
     mutateDeleteRefreshTokenCookie: props => {
       return deleteRefreshTokenCookieMutationRequestContainer(
-        R.merge(apolloConfig,
+        R.mergeRight(apolloConfig,
           {
             options: {
               variables: () => {

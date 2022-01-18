@@ -28,7 +28,7 @@ export const c = nameLookup({
 
 export default function LogoutButtonComponent(props) {
   const {t, i18n} = useTranslation();
-  const allProps = LogoutButtonComponent.views(R.merge(props, {history, location}));
+  const allProps = LogoutButtonComponent.views(R.mergeRight(props, {history, location}));
   const propsOf = propsFor(allProps.views);
   return e(AuthenticationButton, propsOf(c.logoutButton), t('logout'));
 }

@@ -290,7 +290,7 @@ export const parentPropsForContainer = v((apolloConfig, {
  * sample props according to the functions of the container
  */
 export const makeTestPropsFunction = (mapStateToProps, mapDispatchToProps) => {
-  return (sampleState, sampleOwnProps) => R.merge(
+  return (sampleState, sampleOwnProps) => R.mergeRight(
     mapStateToProps(sampleState, sampleOwnProps),
     mapDispatchToProps(R.identity, sampleOwnProps)
   );

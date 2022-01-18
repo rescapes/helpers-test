@@ -12,7 +12,7 @@
 import * as R from 'ramda';
 import {classifyChildClassName, testState} from './componentTestHelpers.js';
 
-const createInitialState = config => R.merge({
+const createInitialState = config => R.mergeRight({
   foo: 'boo'
 }, config);
 const sampleConfig = {
